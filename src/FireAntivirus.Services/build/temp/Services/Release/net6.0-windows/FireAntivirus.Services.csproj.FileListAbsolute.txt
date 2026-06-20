@@ -1,0 +1,17 @@
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Services.deps.json
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Services.runtimeconfig.json
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Services.dll
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.ClamAV.dll
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Common.dll
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Data.dll
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Engine.dll
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Common.pdb
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Data.pdb
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.Engine.pdb
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\output\Services\Release\net6.0-windows\FireAntivirus.ClamAV.pdb
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\temp\Services\Release\net6.0-windows\FireAntivirus.Services.csproj.AssemblyReference.cache
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\temp\Services\Release\net6.0-windows\FireAntivirus.Services.GeneratedMSBuildEditorConfig.editorconfig
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\temp\Services\Release\net6.0-windows\FireAntivirus.Services.csproj.CoreCompileInputs.cache
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\temp\Services\Release\net6.0-windows\FireAntivirus.Services.csproj.CopyComplete
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\temp\Services\Release\net6.0-windows\FireAntivirus.Services.pdb
+D:\桌面\develop\FireAntivirus\src\FireAntivirus.Services\build\temp\Services\Release\net6.0-windows\FireAntivirus.Services.genruntimeconfig.cache

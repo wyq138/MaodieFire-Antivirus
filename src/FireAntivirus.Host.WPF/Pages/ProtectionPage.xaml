@@ -1,0 +1,25 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.ProtectionPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="实时防护">
+    
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 标题 -->
+        <TextBlock Grid.Row="0" 
+                   Text="实时防护" 
+                   FontSize="22" 
+                   FontWeight="Bold"
+                   Foreground="{DynamicResource TextPrimary}"
+                   Margin="20,20,20,10"/>
+        
+        <!-- 防护项列表 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="ProtectionList" Margin="20,0,20,20"/>
+        </ScrollViewer>
+    </Grid>
+</Page>

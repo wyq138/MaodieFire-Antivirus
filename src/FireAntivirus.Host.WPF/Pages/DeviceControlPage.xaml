@@ -1,0 +1,50 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.DeviceControlPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="设备控制">
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Margin="20,15">
+            <TextBlock x:Name="TitleText" Text="设备控制" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+        </Grid>
+        <ScrollViewer Grid.Row="1" Margin="20,0,20,20">
+            <StackPanel>
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="📱 设备控制状态" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="EnableDeviceControl" Content="启用设备控制" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="BlockUSB" Content="阻止USB存储设备" Margin="0,5"/>
+                        <CheckBox x:Name="BlockBluetooth" Content="阻止蓝牙设备" Margin="0,5"/>
+                        <CheckBox x:Name="AutoScanUSB" Content="自动扫描新USB设备" IsChecked="True" Margin="0,5"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🔌 已连接设备" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <DataGrid x:Name="DevicesGrid" AutoGenerateColumns="False" IsReadOnly="True" Height="150">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="设备名称" Binding="{Binding DeviceName}" Width="*"/>
+                                <DataGridTextColumn Header="类型" Binding="{Binding Type}" Width="80"/>
+                                <DataGridTextColumn Header="状态" Binding="{Binding Status}" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Button x:Name="RefreshDevicesBtn" Content="刷新" Width="80" Height="28" Margin="0,10,0,0" Click="RefreshDevices_Click"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="✅ 信任设备" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <ListBox x:Name="TrustedDevicesList" Height="100"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button x:Name="AddTrustedBtn" Content="添加" Width="70" Height="28" Margin="0,0,10,0" Click="AddTrusted_Click"/>
+                            <Button x:Name="RemoveTrustedBtn" Content="移除" Width="70" Height="28" Click="RemoveTrusted_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

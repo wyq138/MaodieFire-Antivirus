@@ -1,0 +1,237 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.HomePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="主页">
+    
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 英雄区域 -->
+        <Grid Grid.Row="0" Margin="30,30,30,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="7*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- 标题区域 -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock x:Name="TitleText" 
+                           Text="耄耋安全软件" 
+                           FontSize="28" 
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource PrimaryColor}"/>
+                <TextBlock x:Name="SubtitleText" 
+                           Text="v1.0.0 正式版 - 全方位保护您的电脑安全" 
+                           FontSize="14" 
+                           Foreground="{DynamicResource TextSecondary}"
+                           Margin="0,10,0,0"/>
+            </StackPanel>
+            
+            <!-- Logo区域 -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource CardBg}"
+                    CornerRadius="10"
+                    Padding="20"
+                    HorizontalAlignment="Center">
+                <Viewbox Width="80" Height="80">
+                    <Image Source="pack://application:,,,/Resources/cat_logo.png" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Viewbox>
+            </Border>
+        </Grid>
+        
+        <!-- 状态卡片区域 -->
+        <Grid x:Name="StatusPanel" Grid.Row="1" Margin="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- 防护状态卡片 -->
+            <Border x:Name="ProtectionStatusLabel"
+                    Grid.Column="0"
+                    Background="{DynamicResource CardBg}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Margin="0,0,10,0"
+                    Padding="15">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="🛡️" FontSize="36" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="ProtectionStatusTitle"
+                               Text="防护状态" 
+                               FontSize="14" 
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimary}"
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,5"/>
+                    <TextBlock x:Name="ProtectionStatusValue"
+                               Text="已启用" 
+                               FontSize="16"
+                               Foreground="Green"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="ProtectionStatusDesc"
+                               Text="所有防护功能运行正常" 
+                               FontSize="11"
+                               Foreground="{DynamicResource TextSecondary}"
+                               HorizontalAlignment="Center"
+                               Margin="0,5,0,0"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            
+            <!-- 病毒库卡片 -->
+            <Border x:Name="VirusDatabaseLabel"
+                    Grid.Column="1"
+                    Background="{DynamicResource CardBg}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Margin="10,0,10,0"
+                    Padding="15">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="📦" FontSize="36" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="VirusDatabaseTitle"
+                               Text="病毒库" 
+                               FontSize="14" 
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimary}"
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,5"/>
+                    <TextBlock x:Name="VirusDatabaseStatus"
+                               Text="已更新" 
+                               FontSize="16"
+                               Foreground="Green"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="VirusDatabaseVersion"
+                               Text="病毒库版本：最新" 
+                               FontSize="11"
+                               Foreground="{DynamicResource TextSecondary}"
+                               HorizontalAlignment="Center"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+            </Border>
+            
+            <!-- 系统状态卡片 -->
+            <Border x:Name="SystemStatusLabel"
+                    Grid.Column="2"
+                    Background="{DynamicResource CardBg}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Margin="10,0,0,0"
+                    Padding="15">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="✅" FontSize="36" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="SystemStatusTitle"
+                               Text="系统状态" 
+                               FontSize="14" 
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimary}"
+                               HorizontalAlignment="Center"
+                               Margin="0,10,0,5"/>
+                    <TextBlock x:Name="SystemStatusValue"
+                               Text="安全" 
+                               FontSize="16"
+                               Foreground="Green"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="SystemStatusDesc"
+                               Text="未发现安全威胁" 
+                               FontSize="11"
+                               Foreground="{DynamicResource TextSecondary}"
+                               HorizontalAlignment="Center"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+        
+        <!-- 快速操作区域 -->
+        <Grid Grid.Row="2" Margin="20,10,20,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- 快速扫描按钮 -->
+            <Button x:Name="QuickScanBtn"
+                    Grid.Column="0"
+                    Background="{DynamicResource PrimaryColor}"
+                    Foreground="White"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    Height="80"
+                    Margin="0,0,10,0"
+                    Click="QuickScan_Click"
+                    Cursor="Hand">
+                <StackPanel>
+                    <TextBlock Text="🔍" FontSize="24" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="QuickScanText" Text="快速扫描" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Button>
+            
+            <!-- 全盘扫描按钮 -->
+            <Button x:Name="FullScanBtn"
+                    Grid.Column="1"
+                    Background="{DynamicResource PrimaryColor}"
+                    Foreground="White"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    Height="80"
+                    Margin="10,0,10,0"
+                    Click="FullScan_Click"
+                    Cursor="Hand">
+                <StackPanel>
+                    <TextBlock Text="📁" FontSize="24" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="FullScanText" Text="全盘扫描" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Button>
+            
+            <!-- 检查更新按钮 -->
+            <Button x:Name="UpdateBtn"
+                    Grid.Column="2"
+                    Background="{DynamicResource PrimaryColor}"
+                    Foreground="White"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    Height="80"
+                    Margin="10,0,0,0"
+                    Click="CheckUpdate_Click"
+                    Cursor="Hand">
+                <StackPanel>
+                    <TextBlock Text="🔄" FontSize="24" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="CheckUpdateText" Text="检查更新" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Button>
+        </Grid>
+        
+        <!-- 底部区域 -->
+        <StackPanel Grid.Row="3" Margin="20,0,20,20" VerticalAlignment="Top">
+            <TextBlock x:Name="RecentActivityTitle"
+                       Text="最近活动" 
+                       FontSize="16" 
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimary}"
+                       Margin="0,0,0,10"/>
+            
+            <Border Background="{DynamicResource CardBg}"
+                    BorderBrush="{DynamicResource BorderColor}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="15">
+                <StackPanel>
+                    <TextBlock x:Name="RecentActivityText"
+                               Text="系统运行正常，无异常活动" 
+                               FontSize="12"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Grid>
+</Page>

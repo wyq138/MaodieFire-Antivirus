@@ -1,0 +1,54 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.SystemOptimizerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="系统优化">
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Margin="20,15">
+            <TextBlock x:Name="TitleText" Text="系统优化" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+        </Grid>
+        <ScrollViewer Grid.Row="1" Margin="20,0,20,20">
+            <StackPanel>
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="📊 系统状态" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="CpuUsage" Text="CPU: 0%" FontSize="12"/>
+                                <ProgressBar x:Name="CpuProgress" Height="10" Margin="0,5"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                                <TextBlock x:Name="MemoryUsage" Text="内存: 0%" FontSize="12"/>
+                                <ProgressBar x:Name="MemoryProgress" Height="10" Margin="0,5"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🔧 优化选项" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="CleanTempFiles" Content="清理临时文件" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="CleanCache" Content="清理系统缓存" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="CleanRegistry" Content="清理注册表无效项" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="OptimizeStartup" Content="优化启动项" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="DefragmentDisk" Content="磁盘碎片整理" IsChecked="False" Margin="0,5"/>
+                    </StackPanel>
+                </Border>
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="📈 预计释放空间" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="EstimatedSpace" Text="预计可释放: 0 MB" FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
+                </Border>
+                <Button x:Name="OptimizeBtn" Content="一键优化" Width="120" Height="35" Background="{DynamicResource PrimaryColor}" Foreground="White" BorderThickness="0" Click="Optimize_Click"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

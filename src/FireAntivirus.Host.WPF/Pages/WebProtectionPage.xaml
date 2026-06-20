@@ -1,0 +1,215 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.WebProtectionPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="网页防护">
+
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 标题区域 -->
+        <Grid Grid.Row="0" Margin="20,15">
+            <TextBlock x:Name="TitleText" 
+                       Text="网页防护" 
+                       FontSize="18" 
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimary}"/>
+        </Grid>
+        
+        <!-- 内容区域 -->
+        <ScrollViewer Grid.Row="1" Margin="20,0,20,20">
+            <StackPanel>
+                <!-- 防护状态卡片 -->
+                <Border Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="0,0,0,15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🌐 防护状态" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   Margin="0,0,0,10"/>
+                        
+                        <TextBlock x:Name="StatusText" 
+                                   Text="网页防护已启用" 
+                                   FontSize="12"
+                                   Foreground="Green"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock Text="实时监控网页访问，保护您的上网安全" 
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 恶意网站拦截卡片 -->
+                <Border Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="0,0,0,15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🚫 恶意网站拦截" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   Margin="0,0,0,10"/>
+                        
+                        <CheckBox x:Name="BlockPhishing" 
+                                  Content="拦截钓鱼网站" 
+                                  IsChecked="True" 
+                                  Margin="0,5"
+                                  Foreground="{DynamicResource TextPrimary}"/>
+                        <CheckBox x:Name="BlockMalware" 
+                                  Content="拦截恶意软件下载站" 
+                                  IsChecked="True" 
+                                  Margin="0,5"
+                                  Foreground="{DynamicResource TextPrimary}"/>
+                        <CheckBox x:Name="BlockAds" 
+                                  Content="拦截广告" 
+                                  IsChecked="True" 
+                                  Margin="0,5"
+                                  Foreground="{DynamicResource TextPrimary}"/>
+                        <CheckBox x:Name="BlockTrackers" 
+                                  Content="拦截跟踪器" 
+                                  IsChecked="True" 
+                                  Margin="0,5"
+                                  Foreground="{DynamicResource TextPrimary}"/>
+                        <CheckBox x:Name="BlockPopups" 
+                                  Content="拦截弹窗广告" 
+                                  IsChecked="True" 
+                                  Margin="0,5"
+                                  Foreground="{DynamicResource TextPrimary}"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 自定义黑名单卡片 -->
+                <Border Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="0,0,0,15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="📋 自定义黑名单" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   Margin="0,0,0,10"/>
+                        
+                        <ListBox x:Name="BlacklistListBox" 
+                                 Height="100" 
+                                 Margin="0,0,0,10"
+                                 Background="{DynamicResource BgTertiary}"
+                                 Foreground="{DynamicResource TextPrimary}"
+                                 BorderBrush="{DynamicResource BorderColor}"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBox x:Name="BlacklistTextBox" 
+                                     Grid.Column="0"
+                                     Height="28"
+                                     Margin="0,0,10,0"
+                                     VerticalContentAlignment="Center"
+                                     Background="{DynamicResource BgTertiary}"
+                                     Foreground="{DynamicResource TextPrimary}"
+                                     BorderBrush="{DynamicResource BorderColor}"/>
+                            <Button x:Name="AddBlacklistBtn" 
+                                    Grid.Column="1"
+                                    Content="添加" 
+                                    Width="70" 
+                                    Height="28"
+                                    Margin="0,0,5,0"
+                                    Background="{DynamicResource BgTertiary}"
+                                    Foreground="{DynamicResource TextPrimary}"
+                                    BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1"
+                                    Cursor="Hand"/>
+                            <Button x:Name="RemoveBlacklistBtn" 
+                                    Grid.Column="2"
+                                    Content="移除" 
+                                    Width="70" 
+                                    Height="28"
+                                    Background="{DynamicResource BgTertiary}"
+                                    Foreground="{DynamicResource TextPrimary}"
+                                    BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1"
+                                    Cursor="Hand"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 自定义白名单卡片 -->
+                <Border Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="0,0,0,15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="✅ 自定义白名单" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   Margin="0,0,0,10"/>
+                        
+                        <ListBox x:Name="WhitelistListBox" 
+                                 Height="100" 
+                                 Margin="0,0,0,10"
+                                 Background="{DynamicResource BgTertiary}"
+                                 Foreground="{DynamicResource TextPrimary}"
+                                 BorderBrush="{DynamicResource BorderColor}"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBox x:Name="WhitelistTextBox" 
+                                     Grid.Column="0"
+                                     Height="28"
+                                     Margin="0,0,10,0"
+                                     VerticalContentAlignment="Center"
+                                     Background="{DynamicResource BgTertiary}"
+                                     Foreground="{DynamicResource TextPrimary}"
+                                     BorderBrush="{DynamicResource BorderColor}"/>
+                            <Button x:Name="AddWhitelistBtn" 
+                                    Grid.Column="1"
+                                    Content="添加" 
+                                    Width="70" 
+                                    Height="28"
+                                    Margin="0,0,5,0"
+                                    Background="{DynamicResource BgTertiary}"
+                                    Foreground="{DynamicResource TextPrimary}"
+                                    BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1"
+                                    Cursor="Hand"/>
+                            <Button x:Name="RemoveWhitelistBtn" 
+                                    Grid.Column="2"
+                                    Content="移除" 
+                                    Width="70" 
+                                    Height="28"
+                                    Background="{DynamicResource BgTertiary}"
+                                    Foreground="{DynamicResource TextPrimary}"
+                                    BorderBrush="{DynamicResource BorderColor}"
+                                    BorderThickness="1"
+                                    Cursor="Hand"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

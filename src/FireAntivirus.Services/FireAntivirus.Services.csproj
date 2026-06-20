@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.3.0" />
+    <PackageReference Include="MimeKit" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FireAntivirus.Data\FireAntivirus.Data.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Engine\FireAntivirus.Engine.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Common\FireAntivirus.Common.csproj" />
+    <ProjectReference Include="..\FireAntivirus.ClamAV\FireAntivirus.ClamAV.csproj" />
+  </ItemGroup>
+
+</Project>

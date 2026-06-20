@@ -1,0 +1,270 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.ToolsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="系统工具">
+    
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 标题区域 -->
+        <Grid Grid.Row="0" Margin="20,15">
+            <TextBlock x:Name="TitleText" 
+                       Text="系统工具" 
+                       FontSize="18" 
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimary}"/>
+        </Grid>
+        
+        <!-- 工具卡片区域 -->
+        <ScrollViewer Grid.Row="1" Margin="20,0,20,20">
+            <Grid x:Name="ToolsGrid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                
+                <!-- 启动项管理 -->
+                <Border Grid.Row="0" Grid.Column="0"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="5"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🚀" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="StartupManagerTitle"
+                                   Text="启动项管理" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="StartupManagerDesc"
+                                   Text="管理开机启动项、计划任务、系统服务" 
+                                   FontSize="10" 
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,0,0,10"/>
+                        <Button x:Name="StartupManagerBtn"
+                                Content="运行" 
+                                Width="80" 
+                                Height="30"
+                                Background="{DynamicResource PrimaryColor}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="RunTool_Click"
+                                Tag="启动项管理"
+                                Cursor="Hand"
+                                HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 文件粉碎 -->
+                <Border Grid.Row="0" Grid.Column="1"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="5"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="💥" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="FileShredderTitle"
+                                   Text="文件粉碎" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="FileShredderDesc"
+                                   Text="彻底删除文件/文件夹，不可恢复" 
+                                   FontSize="10" 
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,0,0,10"/>
+                        <Button x:Name="FileShredderBtn"
+                                Content="运行" 
+                                Width="80" 
+                                Height="30"
+                                Background="{DynamicResource PrimaryColor}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="RunTool_Click"
+                                Tag="文件粉碎"
+                                Cursor="Hand"
+                                HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 右键菜单管理 -->
+                <Border Grid.Row="1" Grid.Column="0"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="5"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🖱️" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="ContextMenuTitle"
+                                   Text="右键菜单管理" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="ContextMenuDesc"
+                                   Text="清理和管理右键菜单项" 
+                                   FontSize="10" 
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,0,0,10"/>
+                        <Button x:Name="ContextMenuBtn"
+                                Content="运行" 
+                                Width="80" 
+                                Height="30"
+                                Background="{DynamicResource PrimaryColor}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="RunTool_Click"
+                                Tag="右键菜单管理"
+                                Cursor="Hand"
+                                HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 垃圾清理 -->
+                <Border Grid.Row="1" Grid.Column="1"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="5"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🗑️" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="JunkCleanerTitle"
+                                   Text="垃圾清理" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="JunkCleanerDesc"
+                                   Text="清理系统垃圾、缓存、日志文件" 
+                                   FontSize="10" 
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,0,0,10"/>
+                        <Button x:Name="JunkCleanerBtn"
+                                Content="运行" 
+                                Width="80" 
+                                Height="30"
+                                Background="{DynamicResource PrimaryColor}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="RunTool_Click"
+                                Tag="垃圾清理"
+                                Cursor="Hand"
+                                HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 系统修复 -->
+                <Border Grid.Row="2" Grid.Column="0"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="5"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🔧" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="SystemRepairTitle"
+                                   Text="系统修复" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="SystemRepairDesc"
+                                   Text="修复系统文件损坏、快捷方式异常" 
+                                   FontSize="10" 
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,0,0,10"/>
+                        <Button x:Name="SystemRepairBtn"
+                                Content="运行" 
+                                Width="80" 
+                                Height="30"
+                                Background="{DynamicResource PrimaryColor}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="RunTool_Click"
+                                Tag="系统修复"
+                                Cursor="Hand"
+                                HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                
+                <!-- 漏洞修复 -->
+                <Border Grid.Row="2" Grid.Column="1"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="5"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🔓" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                        <TextBlock x:Name="VulnScannerTitle"
+                                   Text="漏洞修复" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="VulnScannerDesc"
+                                   Text="扫描和修复系统高危漏洞" 
+                                   FontSize="10" 
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,0,0,10"/>
+                        <Button x:Name="VulnScannerBtn"
+                                Content="运行" 
+                                Width="80" 
+                                Height="30"
+                                Background="{DynamicResource PrimaryColor}"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Click="RunTool_Click"
+                                Tag="漏洞修复"
+                                Cursor="Hand"
+                                HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Page>

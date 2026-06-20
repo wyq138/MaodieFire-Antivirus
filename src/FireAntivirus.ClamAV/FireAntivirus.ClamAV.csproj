@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <OutputType>Library</OutputType>
+    <AssemblyName>FireAntivirus.ClamAV</AssemblyName>
+    <RootNamespace>FireAntivirus.ClamAV</RootNamespace>
+    <GenerateReferenceAssembly>true</GenerateReferenceAssembly>
+    <Company>耄耋安全软件</Company>
+    <Product>FireAntivirus.ClamAV</Product>
+    <Copyright>Copyright © 2026 耄耋安全软件</Copyright>
+    <Version>1.0.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FireAntivirus.Data\FireAntivirus.Data.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Engine\FireAntivirus.Engine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ClamAV引擎文件复制到输出目录 -->
+    <Content Include="ClamAV\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  
+<!-- 确保ClamAV文件夹在构建时被复制到输出目录 -->
+  <Target Name="CopyClamAVFiles" AfterTargets="Build">
+    <ItemGroup>
+      <ClamAVFiles Include="ClamAV\**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ClamAVFiles)" DestinationFolder="$(OutputPath)ClamAV\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+
+
+
+
+</Project>

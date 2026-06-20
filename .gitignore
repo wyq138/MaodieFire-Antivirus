@@ -1,0 +1,40 @@
+## Build results
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.cache
+*.vspscc
+*.vssscc
+
+## .NET
+*.dll
+*.pdb
+*.exe
+*.deps.json
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+package.config
+
+## IDE
+.idea/
+*.swp
+*~
+
+## OS
+Thumbs.db
+.DS_Store
+
+## Temp
+module_stats.txt

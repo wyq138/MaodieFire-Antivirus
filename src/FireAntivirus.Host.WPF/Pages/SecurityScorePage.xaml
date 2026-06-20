@@ -1,0 +1,274 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.SecurityScorePage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="安全评分">
+
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 标题区域 -->
+        <Grid Grid.Row="0" Margin="20,15">
+            <TextBlock x:Name="TitleText" 
+                       Text="安全评分" 
+                       FontSize="18" 
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimary}"/>
+        </Grid>
+
+        <!-- 内容区域 -->
+        <ScrollViewer Grid.Row="1" Margin="20,0,20,20" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- 总分区域 -->
+                <Border x:Name="ScorePanel"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Margin="0,0,0,15"
+                        Padding="30">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 大分数显示 -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,40,0">
+                            <TextBlock x:Name="ScoreValueText"
+                                       Text="85"
+                                       FontSize="72"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource SuccessColor}"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="ScoreLevelText"
+                                       Text="安全"
+                                       FontSize="20"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimary}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,5,0,0"/>
+                            <TextBlock x:Name="ScoreDescText"
+                                       Text="您的系统处于良好状态"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <!-- 分数指示条 -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="安全评分范围" 
+                                       FontSize="12" 
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       Margin="0,0,0,10"/>
+                            <Grid Height="20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Background="#F44336" CornerRadius="5,0,0,5"/>
+                                <Border Grid.Column="1" Background="#FF9800"/>
+                                <Border Grid.Column="2" Background="#4CAF50" CornerRadius="0,5,5,0"/>
+                            </Grid>
+                            <Grid Margin="0,5,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="危险 (0-40)" FontSize="10" Foreground="#F44336" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="警告 (41-70)" FontSize="10" Foreground="#FF9800" HorizontalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="安全 (71-100)" FontSize="10" Foreground="#4CAF50" HorizontalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 分类评分 -->
+                <Border x:Name="CategoryPanel"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="0,0,0,15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="分类评分" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   Margin="0,0,0,15"/>
+
+                        <!-- 核心安全 -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="核心安全" FontSize="12" Foreground="{DynamicResource TextPrimary}"/>
+                            <ProgressBar Grid.Column="1" Height="12" Value="92" Maximum="100" Foreground="{DynamicResource SuccessColor}" Background="{DynamicResource BgTertiary}"/>
+                            <TextBlock Grid.Column="2" Text="92" FontSize="12" Foreground="{DynamicResource SuccessColor}" HorizontalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- 网络安全 -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="网络安全" FontSize="12" Foreground="{DynamicResource TextPrimary}"/>
+                            <ProgressBar Grid.Column="1" Height="12" Value="78" Maximum="100" Foreground="{DynamicResource WarningColor}" Background="{DynamicResource BgTertiary}"/>
+                            <TextBlock Grid.Column="2" Text="78" FontSize="12" Foreground="{DynamicResource WarningColor}" HorizontalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- 数据安全 -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="数据安全" FontSize="12" Foreground="{DynamicResource TextPrimary}"/>
+                            <ProgressBar Grid.Column="1" Height="12" Value="88" Maximum="100" Foreground="{DynamicResource SuccessColor}" Background="{DynamicResource BgTertiary}"/>
+                            <TextBlock Grid.Column="2" Text="88" FontSize="12" Foreground="{DynamicResource SuccessColor}" HorizontalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- 隐私保护 -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="隐私保护" FontSize="12" Foreground="{DynamicResource TextPrimary}"/>
+                            <ProgressBar Grid.Column="1" Height="12" Value="95" Maximum="100" Foreground="{DynamicResource SuccessColor}" Background="{DynamicResource BgTertiary}"/>
+                            <TextBlock Grid.Column="2" Text="95" FontSize="12" Foreground="{DynamicResource SuccessColor}" HorizontalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- 系统安全 -->
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="50"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="系统安全" FontSize="12" Foreground="{DynamicResource TextPrimary}"/>
+                            <ProgressBar Grid.Column="1" Height="12" Value="72" Maximum="100" Foreground="{DynamicResource WarningColor}" Background="{DynamicResource BgTertiary}"/>
+                            <TextBlock Grid.Column="2" Text="72" FontSize="12" Foreground="{DynamicResource WarningColor}" HorizontalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 问题列表 -->
+                <Border x:Name="IssuesPanel"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="0,0,0,15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="发现问题" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   Margin="0,0,0,10"/>
+
+                        <!-- 问题项 -->
+                        <Border Background="{DynamicResource BgTertiary}" CornerRadius="5" Padding="10" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="!" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource WarningColor}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="Windows 防火墙未完全启用" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="警告" FontSize="10" Foreground="{DynamicResource WarningColor}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{DynamicResource BgTertiary}" CornerRadius="5" Padding="10" Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="!" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource WarningColor}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="部分启动项可能影响系统性能" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="警告" FontSize="10" Foreground="{DynamicResource WarningColor}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Background="{DynamicResource BgTertiary}" CornerRadius="5" Padding="10" Margin="0,0,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="i" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource InfoColor}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="有 3 个可用的系统更新未安装" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="提示" FontSize="10" Foreground="{DynamicResource InfoColor}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- 建议区域 -->
+                <Border x:Name="RecommendationsPanel"
+                        Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="0,0,0,15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="安全建议" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   Margin="0,0,0,10"/>
+
+                        <TextBlock Text="1. 启用 Windows 防火墙以增强网络防护" 
+                                   FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                        <TextBlock Text="2. 安装最新的系统更新补丁" 
+                                   FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                        <TextBlock Text="3. 禁用不必要的启动项以提高性能" 
+                                   FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,5"/>
+                        <TextBlock Text="4. 定期执行全盘扫描确保系统安全" 
+                                   FontSize="12" Foreground="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 重新扫描按钮 -->
+                <Button x:Name="RescanBtn"
+                        Content="重新评估安全评分"
+                        Height="45"
+                        Background="{DynamicResource PrimaryColor}"
+                        Foreground="White"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        Cursor="Hand"
+                        Click="Rescan_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    CornerRadius="8"
+                                    Padding="20,0">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

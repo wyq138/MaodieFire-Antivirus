@@ -1,0 +1,103 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.PopupBlockerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="弹窗拦截">
+    
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 标题区域 -->
+        <Grid Grid.Row="0" Margin="20,15">
+            <TextBlock x:Name="TitleText" 
+                       Text="弹窗拦截" 
+                       FontSize="18" 
+                       FontWeight="Bold"
+                       Foreground="{DynamicResource TextPrimary}"/>
+        </Grid>
+        
+        <!-- 内容区域 -->
+        <Grid Grid.Row="1" Margin="20,0,20,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- 控制按钮区域 -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
+                <Button x:Name="AddRuleBtn"
+                        Content="添加规则"
+                        Width="100"
+                        Height="40"
+                        Margin="0,0,10,0"
+                        Background="{DynamicResource BgTertiary}"
+                        Foreground="{DynamicResource TextPrimary}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        Click="AddPopupRule_Click"
+                        Cursor="Hand"/>
+                
+                <Button x:Name="DeleteRuleBtn"
+                        Content="删除规则"
+                        Width="100"
+                        Height="40"
+                        Margin="10,0,10,0"
+                        Background="{DynamicResource BgTertiary}"
+                        Foreground="{DynamicResource TextPrimary}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        Click="DeletePopupRule_Click"
+                        Cursor="Hand"/>
+                
+                <Button x:Name="ClearRulesBtn"
+                        Content="清空规则"
+                        Width="100"
+                        Height="40"
+                        Margin="10,0,10,0"
+                        Background="{DynamicResource BgTertiary}"
+                        Foreground="{DynamicResource TextPrimary}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        Click="ClearPopupRules_Click"
+                        Cursor="Hand"/>
+                
+                <Button x:Name="RefreshBtn"
+                        Content="刷新"
+                        Width="100"
+                        Height="40"
+                        Margin="10,0,0,0"
+                        Background="{DynamicResource BgTertiary}"
+                        Foreground="{DynamicResource TextPrimary}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        Click="LoadPopupRules_Click"
+                        Cursor="Hand"/>
+            </StackPanel>
+            
+            <!-- 规则列表 -->
+            <DataGrid x:Name="PopupRulesGrid"
+                      Grid.Row="1"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      SelectionUnit="FullRow"
+                      Background="{DynamicResource BgTertiary}"
+                      Foreground="{DynamicResource TextPrimary}"
+                      BorderBrush="{DynamicResource BorderColor}"
+                      BorderThickness="1"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="应用名称" Binding="{Binding AppName}" Width="200"/>
+                    <DataGridTextColumn Header="路径" Binding="{Binding Path}" Width="*"/>
+                    <DataGridTextColumn Header="规则" Binding="{Binding Rule}" Width="200"/>
+                    <DataGridTextColumn Header="拦截次数" Binding="{Binding Count}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+    </Grid>
+</Page>

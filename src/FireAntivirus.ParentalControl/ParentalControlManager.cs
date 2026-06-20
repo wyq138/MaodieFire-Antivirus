@@ -1,0 +1,687 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using FireAntivirus.Common;
+using FireAntivirus.Data;
+
+namespace FireAntivirus.ParentalControl
+{
+    public class ParentalControlManager
+    {
+        private DataManager _dataManager;
+        private List<User> _users;
+        private List<TimeRestriction> _timeRestrictions;
+        private List<ContentFilter> _contentFilters;
+
+        public ParentalControlManager(DataManager dataManager)
+        {
+            _dataManager = dataManager;
+            _users = new List<User>();
+            _timeRestrictions = new List<TimeRestriction>();
+            _contentFilters = new List<ContentFilter>();
+            InitializeParentalControl();
+        }
+
+        private void InitializeParentalControl()
+        {
+            LoadUsers();
+            LoadTimeRestrictions();
+            LoadContentFilters();
+        }
+
+        private void LoadUsers()
+        {
+            // 模拟加载用户列表
+            _users.Add(new User
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Child User",
+                Type = UserType.Child,
+                Enabled = true
+            });
+
+            _users.Add(new User
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "Parent User",
+                Type = UserType.Parent,
+                Enabled = true
+            });
+        }
+
+        private void LoadTimeRestrictions()
+        {
+            // 模拟加载时间限制
+            _timeRestrictions.Add(new TimeRestriction
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = _users.First(u => u.Type == UserType.Child).Id,
+                DayOfWeek = DayOfWeek.Monday,
+                StartTime = new TimeSpan(8, 0, 0),
+                EndTime = new TimeSpan(18, 0, 0),
+                Enabled = true
+            });
+
+            _timeRestrictions.Add(new TimeRestriction
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = _users.First(u => u.Type == UserType.Child).Id,
+                DayOfWeek = DayOfWeek.Saturday,
+                StartTime = new TimeSpan(10, 0, 0),
+                EndTime = new TimeSpan(20, 0, 0),
+                Enabled = true
+            });
+        }
+
+        private void LoadContentFilters()
+        {
+            // 模拟加载内容过滤器
+            _contentFilters.Add(new ContentFilter
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "阻止成人内容",
+                Description = "阻止访问成人网站",
+                Category = ContentCategory.Adult,
+                Action = ContentAction.Block,
+                Enabled = true
+            });
+
+            _contentFilters.Add(new ContentFilter
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "阻止暴力内容",
+                Description = "阻止访问暴力网站",
+                Category = ContentCategory.Violence,
+                Action = ContentAction.Block,
+                Enabled = true
+            });
+
+            _contentFilters.Add(new ContentFilter
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = "允许教育内容",
+                Description = "允许访问教育网站",
+                Category = ContentCategory.Education,
+                Action = ContentAction.Allow,
+                Enabled = true
+            });
+        }
+
+        public List<User> GetUsers()
+        {
+            return _users;
+        }
+
+        public User GetUser(string userId)
+        {
+            return _users.FirstOrDefault(u => u.Id == userId);
+        }
+
+        public UserResult AddUser(User user)
+        {
+            try
+            {
+                user.Id = Guid.NewGuid().ToString();
+                _users.Add(user);
+                SaveUsers();
+
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "UserAdded",
+                    Message = "用户已添加",
+                    Details = $"名称: {user.Name}, 类型: {user.Type}"
+                });
+
+                return new UserResult
+                {
+                    Success = true,
+                    Message = "用户添加成功",
+                    User = user
+                };
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "UserError",
+                    Message = "用户添加错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new UserResult
+                {
+                    Success = false,
+                    Message = $"用户添加失败: {ex.Message}"
+                };
+            }
+        }
+
+        public UserResult UpdateUser(User user)
+        {
+            try
+            {
+                var existingUser = _users.FirstOrDefault(u => u.Id == user.Id);
+                if (existingUser != null)
+                {
+                    existingUser.Name = user.Name;
+                    existingUser.Type = user.Type;
+                    existingUser.Enabled = user.Enabled;
+                    SaveUsers();
+
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "UserUpdated",
+                        Message = "用户已更新",
+                        Details = $"名称: {user.Name}"
+                    });
+
+                    return new UserResult
+                    {
+                        Success = true,
+                        Message = "用户更新成功",
+                        User = existingUser
+                    };
+                }
+                else
+                {
+                    return new UserResult
+                    {
+                        Success = false,
+                        Message = "用户不存在"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "UserError",
+                    Message = "用户更新错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new UserResult
+                {
+                    Success = false,
+                    Message = $"用户更新失败: {ex.Message}"
+                };
+            }
+        }
+
+        public UserResult DeleteUser(string userId)
+        {
+            try
+            {
+                var user = _users.FirstOrDefault(u => u.Id == userId);
+                if (user != null)
+                {
+                    _users.Remove(user);
+                    SaveUsers();
+
+                    // 同时删除相关的时间限制
+                    _timeRestrictions.RemoveAll(tr => tr.UserId == userId);
+                    SaveTimeRestrictions();
+
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "UserDeleted",
+                        Message = "用户已删除",
+                        Details = $"名称: {user.Name}"
+                    });
+
+                    return new UserResult
+                    {
+                        Success = true,
+                        Message = "用户删除成功"
+                    };
+                }
+                else
+                {
+                    return new UserResult
+                    {
+                        Success = false,
+                        Message = "用户不存在"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "UserError",
+                    Message = "用户删除错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new UserResult
+                {
+                    Success = false,
+                    Message = $"用户删除失败: {ex.Message}"
+                };
+            }
+        }
+
+        public List<TimeRestriction> GetTimeRestrictions(string userId)
+        {
+            return _timeRestrictions.Where(tr => tr.UserId == userId).ToList();
+        }
+
+        public TimeRestrictionResult AddTimeRestriction(TimeRestriction restriction)
+        {
+            try
+            {
+                restriction.Id = Guid.NewGuid().ToString();
+                _timeRestrictions.Add(restriction);
+                SaveTimeRestrictions();
+
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "TimeRestrictionAdded",
+                    Message = "时间限制已添加",
+                    Details = $"用户: {_users.First(u => u.Id == restriction.UserId).Name}, 星期: {restriction.DayOfWeek}, 开始时间: {restriction.StartTime}, 结束时间: {restriction.EndTime}"
+                });
+
+                return new TimeRestrictionResult
+                {
+                    Success = true,
+                    Message = "时间限制添加成功",
+                    Restriction = restriction
+                };
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "TimeRestrictionError",
+                    Message = "时间限制添加错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new TimeRestrictionResult
+                {
+                    Success = false,
+                    Message = $"时间限制添加失败: {ex.Message}"
+                };
+            }
+        }
+
+        public TimeRestrictionResult UpdateTimeRestriction(TimeRestriction restriction)
+        {
+            try
+            {
+                var existingRestriction = _timeRestrictions.FirstOrDefault(tr => tr.Id == restriction.Id);
+                if (existingRestriction != null)
+                {
+                    existingRestriction.UserId = restriction.UserId;
+                    existingRestriction.DayOfWeek = restriction.DayOfWeek;
+                    existingRestriction.StartTime = restriction.StartTime;
+                    existingRestriction.EndTime = restriction.EndTime;
+                    existingRestriction.Enabled = restriction.Enabled;
+                    SaveTimeRestrictions();
+
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "TimeRestrictionUpdated",
+                        Message = "时间限制已更新",
+                        Details = $"用户: {_users.First(u => u.Id == restriction.UserId).Name}, 星期: {restriction.DayOfWeek}"
+                    });
+
+                    return new TimeRestrictionResult
+                    {
+                        Success = true,
+                        Message = "时间限制更新成功",
+                        Restriction = existingRestriction
+                    };
+                }
+                else
+                {
+                    return new TimeRestrictionResult
+                    {
+                        Success = false,
+                        Message = "时间限制不存在"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "TimeRestrictionError",
+                    Message = "时间限制更新错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new TimeRestrictionResult
+                {
+                    Success = false,
+                    Message = $"时间限制更新失败: {ex.Message}"
+                };
+            }
+        }
+
+        public TimeRestrictionResult DeleteTimeRestriction(string restrictionId)
+        {
+            try
+            {
+                var restriction = _timeRestrictions.FirstOrDefault(tr => tr.Id == restrictionId);
+                if (restriction != null)
+                {
+                    _timeRestrictions.Remove(restriction);
+                    SaveTimeRestrictions();
+
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "TimeRestrictionDeleted",
+                        Message = "时间限制已删除",
+                        Details = $"用户: {_users.First(u => u.Id == restriction.UserId).Name}, 星期: {restriction.DayOfWeek}"
+                    });
+
+                    return new TimeRestrictionResult
+                    {
+                        Success = true,
+                        Message = "时间限制删除成功"
+                    };
+                }
+                else
+                {
+                    return new TimeRestrictionResult
+                    {
+                        Success = false,
+                        Message = "时间限制不存在"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "TimeRestrictionError",
+                    Message = "时间限制删除错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new TimeRestrictionResult
+                {
+                    Success = false,
+                    Message = $"时间限制删除失败: {ex.Message}"
+                };
+            }
+        }
+
+        public List<ContentFilter> GetContentFilters()
+        {
+            return _contentFilters;
+        }
+
+        public ContentFilterResult AddContentFilter(ContentFilter filter)
+        {
+            try
+            {
+                filter.Id = Guid.NewGuid().ToString();
+                _contentFilters.Add(filter);
+                SaveContentFilters();
+
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "ContentFilterAdded",
+                    Message = "内容过滤器已添加",
+                    Details = $"名称: {filter.Name}, 类别: {filter.Category}, 动作: {filter.Action}"
+                });
+
+                return new ContentFilterResult
+                {
+                    Success = true,
+                    Message = "内容过滤器添加成功",
+                    Filter = filter
+                };
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "ContentFilterError",
+                    Message = "内容过滤器添加错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new ContentFilterResult
+                {
+                    Success = false,
+                    Message = $"内容过滤器添加失败: {ex.Message}"
+                };
+            }
+        }
+
+        public ContentFilterResult UpdateContentFilter(ContentFilter filter)
+        {
+            try
+            {
+                var existingFilter = _contentFilters.FirstOrDefault(cf => cf.Id == filter.Id);
+                if (existingFilter != null)
+                {
+                    existingFilter.Name = filter.Name;
+                    existingFilter.Description = filter.Description;
+                    existingFilter.Category = filter.Category;
+                    existingFilter.Action = filter.Action;
+                    existingFilter.Enabled = filter.Enabled;
+                    SaveContentFilters();
+
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "ContentFilterUpdated",
+                        Message = "内容过滤器已更新",
+                        Details = $"名称: {filter.Name}"
+                    });
+
+                    return new ContentFilterResult
+                    {
+                        Success = true,
+                        Message = "内容过滤器更新成功",
+                        Filter = existingFilter
+                    };
+                }
+                else
+                {
+                    return new ContentFilterResult
+                    {
+                        Success = false,
+                        Message = "内容过滤器不存在"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "ContentFilterError",
+                    Message = "内容过滤器更新错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new ContentFilterResult
+                {
+                    Success = false,
+                    Message = $"内容过滤器更新失败: {ex.Message}"
+                };
+            }
+        }
+
+        public ContentFilterResult DeleteContentFilter(string filterId)
+        {
+            try
+            {
+                var filter = _contentFilters.FirstOrDefault(cf => cf.Id == filterId);
+                if (filter != null)
+                {
+                    _contentFilters.Remove(filter);
+                    SaveContentFilters();
+
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "ContentFilterDeleted",
+                        Message = "内容过滤器已删除",
+                        Details = $"名称: {filter.Name}"
+                    });
+
+                    return new ContentFilterResult
+                    {
+                        Success = true,
+                        Message = "内容过滤器删除成功"
+                    };
+                }
+                else
+                {
+                    return new ContentFilterResult
+                    {
+                        Success = false,
+                        Message = "内容过滤器不存在"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "ContentFilterError",
+                    Message = "内容过滤器删除错误",
+                    Details = $"错误: {ex.Message}"
+                });
+
+                return new ContentFilterResult
+                {
+                    Success = false,
+                    Message = $"内容过滤器删除失败: {ex.Message}"
+                };
+            }
+        }
+
+        public bool IsUserAllowed(string userId)
+        {
+            var user = _users.FirstOrDefault(u => u.Id == userId);
+            if (user == null || !user.Enabled)
+            {
+                return false;
+            }
+
+            if (user.Type == UserType.Parent)
+            {
+                return true;
+            }
+
+            var now = DateTime.Now;
+            var dayOfWeek = now.DayOfWeek;
+            var currentTime = now.TimeOfDay;
+
+            var restrictions = _timeRestrictions.Where(tr => tr.UserId == userId && tr.DayOfWeek == dayOfWeek && tr.Enabled).ToList();
+            if (restrictions.Count == 0)
+            {
+                return false; // 没有时间限制，默认不允许
+            }
+
+            foreach (var restriction in restrictions)
+            {
+                if (currentTime >= restriction.StartTime && currentTime <= restriction.EndTime)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public ContentAction GetContentAction(string url)
+        {
+            // 模拟内容过滤
+            foreach (var filter in _contentFilters.Where(f => f.Enabled))
+            {
+                // 简单的URL匹配逻辑
+                switch (filter.Category)
+                {
+                    case ContentCategory.Adult:
+                        if (url.Contains("adult") || url.Contains("porn"))
+                        {
+                            return filter.Action;
+                        }
+                        break;
+                    case ContentCategory.Violence:
+                        if (url.Contains("violence") || url.Contains("gore"))
+                        {
+                            return filter.Action;
+                        }
+                        break;
+                    case ContentCategory.Education:
+                        if (url.Contains("education") || url.Contains("school"))
+                        {
+                            return filter.Action;
+                        }
+                        break;
+                }
+            }
+
+            return ContentAction.Allow; // 默认允许
+        }
+
+        private void SaveUsers()
+        {
+            // 模拟保存用户到文件
+            string usersFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "ParentalControl", "users.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(usersFile));
+            // 实际实现中应该序列化用户到文件
+        }
+
+        private void SaveTimeRestrictions()
+        {
+            // 模拟保存时间限制到文件
+            string restrictionsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "ParentalControl", "time_restrictions.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(restrictionsFile));
+            // 实际实现中应该序列化时间限制到文件
+        }
+
+        private void SaveContentFilters()
+        {
+            // 模拟保存内容过滤器到文件
+            string filtersFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "ParentalControl", "content_filters.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(filtersFile));
+            // 实际实现中应该序列化内容过滤器到文件
+        }
+    }
+}

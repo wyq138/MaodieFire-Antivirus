@@ -1,0 +1,51 @@
+<Page x:Class="FireAntivirus.Host.WPF.Pages.PrivacyProtectionPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="隐私保护">
+
+    <Grid x:Name="MainGrid" Background="{DynamicResource BgPrimary}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <Grid Grid.Row="0" Margin="20,15">
+            <TextBlock x:Name="TitleText" Text="隐私保护" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+        </Grid>
+        
+        <ScrollViewer Grid.Row="1" Margin="20,0,20,20">
+            <StackPanel>
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🌐 浏览器隐私" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="ClearBrowserHistory" Content="自动清除浏览历史" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="ClearCookies" Content="清除 Cookie" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="ClearCache" Content="清除缓存" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="BlockTrackers" Content="阻止跟踪器" IsChecked="True" Margin="0,5"/>
+                        <Button x:Name="ClearBrowserBtn" Content="立即清理" Width="100" Height="28" Margin="0,10,0,0" Click="ClearBrowser_Click"/>
+                    </StackPanel>
+                </Border>
+                
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="🪟 Windows 隐私" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="DisableTelemetry" Content="禁用 Windows 遥测" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="DisableCortana" Content="禁用 Cortana 数据收集" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="DisableLocation" Content="禁用位置服务" IsChecked="False" Margin="0,5"/>
+                        <CheckBox x:Name="DisableCamera" Content="禁用摄像头访问" IsChecked="False" Margin="0,5"/>
+                    </StackPanel>
+                </Border>
+                
+                <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,15" Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="📁 文件隐私" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="HideRecentFiles" Content="隐藏最近文件列表" IsChecked="True" Margin="0,5"/>
+                        <CheckBox x:Name="ClearRecentDocs" Content="清除最近文档记录" IsChecked="True" Margin="0,5"/>
+                    </StackPanel>
+                </Border>
+                
+                <Button x:Name="ApplyAllBtn" Content="应用所有设置" Width="120" Height="35" Background="{DynamicResource PrimaryColor}" Foreground="White" BorderThickness="0" Click="ApplyAll_Click"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>
