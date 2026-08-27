@@ -98,7 +98,7 @@ namespace FireAntivirus.Services
                     
                     CheckProcessActivity(process, behavior);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
             }
             
             List<int> toRemove = new List<int>();
@@ -173,7 +173,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
         }
         
         private int CheckFileOperations(int processId)
@@ -189,7 +189,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
             return 0;
         }
         
@@ -202,7 +202,7 @@ namespace FireAntivirus.Services
                 
                 return tcpConnections.Length / 10;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
             return 0;
         }
         
@@ -219,7 +219,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
             return 0;
         }
         
@@ -230,7 +230,7 @@ namespace FireAntivirus.Services
                 var process = Process.GetProcessById(processId);
                 return (int)(process.WorkingSet64 / (1024 * 1024)) % 10;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
             return 0;
         }
         
@@ -241,7 +241,7 @@ namespace FireAntivirus.Services
                 var process = Process.GetProcessById(processId);
                 return process.Threads.Count % 5;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
             return 0;
         }
         
@@ -265,7 +265,7 @@ private bool IsSuspiciousBehavior(ProcessBehavior behavior)
             {
                 // 1. 检查进程路径
                 string processPath = "";
-                try { processPath = process.MainModule?.FileName ?? ""; } catch { }
+                try { processPath = process.MainModule?.FileName ?? ""; } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
                 
                 // 2. 白名单：系统目录和Program Files
                 string[] trustedPaths = {
@@ -358,7 +358,7 @@ private bool IsSuspiciousBehavior(ProcessBehavior behavior)
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorMonitor.cs 捕获异常", ex.Message); }
         }
         
         private class ProcessBehavior

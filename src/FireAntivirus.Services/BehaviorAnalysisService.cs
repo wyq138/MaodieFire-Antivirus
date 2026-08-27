@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -218,14 +218,26 @@ namespace FireAntivirus.Services
                 "Startup folder modification"
             };
             
+            // 凭证窃取(T1003)相关恶意行为指示：敏感特征串(如 Mimikatz 家族)从外置特征库
+            // ThreatData/malicious_indicators.json 与 threat_signatures.json 动态加载，
+            // 不编译进本 DLL，既消除杀软误报又保持查杀能力一致。
             _techniqueBehaviors["T1003.001"] = new List<string>
             {
                 "lsass.exe process access",
-                "sekurlsa::logonpasswords",
-                "mimikatz",
                 "procdump lsass",
                 "task manager dump lsass"
             };
+            FireAntivirus.Engine.ExternalThreatData.EnsureLoaded();
+            foreach (var sig in FireAntivirus.Engine.ExternalThreatData.MalwareFamilies)
+            {
+                // 按家族类型"凭证窃取"匹配(如 Mimikatz)，避免在 DLL 中硬编码恶意特征串
+                if (string.Equals(sig.Type, "凭证窃取", StringComparison.OrdinalIgnoreCase) && sig.Patterns != null)
+                {
+                    foreach (var p in sig.Patterns) _techniqueBehaviors["T1003.001"].Add(p);
+                }
+            }
+            foreach (var ci in FireAntivirus.Engine.ExternalThreatData.CommandIndicators)
+                _techniqueBehaviors["T1003.001"].Add(ci);
             
             _techniqueBehaviors["T1053"] = new List<string>
             {
@@ -625,7 +637,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
             }
             return null;
         }
@@ -643,7 +655,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
             return null;
         }
 
@@ -726,7 +738,7 @@ namespace FireAntivirus.Services
                     score += 15;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
             
             return Math.Max(0, Math.Min(100, score));
         }
@@ -791,7 +803,7 @@ namespace FireAntivirus.Services
                 // 收集模块加载
                 CollectLoadedModules(process, profile);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
         }
 
         private void CollectFileSystemBehavior(Process process, BehaviorProcessProfile profile)
@@ -829,7 +841,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
         }
 
         private void CollectRegistryBehavior(Process process, BehaviorProcessProfile profile)
@@ -869,7 +881,7 @@ namespace FireAntivirus.Services
                     MapToMitreTechnique(profile, "T1562");
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
         }
 
         private void CollectNetworkBehavior(Process process, BehaviorProcessProfile profile)
@@ -904,7 +916,7 @@ namespace FireAntivirus.Services
                     MapToMitreTechnique(profile, "T1046");
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
         }
 
         private List<string> ExtractUrls(string text)
@@ -963,7 +975,7 @@ namespace FireAntivirus.Services
                     profile.TrustScore -= 40;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
         }
 
         private void CollectLoadedModules(Process process, BehaviorProcessProfile profile)
@@ -988,7 +1000,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
         }
 
         private void AddBehaviorTag(BehaviorProcessProfile profile, string tag)
@@ -1338,7 +1350,7 @@ namespace FireAntivirus.Services
                     $"进程 {profile.ProcessName} 检测到可疑行为",
                     NotificationType.Warning);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
         }
 
         private void BlockProcess(BehaviorProcessProfile profile)
@@ -1433,7 +1445,7 @@ namespace FireAntivirus.Services
                     Newtonsoft.Json.Formatting.Indented);
                 File.WriteAllText(historyFile, json);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisService.cs 捕获异常", ex.Message); }
         }
 
         #region Public API
@@ -1661,4 +1673,3 @@ namespace FireAntivirus.Services
 
     #endregion
 }
-

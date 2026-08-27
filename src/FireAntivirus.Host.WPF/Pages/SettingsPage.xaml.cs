@@ -1,9 +1,10 @@
-﻿// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using FireAntivirus.Common.Localization;
+using Microsoft.Win32;
 
 using FireAntivirus.Host.WPF;
 
@@ -21,12 +22,16 @@ namespace FireAntivirus.Host.WPF.Pages
         private bool _isLoaded = false;
         private LanguageManager _languageManager = LanguageManager.Instance;
 
+        // 开机自启动注册表路径
+        private const string StartupRegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        private const string AppName = "FireAntivirus";
+
         public SettingsPage()
         {
             try
             {
                 InitializeComponent();
-                    
+
                     // 页面卸载时停止后台任务
                     Unloaded += (s, e) =>
                     {
@@ -35,13 +40,109 @@ namespace FireAntivirus.Host.WPF.Pages
                     };
                 _languageManager.LanguageChanged += (sender, e) => UpdateLanguage();
                 LanguageManager.GlobalLanguageChanged += (sender, e) => UpdateLanguage();
-                
+
                 // 初始语言设置
                 UpdateLanguage();
+
+                // 页面加载后读取开机自启动状态
+                Loaded += (s, e) =>
+                {
+                    if (!_isLoaded)
+                    {
+                        _isLoaded = true;
+                        LoadAutoStartStatus();
+                    }
+                };
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing SettingsPage: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 加载开机自启动状态
+        /// </summary>
+        private void LoadAutoStartStatus()
+        {
+            try
+            {
+                bool isAutoStartEnabled = IsAutoStartEnabled();
+                AutoStartCheckBox.IsChecked = isAutoStartEnabled;
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SettingsPage 加载开机自启动状态失败", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 检查开机自启动是否已启用
+        /// </summary>
+        private bool IsAutoStartEnabled()
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(StartupRegistryPath, false))
+                {
+                    if (key != null)
+                    {
+                        string value = key.GetValue(AppName) as string;
+                        return !string.IsNullOrEmpty(value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "检查开机自启动状态失败", ex.Message);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 设置开机自启动
+        /// </summary>
+        private void SetAutoStart(bool enable)
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(StartupRegistryPath, true))
+                {
+                    if (key != null)
+                    {
+                        if (enable)
+                        {
+                            // 获取当前程序路径
+                            string exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                            if (!string.IsNullOrEmpty(exePath))
+                            {
+                                key.SetValue(AppName, $"\"{exePath}\"");
+                                FireAntivirus.Common.LogHelper.Info("开机自启动已启用", $"路径: {exePath}");
+                            }
+                        }
+                        else
+                        {
+                            key.DeleteValue(AppName, false);
+                            FireAntivirus.Common.LogHelper.Info("开机自启动已禁用", "");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "设置开机自启动失败", ex.Message);
+                MessageBox.Show($"设置开机自启动失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 开机自启动复选框状态改变事件
+        /// </summary>
+        private void AutoStartCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isLoaded && AutoStartCheckBox.IsChecked.HasValue)
+            {
+                SetAutoStart(AutoStartCheckBox.IsChecked.Value);
             }
         }
 
@@ -93,7 +194,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 AutoUpdateLabel.Text = _languageManager.GetString("AutoUpdate");
                 CheckUpdateBtn.Content = _languageManager.GetString("CheckUpdate");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SettingsPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void LightTheme_Click(object sender, RoutedEventArgs e)

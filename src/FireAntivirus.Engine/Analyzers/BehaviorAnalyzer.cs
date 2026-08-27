@@ -324,7 +324,7 @@ namespace FireAntivirus.Engine.Analyzers
                         files.Add(proc.MainModule.FileName);
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
 
                 // 检查进程是否在访问敏感目录
                 var sensitivePaths = new[]
@@ -404,11 +404,11 @@ namespace FireAntivirus.Engine.Analyzers
                                     }
                                 }
                             }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
 
                 processRegistry[processId] = registry;
             }
@@ -455,7 +455,7 @@ namespace FireAntivirus.Engine.Analyzers
                                 network.Add($"TCP:{conn.LocalEndPoint.Address}:{conn.LocalEndPoint.Port}->{remoteInfo}");
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
                     }
                 }
 
@@ -469,7 +469,7 @@ namespace FireAntivirus.Engine.Analyzers
                             network.Add($"UDP:{listener.Address}:{listener.Port}");
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
                 }
 
                 // 检查是否连接到可疑端口
@@ -535,7 +535,7 @@ namespace FireAntivirus.Engine.Analyzers
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
 
             return processIds;
         }

@@ -73,7 +73,7 @@
                         <TextBlock Text="如果您有任何建议或问题，欢迎通过以下方式联系我们：" 
                                    TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,10"/>
                         <TextBlock Text="邮箱: zjhwyq123456@qq.com" Foreground="{DynamicResource TextSecondary}" Margin="0,2"/>
-                        <TextBlock Text="抖音: 耄耋杀毒软件" Foreground="{DynamicResource TextSecondary}" Margin="0,2"/>
+                        <TextBlock Text="抖音: 耄耋软件工作室" Foreground="{DynamicResource TextSecondary}" Margin="0,2"/>
                         <TextBlock Text="感谢您的支持！" FontWeight="Bold" Foreground="{DynamicResource PrimaryColor}" Margin="0,15,0,0" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </Border>

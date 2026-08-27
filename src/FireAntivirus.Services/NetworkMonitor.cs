@@ -225,7 +225,7 @@ namespace FireAntivirus.Services
 
                         connections.Add(connection);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkMonitor.cs 捕获异常", ex.Message); }
                 }
             }
 
@@ -255,11 +255,11 @@ namespace FireAntivirus.Services
 
                             connections.Add(connection);
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkMonitor.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkMonitor.cs 捕获异常", ex.Message); }
 
             return connections;
         }
@@ -292,7 +292,7 @@ namespace FireAntivirus.Services
 
                     CheckForSuspiciousConnection(connection);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkMonitor.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -521,7 +521,7 @@ private void MonitorNetworkInterfaces()
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkMonitor.cs 捕获异常", ex.Message); }
         }
 
         private void MonitorDnsQueries() { }

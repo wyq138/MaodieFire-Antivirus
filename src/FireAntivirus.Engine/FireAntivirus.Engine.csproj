@@ -18,10 +18,15 @@
     <PackageReference Include="System.Security.AccessControl" Version="4.7.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.0" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.7.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FireAntivirus.Common\FireAntivirus.Common.csproj" />
     <ProjectReference Include="..\FireAntivirus.Data\FireAntivirus.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ThreatData\**\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

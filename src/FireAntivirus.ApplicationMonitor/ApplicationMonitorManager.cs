@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -15,6 +16,7 @@ namespace FireAntivirus.ApplicationMonitor
         private List<MonitoredApplication> _applications;
         private List<ApplicationAlert> _alerts;
         private bool _isEnabled;
+        private readonly ConcurrentDictionary<int, ProcessCpuSample> _cpuSamples = new ConcurrentDictionary<int, ProcessCpuSample>();
 
         public ApplicationMonitorManager(DataManager dataManager)
         {
@@ -87,7 +89,7 @@ namespace FireAntivirus.ApplicationMonitor
                             Status = "Running"
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorManager.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -107,8 +109,30 @@ namespace FireAntivirus.ApplicationMonitor
 
         private float GetProcessCpuUsage(Process process)
         {
-            // 模拟获取进程CPU使用率
-            return (float)(new Random().NextDouble() * 100);
+            try
+            {
+                var now = DateTime.UtcNow;
+                double currentCpu = process.TotalProcessorTime.TotalMilliseconds;
+
+                if (_cpuSamples.TryGetValue(process.Id, out var prev))
+                {
+                    double wallDelta = (now - prev.SampledAt).TotalMilliseconds;
+                    double cpuDelta = currentCpu - prev.TotalCpuMs;
+                    _cpuSamples[process.Id] = new ProcessCpuSample { SampledAt = now, TotalCpuMs = currentCpu };
+
+                    if (wallDelta <= 0) return 0f;
+                    var percent = (cpuDelta / (wallDelta * Math.Max(1, Environment.ProcessorCount))) * 100.0;
+                    return (float)Math.Max(0, Math.Min(100, percent));
+                }
+
+                // 首次采样仅建立基线，返回 0，避免把累计 CPU 时长误当成瞬时使用率
+                _cpuSamples[process.Id] = new ProcessCpuSample { SampledAt = now, TotalCpuMs = currentCpu };
+                return 0f;
+            }
+            catch
+            {
+                return 0f;
+            }
         }
 
         public List<ApplicationAlert> GetAlerts()
@@ -268,55 +292,48 @@ namespace FireAntivirus.ApplicationMonitor
             {
                 StartTime = DateTime.Now - timeSpan,
                 EndTime = DateTime.Now,
-                TotalProcesses = 50,
-                ActiveProcesses = 15,
                 Alerts = _alerts.Where(a => a.Timestamp >= DateTime.Now - timeSpan).ToList(),
                 TopCpuProcesses = new List<ProcessResourceUsage>(),
                 TopMemoryProcesses = new List<ProcessResourceUsage>()
             };
 
-            // 模拟生成报告数据
-            report.TopCpuProcesses.Add(new ProcessResourceUsage
+            // 基于真实进程数据生成报告，不生成任何模拟数据
+            var realUsages = new List<ProcessResourceUsage>();
+            try
             {
-                ProcessName = "chrome.exe",
-                CpuUsage = 35.5f,
-                MemoryUsage = 1024 * 1024 * 300 // 300MB
-            });
+                foreach (var process in Process.GetProcesses())
+                {
+                    try
+                    {
+                        if (process.Id <= 0) continue;
+                        realUsages.Add(new ProcessResourceUsage
+                        {
+                            ProcessName = process.ProcessName ?? "未知",
+                            CpuUsage = GetProcessCpuUsage(process),
+                            MemoryUsage = process.WorkingSet64
+                        });
+                    }
+                    catch { /* 进程已退出或无访问权限则跳过 */ }
+                    finally { process.Dispose(); }
+                }
 
-            report.TopCpuProcesses.Add(new ProcessResourceUsage
-            {
-                ProcessName = "firefox.exe",
-                CpuUsage = 25.2f,
-                MemoryUsage = 1024 * 1024 * 250 // 250MB
-            });
+                report.TotalProcesses = realUsages.Count;
+                report.ActiveProcesses = realUsages.Count(u => u.CpuUsage > 1 || u.MemoryUsage > 0);
 
-            report.TopCpuProcesses.Add(new ProcessResourceUsage
+                report.TopCpuProcesses = realUsages
+                    .OrderByDescending(u => u.CpuUsage)
+                    .Take(10)
+                    .ToList();
+                report.TopMemoryProcesses = realUsages
+                    .OrderByDescending(u => u.MemoryUsage)
+                    .Take(10)
+                    .ToList();
+            }
+            catch
             {
-                ProcessName = "svchost.exe",
-                CpuUsage = 15.8f,
-                MemoryUsage = 1024 * 1024 * 100 // 100MB
-            });
-
-            report.TopMemoryProcesses.Add(new ProcessResourceUsage
-            {
-                ProcessName = "chrome.exe",
-                CpuUsage = 35.5f,
-                MemoryUsage = 1024 * 1024 * 300 // 300MB
-            });
-
-            report.TopMemoryProcesses.Add(new ProcessResourceUsage
-            {
-                ProcessName = "firefox.exe",
-                CpuUsage = 25.2f,
-                MemoryUsage = 1024 * 1024 * 250 // 250MB
-            });
-
-            report.TopMemoryProcesses.Add(new ProcessResourceUsage
-            {
-                ProcessName = "explorer.exe",
-                CpuUsage = 5.2f,
-                MemoryUsage = 1024 * 1024 * 150 // 150MB
-            });
+                report.TotalProcesses = 0;
+                report.ActiveProcesses = 0;
+            }
 
             _dataManager.AddLog(new LogEntry
             {
@@ -341,5 +358,14 @@ namespace FireAntivirus.ApplicationMonitor
                 Message = "应用程序警报已清除"
             });
         }
+    }
+
+    /// <summary>
+    /// 进程 CPU 采样基线，用于计算两次采样间的瞬时 CPU 使用率
+    /// </summary>
+    public class ProcessCpuSample
+    {
+        public DateTime SampledAt { get; set; }
+        public double TotalCpuMs { get; set; }
     }
 }

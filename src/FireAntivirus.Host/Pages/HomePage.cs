@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -499,7 +499,7 @@ namespace FireAntivirus.Host
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "HomePage.cs 捕获异常", ex.Message); }
         }
 
         private void UpdateStatusCardIcon(Panel card, string newIcon)
@@ -521,7 +521,7 @@ namespace FireAntivirus.Host
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "HomePage.cs 捕获异常", ex.Message); }
         }
 
         public void ApplyTheme(Theme theme)

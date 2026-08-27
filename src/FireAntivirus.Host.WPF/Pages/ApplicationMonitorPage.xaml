@@ -91,7 +91,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="!" FontWeight="Bold" FontSize="16" Foreground="{DynamicResource WarningColor}" Margin="0,0,10,0" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" x:Name="AlertText" Text="发现 2 个可疑进程活动" FontSize="12" Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
-                    <Button Grid.Column="2" Content="查看详情" Width="80" Height="28" Background="{DynamicResource WarningColor}" Foreground="White" FontSize="11" Cursor="Hand"/>
+                    <Button Grid.Column="2" Content="查看详情" Width="80" Height="28" Background="{DynamicResource WarningColor}" Foreground="White" FontSize="11" Cursor="Hand" Click="ShowSuspiciousDetails_Click"/>
                 </Grid>
             </Border>
 

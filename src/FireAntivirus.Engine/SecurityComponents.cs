@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -22,58 +22,28 @@ namespace FireAntivirus.Engine
         {
             _malwareFamilies = InitializeMalwareFamilies();
         }
-        
+
+        /// <summary>
+        /// 恶意软件家族特征从外部 JSON 加载（见 ThreatData/malware_families.json），
+        /// 不编译进 DLL，既消除杀软误报，也便于程序自动更新特征库覆盖变种。
+        /// </summary>
         private Dictionary<string, MalwareFamily> InitializeMalwareFamilies()
         {
-            return new Dictionary<string, MalwareFamily>
+            ExternalThreatData.EnsureLoaded();
+            var families = new Dictionary<string, MalwareFamily>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in ExternalThreatData.MalwareFamilies)
             {
-                ["WannaCry"] = new MalwareFamily
+                var key = string.IsNullOrEmpty(entry.Key) ? entry.Name : entry.Key;
+                families[key] = new MalwareFamily
                 {
-                    Name = "WannaCry",
-                    Type = "Ransomware",
-                    Patterns = new[] { "WNcry@2017", "wcry@2017", "WannaCry", "WanaCrypt", "WanaCrypt0r" },
-                    FileExtensions = new[] { ".WNCRY", ".WANACRY", ".WNCRYT" },
-                    RiskLevel = "Critical"
-                },
-                ["Emotet"] = new MalwareFamily
-                {
-                    Name = "Emotet",
-                    Type = "Trojan",
-                    Patterns = new[] { "Emotet", "Geodo", "Heodo", " banking trojan" },
-                    RiskLevel = "High"
-                },
-                ["TrickBot"] = new MalwareFamily
-                {
-                    Name = "TrickBot",
-                    Type = "Trojan",
-                    Patterns = new[] { "TrickBot", "TrickLoader", "Trickster" },
-                    RiskLevel = "High"
-                },
-                ["Ryuk"] = new MalwareFamily
-                {
-                    Name = "Ryuk",
-                    Type = "Ransomware",
-                    Patterns = new[] { "Ryuk", "RyukReadMe", "HERMES" },
-                    FileExtensions = new[] { ".RYK", ".ryuk" },
-                    RiskLevel = "Critical"
-                },
-                ["Conti"] = new MalwareFamily
-                {
-                    Name = "Conti",
-                    Type = "Ransomware",
-                    Patterns = new[] { "Conti", "CONTI_README" },
-                    FileExtensions = new[] { ".CONTI", ".conti" },
-                    RiskLevel = "Critical"
-                },
-                ["LockBit"] = new MalwareFamily
-                {
-                    Name = "LockBit",
-                    Type = "Ransomware",
-                    Patterns = new[] { "LockBit", "ABCd" },
-                    FileExtensions = new[] { ".lockbit" },
-                    RiskLevel = "Critical"
-                }
-            };
+                    Name = entry.Name,
+                    Type = entry.Type,
+                    Patterns = entry.Patterns ?? Array.Empty<string>(),
+                    FileExtensions = entry.FileExtensions,
+                    RiskLevel = entry.RiskLevel
+                };
+            }
+            return families;
         }
         
         public MalwareAnalysisResult Analyze(string filePath)
@@ -131,7 +101,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return result;
         }
@@ -176,10 +146,10 @@ namespace FireAntivirus.Engine
                                     });
                                 }
                             }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
                 }
             }
             
@@ -215,7 +185,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return items;
         }
@@ -232,11 +202,12 @@ namespace FireAntivirus.Engine
         public ThreatHunter()
         {
             _malwareAnalyzer = new MalwareAnalyzer();
-            _suspiciousProcesses = new List<string>
-            {
-                "mimikatz", "procdump", "lazagne", "wce", "pwdump",
-                "meterpreter", "beacon", "cobaltstrike", "metasploit"
-            };
+            // 可疑进程名从外部 JSON 加载（见 ThreatData/suspicious_processes.json），避免内嵌恶意字符串
+            ExternalThreatData.EnsureLoaded();
+            _suspiciousProcesses = ExternalThreatData.SuspiciousProcesses
+                .Select(p => p.Name)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
         
         public List<ThreatHuntResult> HuntThreats()
@@ -263,7 +234,7 @@ namespace FireAntivirus.Engine
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             }
             
             // 搜索可疑文件
@@ -295,7 +266,7 @@ namespace FireAntivirus.Engine
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
                 }
             }
             
@@ -379,7 +350,7 @@ namespace FireAntivirus.Engine
                 // 检查替代数据流
                 result.AlternateDataStreams = GetAlternateDataStreams(filePath);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return result;
         }
@@ -413,10 +384,43 @@ namespace FireAntivirus.Engine
             var streams = new List<string>();
             try
             {
-                var search = new ManagementObjectSearcher($"SELECT * FROM Win32_NTFSFileSecurity WHERE Name='{filePath.Replace("\\", "\\\\")}'");
-                // ADS检测需要特殊API，这里返回空列表
+                var fileInfo = new FileInfo(filePath);
+                var dir = fileInfo.DirectoryName;
+                var name = fileInfo.Name;
+
+                using (var p = new System.Diagnostics.Process())
+                {
+                    p.StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = $"/c dir /R \"{dir}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true
+                    };
+                    p.Start();
+                    var output = p.StandardOutput.ReadToEnd();
+                    p.WaitForExit();
+
+                    // 解析形如 "file:stream:$DATA" 的 ADS 条目
+                    foreach (var line in output.Split('\n'))
+                    {
+                        var idx = line.IndexOf(":", StringComparison.Ordinal);
+                        if (idx <= 0) continue;
+                        var colon = line.IndexOf(":", idx + 1, StringComparison.Ordinal);
+                        if (colon <= idx) continue;
+                        var streamName = line.Substring(idx + 1, colon - idx - 1);
+                        var baseName = line.Substring(0, idx).Trim();
+                        if (string.IsNullOrEmpty(streamName) || streamName == "$DATA") continue;
+                        if (string.Equals(baseName, name, StringComparison.OrdinalIgnoreCase) ||
+                            baseName.StartsWith(filePath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            streams.Add(baseName + streamName);
+                        }
+                    }
+                }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             return streams;
         }
     }
@@ -444,7 +448,7 @@ namespace FireAntivirus.Engine
                         proc.Kill();
                         result.Actions.Add($"终止进程: {proc.ProcessName}");
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
                 }
                 
                 // 2. 备份文件到隔离区
@@ -497,7 +501,7 @@ namespace FireAntivirus.Engine
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             }
         }
     }
@@ -522,7 +526,7 @@ namespace FireAntivirus.Engine
                 // 恢复Windows Update设置
                 RestoreWindowsUpdateSettings(result);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return result;
         }
@@ -545,7 +549,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
         }
         
         private void RestoreFirewallSettings(RestoreResult result)
@@ -565,7 +569,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
         }
         
         private void RestoreWindowsUpdateSettings(RestoreResult result)
@@ -585,7 +589,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
         }
     }
     
@@ -606,7 +610,7 @@ namespace FireAntivirus.Engine
                 // 检查系统还原点
                 CheckSystemRestorePoints(result);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return result;
         }
@@ -622,7 +626,7 @@ namespace FireAntivirus.Engine
                     result.BackupLocations.Add("Windows Backup已配置");
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
         }
         
         private void CheckSystemRestorePoints(BackupAnalysisResult result)
@@ -633,7 +637,7 @@ namespace FireAntivirus.Engine
                 var shadows = searcher.Get();
                 result.RestorePointCount = shadows.Count;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
         }
     }
     
@@ -668,7 +672,7 @@ namespace FireAntivirus.Engine
                         var hash = sha256.ComputeHash(stream);
                         _systemFileHashes[file] = BitConverter.ToString(hash).Replace("-", "").ToLower();
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
                 }
             }
         }
@@ -698,7 +702,7 @@ namespace FireAntivirus.Engine
                             IsIntact = currentHash == kvp.Value
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
                 }
             }
             
@@ -772,7 +776,7 @@ namespace FireAntivirus.Engine
                 
                 result.IsMalicious = result.RiskScore >= 50;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return result;
         }
@@ -813,7 +817,7 @@ namespace FireAntivirus.Engine
                 result.IsMalicious = result.Score > 0.7;
                 result.Features = features;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return result;
         }
@@ -968,7 +972,7 @@ namespace FireAntivirus.Engine
                 
                 result.IsMalicious = result.RiskScore >= 50;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return result;
         }
@@ -1001,17 +1005,14 @@ namespace FireAntivirus.Engine
         
         public CryptoAnalyzer()
         {
-            _miningPools = new List<string>
-            {
-                "pool.minexmr.com", "pool.supportxmr.com", "xmrpool.eu",
-                "stratum+tcp", "pool.hashvault.pro", "monero.hashvault.pro"
-            };
-            
+            // 矿池地址/stratum 协议等挖矿特征从外部 JSON 加载（ThreatData/malicious_indicators.json），不内嵌于 DLL
+            ExternalThreatData.EnsureLoaded();
+            _miningPools = new List<string>(ExternalThreatData.MiningPools);
             _cryptoPatterns = new List<string>
             {
-                "stratum", "minerd", "xmrig", "cpuminer", "ccminer",
+                "minerd", "xmrig", "cpuminer", "ccminer",
                 "wallet", "bitcoin", "ethereum", "monero", "litecoin",
-                "coinhive", "hashrate", "mining"
+                "hashrate", "mining"
             };
         }
         
@@ -1048,7 +1049,7 @@ namespace FireAntivirus.Engine
                 
                 result.IsCryptoMalware = result.RiskScore >= 30;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityComponents.cs 捕获异常", ex.Message); }
             
             return result;
         }

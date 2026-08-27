@@ -1,4 +1,4 @@
-﻿// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -225,7 +225,7 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 TitleText.Text = _languageManager.GetString("PopupBlocker", "弹窗拦截");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PopupBlockerPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 
@@ -292,7 +292,7 @@ namespace FireAntivirus.Host.WPF.Pages
                     serializer.Serialize(writer, rules);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PopupBlockerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         public List<PopupRule> GetRules()

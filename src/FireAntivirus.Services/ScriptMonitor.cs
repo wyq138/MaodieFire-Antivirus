@@ -483,7 +483,7 @@ namespace FireAntivirus.Services
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ScriptMonitor.cs 捕获异常", ex.Message); }
         }
     }
 }

@@ -300,7 +300,7 @@ namespace FireAntivirus.Host
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManagerForm.cs 捕获异常", ex.Message); }
         }
         
         // 辅助方法：检查启动文件夹
@@ -316,7 +316,7 @@ namespace FireAntivirus.Host
                 string commonStartupFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup);
                 CheckFolderForStartupItems(items, commonStartupFolder);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManagerForm.cs 捕获异常", ex.Message); }
         }
         
         // 辅助方法：检查文件夹中的启动项
@@ -338,7 +338,7 @@ namespace FireAntivirus.Host
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManagerForm.cs 捕获异常", ex.Message); }
         }
         
         // 辅助方法：检查计划任务
@@ -366,7 +366,7 @@ namespace FireAntivirus.Host
                 // 解析输出，查找启动时运行的任务
                 // 这里可以添加更复杂的解析逻辑
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManagerForm.cs 捕获异常", ex.Message); }
         }
 
 

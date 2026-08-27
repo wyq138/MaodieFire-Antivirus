@@ -100,7 +100,7 @@ namespace FireAntivirus.SystemOptimizer
                     {
                         File.Delete(file);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerManager.cs 捕获异常", ex.Message); }
                 }
                 return true;
             }

@@ -127,7 +127,7 @@ namespace FireAntivirus.Services
                                 }
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationControl.cs 捕获异常", ex.Message); }
                     }
                 }
                 catch (Exception ex)

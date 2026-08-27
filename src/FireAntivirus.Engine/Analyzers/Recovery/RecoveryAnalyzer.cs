@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -114,7 +114,7 @@ namespace FireAntivirus.Engine.Analyzers.Recovery
                         result.RecoveryPoints.Add(currentPoint);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RecoveryAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckWindowsBackup(RecoveryResult result)
@@ -134,7 +134,7 @@ namespace FireAntivirus.Engine.Analyzers.Recovery
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RecoveryAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckStartupRepair(RecoveryResult result)
@@ -157,7 +157,7 @@ namespace FireAntivirus.Engine.Analyzers.Recovery
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RecoveryAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckSystemIntegrity(RecoveryResult result)
@@ -179,7 +179,7 @@ namespace FireAntivirus.Engine.Analyzers.Recovery
                     result.SystemFileStatus[Path.GetFileName(file)] = File.Exists(file);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RecoveryAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         public bool CreateRestorePoint(string description)

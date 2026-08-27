@@ -483,7 +483,7 @@ namespace FireAntivirus.Services
                 };
                 Process.Start(processInfo)?.WaitForExit(10000);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DeviceControlService.cs 捕获异常", ex.Message); }
         }
 
         private bool HasAdminPrivileges()
@@ -537,7 +537,7 @@ namespace FireAntivirus.Services
                 _deviceRemovalWatcher?.Stop();
                 _deviceRemovalWatcher?.Dispose();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DeviceControlService.cs 捕获异常", ex.Message); }
         }
 
         private void OnUsbDeviceInserted(object sender, EventArrivedEventArgs e)
@@ -562,7 +562,7 @@ namespace FireAntivirus.Services
                     HandleNewDevice(deviceInfo);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DeviceControlService.cs 捕获异常", ex.Message); }
         }
 
         private void OnDeviceRemoved(object sender, EventArrivedEventArgs e)
@@ -588,7 +588,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DeviceControlService.cs 捕获异常", ex.Message); }
         }
 
         private void MonitorDevices()
@@ -692,7 +692,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DeviceControlService.cs 捕获异常", ex.Message); }
                 }
 
                 // 获取蓝牙设备
@@ -709,7 +709,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DeviceControlService.cs 捕获异常", ex.Message); }
 
             return devices;
         }
@@ -845,7 +845,7 @@ namespace FireAntivirus.Services
                 };
                 _dataManager.SaveDeviceControlData(data);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DeviceControlService.cs 捕获异常", ex.Message); }
         }
 
         #endregion

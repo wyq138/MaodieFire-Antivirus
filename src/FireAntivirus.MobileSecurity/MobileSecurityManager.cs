@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -82,7 +82,7 @@ namespace FireAntivirus.MobileSecurity
                 {
                     _monitoringTask.Wait(2000);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
             }
 
             // 停止USB监控
@@ -108,11 +108,11 @@ namespace FireAntivirus.MobileSecurity
                     {
                         DetectUsbDevices();
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
                 };
                 _usbWatcher.Start();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
         }
 
         private void StartBluetoothMonitoring()
@@ -127,11 +127,11 @@ namespace FireAntivirus.MobileSecurity
                     {
                         DetectBluetoothDevices();
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
                 };
                 _bluetoothWatcher.Start();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
         }
 
         private void DetectUsbDevices()
@@ -197,7 +197,7 @@ namespace FireAntivirus.MobileSecurity
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
         }
 
         private void DetectBluetoothDevices()
@@ -235,7 +235,7 @@ namespace FireAntivirus.MobileSecurity
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
         }
 
         private async Task MonitorFileTransfers()
@@ -255,7 +255,7 @@ namespace FireAntivirus.MobileSecurity
                         await MonitorDirectoryChanges(path);
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -363,7 +363,7 @@ namespace FireAntivirus.MobileSecurity
                     // 检查设备是否有病毒特征
                     await CheckForVirusSignatures(deviceInfo);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -398,7 +398,7 @@ namespace FireAntivirus.MobileSecurity
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityManager.cs 捕获异常", ex.Message); }
             }
         }
 

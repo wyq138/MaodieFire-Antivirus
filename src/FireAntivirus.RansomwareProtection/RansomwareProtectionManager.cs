@@ -74,7 +74,7 @@ namespace FireAntivirus.RansomwareProtection
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionManager.cs 捕获异常", ex.Message); }
                 }
             }
         }
@@ -244,7 +244,7 @@ namespace FireAntivirus.RansomwareProtection
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionManager.cs 捕获异常", ex.Message); }
             }
 
             // 检测大量文件重命名（常见勒索软件行为）
@@ -271,7 +271,7 @@ namespace FireAntivirus.RansomwareProtection
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionManager.cs 捕获异常", ex.Message); }
             return "unknown";
         }
 
@@ -329,7 +329,7 @@ namespace FireAntivirus.RansomwareProtection
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionManager.cs 捕获异常", ex.Message); }
             
             return detections;
         }
@@ -349,7 +349,7 @@ namespace FireAntivirus.RansomwareProtection
                         process.Kill();
                         terminated = true;
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionManager.cs 捕获异常", ex.Message); }
                 }
                 
                 if (terminated)
@@ -487,7 +487,7 @@ namespace FireAntivirus.RansomwareProtection
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionManager.cs 捕获异常", ex.Message); }
             
             return false;
         }

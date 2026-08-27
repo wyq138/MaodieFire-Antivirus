@@ -254,7 +254,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DocumentMonitor.cs 捕获异常", ex.Message); }
         }
 
         private bool CheckForEncryptionSignatures(byte[] data, int length)
@@ -265,16 +265,15 @@ namespace FireAntivirus.Services
                 return true;
             }
             
-            string[] ransomwareSignatures = {
-                "WNCRY", "EFLC", "E_THA", "E_STE",
-                "LOCKY", "OSIRIS",
-                "CRYPTO", "CRYPT"
-            };
+            // 勒索软件文件头特征从外置特征库(ransomware_signatures.json)动态加载，
+            // 不将恶意特征字符串编译进本 DLL，避免杀软误报。
+            FireAntivirus.Engine.ExternalThreatData.EnsureLoaded();
+            var ransomwareNames = FireAntivirus.Engine.ExternalThreatData.RansomwareNames;
             
-            string header = System.Text.Encoding.ASCII.GetString(data, 0, Math.Min(length, 32));
-            foreach (var signature in ransomwareSignatures)
+            string header = System.Text.Encoding.ASCII.GetString(data, 0, Math.Min(length, 64));
+            foreach (var signature in ransomwareNames)
             {
-                if (header.Contains(signature))
+                if (header.IndexOf(signature, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     return true;
                 }
@@ -339,7 +338,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DocumentMonitor.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -386,7 +385,7 @@ namespace FireAntivirus.Services
                                 {
                                     fileInfoCache[file] = new FileInfo(file);
                                 }
-                                catch { }
+                                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DocumentMonitor.cs 捕获异常", ex.Message); }
                             }
                         }
                     }
@@ -465,7 +464,7 @@ namespace FireAntivirus.Services
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DocumentMonitor.cs 捕获异常", ex.Message); }
         }
     }
 }

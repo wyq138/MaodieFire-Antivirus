@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FireAntivirus.Common\FireAntivirus.Common.csproj" />
     <ProjectReference Include="..\FireAntivirus.Data\FireAntivirus.Data.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Engine\FireAntivirus.Engine.csproj" />
   </ItemGroup>
 
 </Project>

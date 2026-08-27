@@ -338,39 +338,9 @@ namespace FireAntivirus.Services
 
         private List<NetworkPacket> GetActualNetworkPackets()
         {
-            var packets = new List<NetworkPacket>();
-            try
-            {
-                // 这里可以使用真正的网络捕获库，如SharpPcap
-                // 现在返回基于实际连接的模拟数据包
-                var tcpConnections = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpConnections();
-                
-                int id = 1;
-                foreach (var tcpConn in tcpConnections.Take(5))
-                {
-                    if (tcpConn.RemoteEndPoint != null)
-                    {
-                        packets.Add(new NetworkPacket
-                        {
-                            Id = id.ToString(),
-                            SourceEndPoint = tcpConn.LocalEndPoint,
-                            DestinationEndPoint = tcpConn.RemoteEndPoint,
-                            Protocol = ProtocolType.Tcp.ToString(),
-                            Length = 64,
-                            Timestamp = DateTime.UtcNow,
-                            Payload = new byte[32]
-                        });
-                        id++;
-                    }
-                }
-                
-                return packets;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"获取网络数据包失败: {ex.Message}");
-                return new List<NetworkPacket>();
-            }
+            // 托管 .NET 无法直接抓取原始数据包（需要 SharpPcap/WinPcap 等驱动）。
+            // 为避免伪造数据，此处不生成任何模拟数据包；流量分析基于真实的 TCP 连接记录。
+            return new List<NetworkPacket>();
         }
 
         private async Task AnalyzeNetworkAnomaliesAsync(NetworkAnalysisResult result)
@@ -597,7 +567,7 @@ namespace FireAntivirus.Services
                         });
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkSecurity.cs 捕获异常", ex.Message); }
             }
 
             await Task.CompletedTask;

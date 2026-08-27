@@ -220,7 +220,7 @@ namespace FireAntivirus.CloudSecurity
                     };
                     return value;
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CloudSecurityManager.cs 捕获异常", ex.Message); }
             }
 
             return null;
@@ -244,7 +244,7 @@ namespace FireAntivirus.CloudSecurity
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(value);
                 File.WriteAllText(cacheFile, json, Encoding.UTF8);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CloudSecurityManager.cs 捕获异常", ex.Message); }
         }
 
         /// <summary>
@@ -262,7 +262,7 @@ namespace FireAntivirus.CloudSecurity
                 foreach (var f in Directory.GetFiles(_cacheDirectory, "*.cache"))
                     File.Delete(f);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CloudSecurityManager.cs 捕获异常", ex.Message); }
         }
 
         #endregion

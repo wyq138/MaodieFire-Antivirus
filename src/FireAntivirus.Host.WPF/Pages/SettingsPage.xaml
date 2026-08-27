@@ -290,15 +290,17 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock x:Name="AutoStartLabel"
-                                       Grid.Column="0" 
-                                       Text="开机自启动" 
+                                       Grid.Column="0"
+                                       Text="开机自启动"
                                        FontSize="12"
                                        Foreground="{DynamicResource TextPrimary}"
                                        VerticalAlignment="Center"/>
                             <CheckBox x:Name="AutoStartCheckBox"
                                       Grid.Column="1"
-                                      IsChecked="True"
-                                      VerticalAlignment="Center"/>
+                                      IsChecked="False"
+                                      VerticalAlignment="Center"
+                                      Checked="AutoStartCheckBox_Changed"
+                                      Unchecked="AutoStartCheckBox_Changed"/>
                         </Grid>
                         
                         <!-- 最小化到托盘 -->

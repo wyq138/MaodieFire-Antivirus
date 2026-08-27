@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级系统优化引擎 - 对标CCleaner/Advanced SystemCare能力
 using System;
 using System.Collections.Generic;
@@ -326,7 +326,7 @@ namespace FireAntivirus.Services
                 {
                     SHEmptyRecycleBin(IntPtr.Zero, null, 7);
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
                 result.Success = true;
                 result.CleanedSize = cleanedSize;
@@ -581,7 +581,7 @@ namespace FireAntivirus.Services
                     disks.Add(disk);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return disks;
         }
@@ -884,7 +884,7 @@ namespace FireAntivirus.Services
                         });
                         totalSize += file.Length;
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
                 }
 
                 if (files.Any())
@@ -899,7 +899,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return categories;
         }
@@ -957,7 +957,7 @@ namespace FireAntivirus.Services
                     categories.AddRange(ScanDirectory(ieCache, "IE缓存", ref totalSize, null));
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return categories;
         }
@@ -997,10 +997,10 @@ namespace FireAntivirus.Services
                                     });
                                     totalSize += file.Length;
                                 }
-                                catch { }
+                                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
                         if (category.Files.Any())
                         {
@@ -1011,7 +1011,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return categories;
         }
@@ -1056,7 +1056,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return categories;
         }
@@ -1079,7 +1079,7 @@ namespace FireAntivirus.Services
                     Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Logs", "DISM");
                 categories.AddRange(ScanDirectory(dismLogs, "DISM日志", ref totalSize, null));
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return categories;
         }
@@ -1099,7 +1099,7 @@ namespace FireAntivirus.Services
                     categories.AddRange(ScanDirectory(oldWindows, "旧版Windows备份", ref totalSize, null));
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return categories;
         }
@@ -1129,7 +1129,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return categories;
         }
@@ -1158,7 +1158,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return categories;
         }
@@ -1207,12 +1207,12 @@ namespace FireAntivirus.Services
                                 }
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
                     }
                     key.Dispose();
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return issues;
         }
@@ -1254,12 +1254,12 @@ namespace FireAntivirus.Services
                                 }
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
                     }
                     key.Dispose();
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return issues;
         }
@@ -1302,12 +1302,12 @@ namespace FireAntivirus.Services
                                     });
                                 }
                             }
-                            catch { }
+                            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
                         }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return issues;
         }
@@ -1343,7 +1343,7 @@ namespace FireAntivirus.Services
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1367,7 +1367,7 @@ namespace FireAntivirus.Services
                 process.Start();
                 process.WaitForExit(30000);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return backupPath;
         }
@@ -1394,12 +1394,12 @@ namespace FireAntivirus.Services
                             PrivateMemoryMB = proc.PrivateMemorySize64 / 1024 / 1024
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
                 }
 
                 processes = processes.OrderByDescending(p => p.WorkingSetMB).Take(count).ToList();
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return processes;
         }
@@ -1421,10 +1421,10 @@ namespace FireAntivirus.Services
                             EmptyWorkingSet(proc.Handle);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
         }
 
         private void ClearClipboardData()
@@ -1437,7 +1437,7 @@ namespace FireAntivirus.Services
                     CloseClipboard();
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
         }
 
         private void ClearStandbyList()
@@ -1457,7 +1457,7 @@ namespace FireAntivirus.Services
                 };
                 process.Start();
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
         }
 
         private void CompressMemoryPages()
@@ -1499,7 +1499,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return SmartStatus.Ok;
         }
@@ -1518,7 +1518,7 @@ namespace FireAntivirus.Services
                     size += GetDirectorySize(subDir);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
             return size;
         }
 
@@ -1548,7 +1548,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return items;
         }
@@ -1629,7 +1629,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
                 }
 
                 result.Success = true;
@@ -1791,7 +1791,7 @@ namespace FireAntivirus.Services
                 process.Start();
                 process.WaitForExit(30000);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
         }
 
         private void RecordOptimization(string type, long bytesCleaned, int filesCleaned)
@@ -1819,7 +1819,7 @@ namespace FireAntivirus.Services
                         File.ReadAllText(historyPath)) ?? new List<OptimizationHistory>();
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
         }
 
         private void SaveOptimizationHistory()
@@ -1829,7 +1829,7 @@ namespace FireAntivirus.Services
                 var historyPath = Path.Combine(_configPath, "history.json");
                 File.WriteAllText(historyPath, JsonSerializer.Serialize(_optimizationHistory.TakeLast(100).ToList()));
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
         }
 
         private SystemPerformanceMetrics CaptureMetrics()
@@ -1852,7 +1852,7 @@ namespace FireAntivirus.Services
                     metrics.DiskUsage[disk.Name] = disk.UsagePercent;
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
 
             return metrics;
         }
@@ -1887,7 +1887,7 @@ namespace FireAntivirus.Services
 
                 _lastMetrics = current;
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
         }
 
         #endregion

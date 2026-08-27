@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -434,7 +434,7 @@ namespace FireAntivirus.Host
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScorePage.cs 捕获异常", ex.Message); }
 
                 // 启用UAC
                 try
@@ -450,7 +450,7 @@ namespace FireAntivirus.Host
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScorePage.cs 捕获异常", ex.Message); }
 
                 // 启用自动更新
                 try
@@ -465,7 +465,7 @@ namespace FireAntivirus.Host
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScorePage.cs 捕获异常", ex.Message); }
 
                 // 禁用SMBv1
                 try
@@ -480,7 +480,7 @@ namespace FireAntivirus.Host
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScorePage.cs 捕获异常", ex.Message); }
 
                 MessageBox.Show(
                     $"优化完成！\n\n" +

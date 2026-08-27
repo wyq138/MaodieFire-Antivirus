@@ -72,7 +72,7 @@ namespace FireAntivirus.Host
                     serializer.Serialize(writer, rules);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PopupPage.cs 捕获异常", ex.Message); }
         }
 
         public List<PopupRule> GetRules()

@@ -150,7 +150,7 @@ namespace FireAntivirus.Services
                     process.WaitForExit(5000);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
         }
 
         private async Task<DefenderScanResult> StartDefenderScanAsync(DefenderScanType scanType, string customPath)
@@ -338,7 +338,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
             
             // 尝试查找其他可能的位置
             var possiblePaths = new[]
@@ -672,7 +672,7 @@ namespace FireAntivirus.Services
                     // 定期检查 Windows Defender 状态
                     CheckDefenderStatus();
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
 
                 Thread.Sleep(60000); // 每分钟检查一次
             }
@@ -709,7 +709,7 @@ namespace FireAntivirus.Services
                     _currentProgress.RealTimeProtectionEnabled = isEnabled;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -761,7 +761,7 @@ namespace FireAntivirus.Services
                             collection = searcher.Get();
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
                 }
 
                 if (collection != null)
@@ -769,25 +769,25 @@ namespace FireAntivirus.Services
                     foreach (var obj in collection)
                     {
                         // 使用 try-catch 包装每个属性读取，防止单个属性失败导致整个查询失败
-                        try { status.AntivirusEnabled = Convert.ToBoolean(obj["AntivirusEnabled"]); } catch { }
-                        try { status.RealTimeProtectionEnabled = Convert.ToBoolean(obj["RealTimeProtectionEnabled"]); } catch { }
-                        try { status.AntispywareEnabled = Convert.ToBoolean(obj["AntispywareEnabled"]); } catch { }
-                        try { status.NISEnabled = Convert.ToBoolean(obj["NISEnabled"]); } catch { }
+                        try { status.AntivirusEnabled = Convert.ToBoolean(obj["AntivirusEnabled"]); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
+                        try { status.RealTimeProtectionEnabled = Convert.ToBoolean(obj["RealTimeProtectionEnabled"]); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
+                        try { status.AntispywareEnabled = Convert.ToBoolean(obj["AntispywareEnabled"]); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
+                        try { status.NISEnabled = Convert.ToBoolean(obj["NISEnabled"]); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
                         try
                         {
                             status.DefenderSignaturesUpToDate = Convert.ToBoolean(obj["AntivirusSignatureAge"] != null &&
                                 Convert.ToUInt32(obj["AntivirusSignatureAge"]) <= 1);
                         }
-                        catch { }
-                        try { status.QuickScanEndTime = obj["QuickScanEndTime"]?.ToString(); } catch { }
-                        try { status.FullScanEndTime = obj["FullScanEndTime"]?.ToString(); } catch { }
-                        try { status.AntivirusSignatureLastUpdated = obj["AntivirusSignatureLastUpdated"]?.ToString(); } catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
+                        try { status.QuickScanEndTime = obj["QuickScanEndTime"]?.ToString(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
+                        try { status.FullScanEndTime = obj["FullScanEndTime"]?.ToString(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
+                        try { status.AntivirusSignatureLastUpdated = obj["AntivirusSignatureLastUpdated"]?.ToString(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
                         break;
                     }
                     collection.Dispose();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DefenderScanService.cs 捕获异常", ex.Message); }
             return status;
         }
 

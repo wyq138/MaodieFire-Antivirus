@@ -1,4 +1,4 @@
-﻿// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级安全评分引擎 - 对标卡巴斯基/诺顿安全评估
 using System;
 using System.Collections.Generic;
@@ -757,7 +757,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreService.cs exception", ex.Message);  }
 
                 result.Details.Add($"安全启动: {(secureBootEnabled ? "已启用" : "未启用/不支持")}");
                 result.Details.Add($"TPM: {(tpmEnabled ? "已启用" : "未检测到")}");
@@ -1275,7 +1275,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreService.cs exception", ex.Message);  }
                 }
 
                 result.Details.Add($"检测敏感文件: {exposedFiles.Count} 个");
@@ -1348,7 +1348,7 @@ namespace FireAntivirus.Services
                             if (!lastBackup.HasValue || creationTime > lastBackup)
                                 lastBackup = creationTime;
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreService.cs exception", ex.Message);  }
                     }
                 }
 
@@ -1774,7 +1774,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreService.cs exception", ex.Message);  }
                 }
 
                 // 检查Windows更新状态
@@ -2131,7 +2131,7 @@ namespace FireAntivirus.Services
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(_scoreHistory, Newtonsoft.Json.Formatting.Indented);
                 File.WriteAllText(historyFile, json);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreService.cs exception", ex.Message);  }
         }
 
         #endregion

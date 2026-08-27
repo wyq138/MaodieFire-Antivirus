@@ -1,0 +1,28 @@
+# MSIX packages
+msix/*.msix
+msix/*.zip
+msix/payload*/
+msix/payload_sc/
+msix/payload_update/
+msix/old_*/
+msix/new_*/
+msix/check*/
+
+# Publish output
+publish/
+src/publish/
+
+# Temporary files
+*.tmp
+*.log
+*.lk
+*.locked
+*.pdb
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# OS
+Thumbs.db

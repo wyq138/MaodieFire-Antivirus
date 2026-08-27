@@ -863,7 +863,7 @@ namespace FireAntivirus.Services
                     return (totalMB, totalMB - availableMB);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimization.cs 捕获异常", ex.Message); }
             return (0, 0);
         }
 
@@ -874,7 +874,7 @@ namespace FireAntivirus.Services
                 var drive = new System.IO.DriveInfo(System.IO.Path.GetPathRoot(Environment.SystemDirectory));
                 return (drive.TotalSize / (1024 * 1024), (drive.TotalSize - drive.AvailableFreeSpace) / (1024 * 1024));
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimization.cs 捕获异常", ex.Message); }
             return (0, 0);
         }
 
@@ -900,7 +900,7 @@ namespace FireAntivirus.Services
                     return DateTime.Now - lastBoot;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimization.cs 捕获异常", ex.Message); }
             return TimeSpan.Zero;
         }
 
@@ -914,7 +914,7 @@ namespace FireAntivirus.Services
                     return System.Management.ManagementDateTimeConverter.ToDateTime(obj["LastBootUpTime"].ToString());
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimization.cs 捕获异常", ex.Message); }
             return DateTime.MinValue;
         }
 

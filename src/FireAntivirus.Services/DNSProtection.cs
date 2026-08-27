@@ -229,7 +229,7 @@ namespace FireAntivirus.Services
                     _originalHostsHash = CalculateFileHash(_hostsFilePath);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         private string GetDatabasePath(string filename)
@@ -384,7 +384,7 @@ namespace FireAntivirus.Services
                         UpdateMaliciousDomainDatabase();
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -405,7 +405,7 @@ namespace FireAntivirus.Services
                     
                     Thread.Sleep(60000);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -438,7 +438,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         private void HandleDNSChange(string adapterName, string oldDNS, string newDNS)
@@ -547,7 +547,7 @@ namespace FireAntivirus.Services
                     _lastHostsModification = lastMod;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         private void AnalyzeHostsFileChanges()
@@ -605,7 +605,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         private bool IsMaliciousHostsEntry(HostsEntry entry)
@@ -725,10 +725,10 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         private List<string> GetExpectedIPs(string domain)
@@ -792,7 +792,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         private bool IsDGADomain(string domain)
@@ -974,7 +974,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         private bool IsSuspiciousDomain(string domain)
@@ -1156,7 +1156,7 @@ namespace FireAntivirus.Services
                     result.IPAddresses = addresses.Select(a => a.ToString()).ToList();
                     result.HasError = false;
                 }
-                catch { }
+                catch (System.Exception ex2) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex2.Message); }
             }
             
             return result;
@@ -1238,7 +1238,7 @@ namespace FireAntivirus.Services
                     offset += rdLength;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
             
             return ips;
         }
@@ -1326,7 +1326,7 @@ namespace FireAntivirus.Services
                 ExecuteCommand("ipconfig", "/flushdns");
                 _dataManager.LogInfo("DNS缓存已清除");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         public List<DNSQueryRecord> GetQueryHistory()
@@ -1408,7 +1408,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
             return null;
         }
 
@@ -1464,7 +1464,7 @@ namespace FireAntivirus.Services
                 Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
                 File.WriteAllLines(dbPath, _blockedDomains);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         private void CleanupExpiredCache()

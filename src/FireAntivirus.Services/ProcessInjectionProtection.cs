@@ -489,7 +489,7 @@ namespace FireAntivirus.Services
                         // 检查注入迹象
                         CheckInjectionSigns(process, processPath);
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
             }
             catch (Exception ex)
@@ -525,7 +525,7 @@ namespace FireAntivirus.Services
                         $"进程 {process.ProcessName} 存在高注入风险，评分: {profile.RiskScore}");
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private ProcessSecurityProfile CreateSecurityProfile(Process process, string processPath)
@@ -617,7 +617,7 @@ namespace FireAntivirus.Services
                     CloseHandle(hProcess);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private void CheckSuspiciousModules(Process process, ProcessSecurityProfile profile)
@@ -670,12 +670,12 @@ namespace FireAntivirus.Services
                             profile.DetectionFlags.Add("SuspiciousModule");
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
 
                 profile.SuspiciousModules = suspiciousModules;
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private bool IsSuspiciousMemoryRegion(MEMORY_BASIC_INFORMATION memInfo)
@@ -720,7 +720,7 @@ namespace FireAntivirus.Services
                     return CalculateEntropy(buffer);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
             
             return 0;
         }
@@ -777,7 +777,7 @@ namespace FireAntivirus.Services
                         
                         DetectInjectedDLLs(process);
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
             }
             catch (Exception ex)
@@ -835,7 +835,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private List<string> GetProcessModules(Process process)
@@ -863,7 +863,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
             }
             
             return modules;
@@ -958,7 +958,7 @@ namespace FireAntivirus.Services
                         // 检查PEB是否被修改
                         CheckPEBModification(process);
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
             }
             catch (Exception ex)
@@ -1004,7 +1004,7 @@ namespace FireAntivirus.Services
                     CloseHandle(hProcess);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         #endregion
@@ -1030,7 +1030,7 @@ namespace FireAntivirus.Services
                         // 检查线程的APC队列
                         CheckThreadAPCs(process);
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
             }
             catch (Exception ex)
@@ -1060,7 +1060,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         #endregion
@@ -1085,7 +1085,7 @@ namespace FireAntivirus.Services
                         
                         CheckThreadContextAnomalies(process);
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
             }
             catch (Exception ex)
@@ -1123,7 +1123,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private void CheckThreadAnomalies(Process process, ProcessSecurityProfile profile)
@@ -1155,7 +1155,7 @@ namespace FireAntivirus.Services
                     profile.DetectionFlags.Add("ThreadSuspension");
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         #endregion
@@ -1181,10 +1181,10 @@ namespace FireAntivirus.Services
                         // 扫描内存中的恶意代码特征
                         ScanProcessMemoryForThreats(process);
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private void ScanProcessMemoryForThreats(Process process)
@@ -1205,7 +1205,7 @@ namespace FireAntivirus.Services
                     CloseHandle(hProcess);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private void ScanForShellcode(IntPtr hProcess, Process process)
@@ -1249,7 +1249,7 @@ namespace FireAntivirus.Services
                     address = new IntPtr(nextAddress);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private bool DetectShellcodePatterns(byte[] data)
@@ -1315,7 +1315,7 @@ namespace FireAntivirus.Services
                         
                         DetectProcessHooks(process);
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
             }
             catch (Exception ex)
@@ -1367,7 +1367,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private void DetectProcessHooks(Process process)
@@ -1391,7 +1391,7 @@ namespace FireAntivirus.Services
                     CloseHandle(hProcess);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private void CheckIATHooks(IntPtr hProcess, Process process)
@@ -1429,7 +1429,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
             }
             return null;
         }
@@ -1490,7 +1490,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
             
             return info;
         }
@@ -1517,7 +1517,7 @@ namespace FireAntivirus.Services
                         
                         _processSnapshots.AddOrUpdate(process.Id, snapshot, (k, v) => snapshot);
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
                 }
                 
                 // 清理过期快照
@@ -1532,7 +1532,7 @@ namespace FireAntivirus.Services
                     _processSnapshots.TryRemove(key, out removed);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private int CalculateInjectionRiskScore(ProcessSecurityProfile profile)
@@ -1621,7 +1621,7 @@ namespace FireAntivirus.Services
                     description,
                     NotificationType.Warning);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessInjectionProtection.cs exception", ex.Message);  }
         }
 
         private void TerminateProcess(Process process, string reason)

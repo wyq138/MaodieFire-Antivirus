@@ -31,9 +31,42 @@
       <OutputItemType>Content</OutputItemType>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </ProjectReference>
+    <!-- 所有周边安全模块 -->
+    <ProjectReference Include="..\FireAntivirus.ApplicationMonitor\FireAntivirus.ApplicationMonitor.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Backup\FireAntivirus.Backup.csproj" />
+    <ProjectReference Include="..\FireAntivirus.BehaviorAnalysis\FireAntivirus.BehaviorAnalysis.csproj" />
+    <ProjectReference Include="..\FireAntivirus.CloudScanner\FireAntivirus.CloudScanner.csproj" />
+    <ProjectReference Include="..\FireAntivirus.DeviceControl\FireAntivirus.DeviceControl.csproj" />
+    <ProjectReference Include="..\FireAntivirus.EmailSecurity\FireAntivirus.EmailSecurity.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Encryption\FireAntivirus.Encryption.csproj" />
+    <ProjectReference Include="..\FireAntivirus.MachineLearning\FireAntivirus.MachineLearning.csproj" />
+    <ProjectReference Include="..\FireAntivirus.MalwareRemoval\FireAntivirus.MalwareRemoval.csproj" />
+    <ProjectReference Include="..\FireAntivirus.MobileSecurity\FireAntivirus.MobileSecurity.csproj" />
+    <ProjectReference Include="..\FireAntivirus.NetworkFirewall\FireAntivirus.NetworkFirewall.csproj" />
+    <ProjectReference Include="..\FireAntivirus.NetworkSecurity\FireAntivirus.NetworkSecurity.csproj" />
+    <ProjectReference Include="..\FireAntivirus.NetworkTrafficAnalyzer\FireAntivirus.NetworkTrafficAnalyzer.csproj" />
+    <ProjectReference Include="..\FireAntivirus.ParentalControl\FireAntivirus.ParentalControl.csproj" />
+    <ProjectReference Include="..\FireAntivirus.PasswordManager\FireAntivirus.PasswordManager.csproj" />
+    <ProjectReference Include="..\FireAntivirus.PrivacyProtection\FireAntivirus.PrivacyProtection.csproj" />
+    <ProjectReference Include="..\FireAntivirus.RansomwareProtection\FireAntivirus.RansomwareProtection.csproj" />
+    <ProjectReference Include="..\FireAntivirus.RealTimeProtectionPlus\FireAntivirus.RealTimeProtectionPlus.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Sandbox\FireAntivirus.Sandbox.csproj" />
+    <ProjectReference Include="..\FireAntivirus.SecureBrowser\FireAntivirus.SecureBrowser.csproj" />
+    <ProjectReference Include="..\FireAntivirus.SecurityReport\FireAntivirus.SecurityReport.csproj" />
+    <ProjectReference Include="..\FireAntivirus.SecurityScore\FireAntivirus.SecurityScore.csproj" />
+    <ProjectReference Include="..\FireAntivirus.StartupManager\FireAntivirus.StartupManager.csproj" />
+    <ProjectReference Include="..\FireAntivirus.SystemOptimizer\FireAntivirus.SystemOptimizer.csproj" />
+    <ProjectReference Include="..\FireAntivirus.ThreatIntelligence\FireAntivirus.ThreatIntelligence.csproj" />
+    <ProjectReference Include="..\FireAntivirus.VulnerabilityScanner\FireAntivirus.VulnerabilityScanner.csproj" />
+    <ProjectReference Include="..\FireAntivirus.WebProtection\FireAntivirus.WebProtection.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\**\*" />
+    <!-- 同时把资源文件拷贝到输出目录，供运行时按文件路径加载（托盘图标、左侧栏图标、收款码等） -->
+    <Content Include="Resources\cat_icon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\cat_icon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\cat_logo.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\收款码.jpg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- 确保后台防护的exe和运行配置文件复制到主程序输出目录 -->
   <Target Name="CopyServiceHostOutputs" AfterTargets="Build">

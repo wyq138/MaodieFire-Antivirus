@@ -1,3 +1,6 @@
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 云扫描管理器 - 集成多引擎云查杀聚合器
+// 架构: CloudScanAggregator (MalwareBazaar + VirusTotal + HybridAnalysis + OTX)
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,8 +16,8 @@ using FireAntivirus.ThreatIntelligence;
 namespace FireAntivirus.CloudScanner
 {
     /// <summary>
-    /// 云扫描管理器 - 基于 AlienVault OTX 威胁情报API
-    /// 免费使用,无需API密钥。OTX是全球最大的开放威胁情报社区之一。
+    /// 云扫描管理器 - 真实可用的多引擎云查杀
+    /// 聚合 70+ 国际杀软引擎 + 沙箱分析 + 威胁情报
     /// </summary>
     public class CloudScannerManager
     {
@@ -22,13 +25,15 @@ namespace FireAntivirus.CloudScanner
         private AntivirusEngine _antivirusEngine;
         private HttpClient _httpClient;
         private ThreatIntelligenceManager _tiManager;
+        private CloudScanAggregator _aggregator;
+        private CloudScanConfig _config;
         private bool _isOnline;
         private Dictionary<string, (CloudScanResult result, DateTime cached)> _localCache;
         private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
         private readonly object _cacheLock = new object();
 
         /// <summary>
-        /// AlienVault OTX API基础地址(无需API密钥)
+        /// AlienVault OTX API基础地址(无需API密钥,保留用于URL/IP/Domain查询)
         /// </summary>
         private const string OTX_BASE_URL = "https://otx.alienvault.com/api/v1";
 
@@ -42,12 +47,19 @@ namespace FireAntivirus.CloudScanner
             _localCache = new Dictionary<string, (CloudScanResult, DateTime)>();
             _tiManager = new ThreatIntelligenceManager();
 
-            // OTX无需API密钥,默认在线
-            _isOnline = true;
+            // 加载云查杀配置并初始化聚合器
+            _config = CloudScanConfig.Load();
+            _aggregator = new CloudScanAggregator(_config);
+            _aggregator.ProgressChanged += (s, msg) =>
+            {
+                LogScanEvent("CloudScanProgress", string.Empty, msg);
+            };
+
+            _isOnline = _config.EnableCloudScan && _aggregator.IsAnyEngineEnabled;
         }
 
         /// <summary>
-        /// 扫描文件 - 流程: 本地缓存 → OTX哈希查询 → 本地引擎扫描
+        /// 扫描文件 - 流程: 本地缓存 -> 云聚合器查询 -> 本地引擎扫描兜底
         /// </summary>
         public async Task<CloudScanResult> ScanFile(string filePath)
         {
@@ -74,22 +86,52 @@ namespace FireAntivirus.CloudScanner
                 var cached = CheckLocalCache(fileHash);
                 if (cached != null)
                 {
+                    cached.FilePath = filePath;
+                    cached.DetectionMethod = "(cached) " + cached.DetectionMethod;
                     return cached;
                 }
 
-                // 2. OTX威胁情报查询
-                if (_isOnline)
+                // 2. 云聚合器查询(多引擎并行)
+                if (_isOnline && _aggregator != null)
                 {
-                    var otxResult = await QueryOtxFileHashAsync(filePath, fileHash);
-                    if (otxResult.Success)
+                    var cloudResult = await _aggregator.ScanFileAsync(filePath);
+
+                    // 云引擎达到阈值时直接返回结果
+                    if (cloudResult != null && cloudResult.Success && cloudResult.IsInfected)
                     {
-                        CacheScanResult(fileHash, otxResult);
-                        return otxResult;
+                        CacheScanResult(fileHash, cloudResult);
+                        return cloudResult;
+                    }
+
+                    // 云引擎未命中或可疑, 继续本地扫描以补充检测
+                    if (cloudResult != null && cloudResult.Success)
+                    {
+                        result = cloudResult;
                     }
                 }
 
-                // 3. 本地引擎扫描
-                result = await ScanFileLocally(filePath);
+                // 3. 本地引擎扫描兜底(用于未知文件)
+                var localResult = await ScanFileLocally(filePath);
+                if (localResult.IsInfected)
+                {
+                    // 本地引擎检测到威胁, 与云结果合并
+                    result.IsInfected = true;
+                    result.ThreatName = localResult.ThreatName;
+                    result.ThreatType = localResult.ThreatType;
+                    result.Confidence = Math.Max(result.Confidence, localResult.Confidence);
+                    result.Severity = localResult.Severity;
+                    result.DetectionMethod = "Local+Cloud";
+                    result.Message = $"本地引擎检测: {localResult.ThreatName}";
+                }
+                else if (!result.IsInfected)
+                {
+                    result.IsInfected = false;
+                    result.ThreatName = localResult.ThreatName;
+                    result.Confidence = Math.Max(result.Confidence, 0.0);
+                    result.DetectionMethod = "Local+Cloud";
+                    result.Message = result.Message ?? "云查杀+本地引擎: 未发现威胁";
+                }
+
                 CacheScanResult(fileHash, result);
             }
             catch (Exception ex)
@@ -103,77 +145,24 @@ namespace FireAntivirus.CloudScanner
         }
 
         /// <summary>
-        /// 通过OTX API查询文件哈希的信誉
+        /// 仅通过哈希查询云端(不读取文件, 速度最快)
         /// </summary>
-        private async Task<CloudScanResult> QueryOtxFileHashAsync(string filePath, string fileHash)
+        public async Task<CloudScanResult> ScanByHashAsync(string sha256Hash)
         {
-            var result = new CloudScanResult
+            if (_aggregator == null || !_isOnline)
             {
-                FilePath = filePath,
-                FileHash = fileHash,
-                ScanTime = DateTime.Now,
-                DetectionMethod = "OTX Cloud"
-            };
-
-            try
-            {
-                string url = $"{OTX_BASE_URL}/indicators/file/{fileHash}/general";
-                var response = await _httpClient.GetStringAsync(url);
-                var json = JObject.Parse(response);
-
-                int pulseCount = json["pulse_info"]?["count"]?.Value<int>() ?? 0;
-                var pulses = json["pulse_info"]?["pulses"] as JArray;
-                var analysis = json["analysis"];
-
-                if (pulseCount > 0 && pulses != null && pulses.Count > 0)
+                return new CloudScanResult
                 {
-                    var firstPulse = pulses[0];
-                    result.IsInfected = true;
-                    result.ThreatName = firstPulse["name"]?.ToString() ?? "OTX威胁情报命中";
-                    result.ThreatType = "Malware";
-                    result.Confidence = pulseCount >= 10 ? 0.95 : pulseCount >= 3 ? 0.80 : 0.65;
-                    result.Severity = pulseCount >= 10 ? "High" : pulseCount >= 3 ? "Medium" : "Low";
-                    result.Message = $"OTX: {pulseCount}条社区威胁报告";
-                    result.Success = true;
-                }
-                else
-                {
-                    // 检查是否有OTX沙箱分析
-                    if (analysis != null && analysis["malware"] != null && analysis["malware"].Value<bool>())
-                    {
-                        result.IsInfected = true;
-                        result.ThreatName = "OTX沙箱确认为恶意软件";
-                        result.ThreatType = "Malware";
-                        result.Confidence = 0.95;
-                        result.Severity = "High";
-                        result.Message = "OTX沙箱分析: 恶意";
-                        result.Success = true;
-                    }
-                    else
-                    {
-                        result.IsInfected = false;
-                        result.Confidence = 0.0;
-                        result.Message = "OTX: 未发现威胁情报";
-                        result.Success = true;
-                    }
-                }
-
-                LogScanEvent("OTXCloudScan", filePath,
-                    $"Hash: {fileHash}, Pulses: {pulseCount}, " +
-                    $"Result: {(result.IsInfected ? "威胁" : "安全")}");
+                    FileHash = sha256Hash,
+                    Success = false,
+                    Message = "云查杀未启用"
+                };
             }
-            catch (Exception ex)
-            {
-                result.Success = false;
-                result.Message = $"OTX查询失败: {ex.Message}";
-                LogScanEvent("OTXCloudScanError", filePath, ex.Message);
-            }
-
-            return result;
+            return await _aggregator.ScanHashAsync(sha256Hash);
         }
 
         /// <summary>
-        /// 扫描URL - OTX URL信誉查询
+        /// 扫描URL - OTX URL信誉查询 + VirusTotal URL查询
         /// </summary>
         public async Task<CloudScanResult> ScanUrl(string url)
         {
@@ -181,7 +170,7 @@ namespace FireAntivirus.CloudScanner
             {
                 Url = url,
                 ScanTime = DateTime.Now,
-                DetectionMethod = "OTX URL"
+                DetectionMethod = "Cloud-URL"
             };
 
             try
@@ -197,36 +186,77 @@ namespace FireAntivirus.CloudScanner
                 var cached = CheckLocalCache(cacheKey);
                 if (cached != null) return cached;
 
-                // OTX URL查询需要base64编码
-                string encodedUrl = Convert.ToBase64String(
-                    System.Text.Encoding.UTF8.GetBytes(url));
-                string apiUrl = $"{OTX_BASE_URL}/indicators/url/{encodedUrl}/general";
-                var response = await _httpClient.GetStringAsync(apiUrl);
-                var json = JObject.Parse(response);
+                bool detected = false;
+                var messages = new List<string>();
 
-                int pulseCount = json["pulse_info"]?["count"]?.Value<int>() ?? 0;
-
-                if (pulseCount > 0)
+                // 1. OTX URL查询
+                try
                 {
-                    result.IsInfected = true;
-                    result.ThreatName = "恶意URL";
-                    result.ThreatType = "MaliciousURL";
-                    result.Confidence = pulseCount >= 10 ? 0.90 : pulseCount >= 3 ? 0.75 : 0.60;
-                    result.Severity = pulseCount >= 10 ? "High" : pulseCount >= 3 ? "Medium" : "Low";
-                    result.Message = $"OTX: {pulseCount}条社区威胁报告";
+                    string encodedUrl = Convert.ToBase64String(
+                        System.Text.Encoding.UTF8.GetBytes(url));
+                    string apiUrl = $"{OTX_BASE_URL}/indicators/url/{encodedUrl}/general";
+                    var response = await _httpClient.GetStringAsync(apiUrl);
+                    var json = JObject.Parse(response);
+
+                    int pulseCount = json["pulse_info"]?["count"]?.Value<int>() ?? 0;
+
+                    if (pulseCount > 0)
+                    {
+                        detected = true;
+                        result.ThreatName = "恶意URL";
+                        result.ThreatType = "MaliciousURL";
+                        result.Confidence = pulseCount >= 10 ? 0.90 : pulseCount >= 3 ? 0.75 : 0.60;
+                        result.Severity = pulseCount >= 10 ? "High" : pulseCount >= 3 ? "Medium" : "Low";
+                        messages.Add($"OTX: {pulseCount}条社区威胁报告");
+                    }
+                    else
+                    {
+                        messages.Add("OTX: 未发现威胁情报");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    result.IsInfected = false;
-                    result.Confidence = 0.0;
-                    result.Message = "OTX: 未发现威胁情报";
+                    messages.Add($"OTX查询失败: {ex.Message}");
                 }
 
+                // 2. VirusTotal URL查询(如果配置了API Key)
+                if (_aggregator != null && _config.EnableVirusTotal && !string.IsNullOrEmpty(_config.VirusTotalApiKey))
+                {
+                    try
+                    {
+                        var vtClient = new VirusTotalClient(_config.VirusTotalApiKey);
+                        using (vtClient)
+                        {
+                            var vtResult = await vtClient.QueryUrlAsync(url);
+                            if (vtResult != null && vtResult.Detected)
+                            {
+                                detected = true;
+                                if (string.IsNullOrEmpty(result.ThreatName))
+                                    result.ThreatName = vtResult.ThreatName;
+                                result.Confidence = Math.Max(result.Confidence, 0.85);
+                                result.Severity = "High";
+                                messages.Add($"VirusTotal: {vtResult.ThreatName}");
+                            }
+                            else if (vtResult != null)
+                            {
+                                messages.Add($"VirusTotal: {vtResult.ThreatName ?? "Clean"}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        messages.Add($"VirusTotal URL查询失败: {ex.Message}");
+                    }
+                }
+
+                result.IsInfected = detected;
                 result.Success = true;
+                result.Message = string.Join(" | ", messages);
+
                 CacheScanResult(cacheKey, result);
 
-                LogScanEvent("OTXUrlScan", url,
-                    $"Pulses: {pulseCount}, Result: {(result.IsInfected ? "威胁" : "安全")}");
+                LogScanEvent("CloudUrlScan", url,
+                    $"Result: {(result.IsInfected ? "威胁" : "安全")}, {result.Message}");
             }
             catch (Exception ex)
             {
@@ -247,7 +277,7 @@ namespace FireAntivirus.CloudScanner
             {
                 FilePath = ipAddress,
                 ScanTime = DateTime.Now,
-                DetectionMethod = "OTX IP"
+                DetectionMethod = "Cloud-IP"
             };
 
             try
@@ -305,7 +335,7 @@ namespace FireAntivirus.CloudScanner
             {
                 FilePath = domain,
                 ScanTime = DateTime.Now,
-                DetectionMethod = "OTX Domain"
+                DetectionMethod = "Cloud-Domain"
             };
 
             try
@@ -439,14 +469,14 @@ namespace FireAntivirus.CloudScanner
                     Details = details
                 });
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CloudScannerManager.cs 捕获异常", ex.Message); }
         }
 
         #endregion
 
         #region 公开属性与方法
 
-        /// <summary>是否在线(OTX免费且通常可用)</summary>
+        /// <summary>是否在线(任一云引擎可用即视为在线)</summary>
         public bool IsOnline() => _isOnline;
 
         /// <summary>手动设置在线/离线</summary>
@@ -454,6 +484,35 @@ namespace FireAntivirus.CloudScanner
 
         /// <summary>获取威胁情报管理器实例</summary>
         public ThreatIntelligenceManager GetThreatIntelligenceManager() => _tiManager;
+
+        /// <summary>获取云查杀聚合器实例</summary>
+        public CloudScanAggregator GetAggregator() => _aggregator;
+
+        /// <summary>获取当前云查杀配置</summary>
+        public CloudScanConfig GetConfig() => _config;
+
+        /// <summary>更新云查杀配置(立即生效)</summary>
+        public void UpdateConfig(CloudScanConfig newConfig)
+        {
+            _config = newConfig;
+            _config.Save();
+            _aggregator?.Dispose();
+            _aggregator = new CloudScanAggregator(_config);
+            _isOnline = _config.EnableCloudScan && _aggregator.IsAnyEngineEnabled;
+        }
+
+        /// <summary>获取已启用的云引擎列表</summary>
+        public List<string> GetEnabledEngines()
+        {
+            var engines = new List<string>();
+            if (_config.EnableMalwareBazaar) engines.Add("MalwareBazaar");
+            if (_config.EnableOTX) engines.Add("AlienVault-OTX");
+            if (_config.EnableVirusTotal && !string.IsNullOrEmpty(_config.VirusTotalApiKey))
+                engines.Add($"VirusTotal(+70 engines)");
+            if (_config.EnableHybridAnalysis && !string.IsNullOrEmpty(_config.HybridAnalysisApiKey))
+                engines.Add("HybridAnalysis-Sandbox");
+            return engines;
+        }
 
         /// <summary>清理过期缓存</summary>
         public void CleanExpiredCache()
@@ -469,6 +528,8 @@ namespace FireAntivirus.CloudScanner
                 foreach (var k in expiredKeys)
                     _localCache.Remove(k);
             }
+
+            CloudScanAggregator.CleanExpiredCache();
         }
 
         #endregion

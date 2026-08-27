@@ -184,7 +184,7 @@ namespace FireAntivirus.Services
                     processCreationWatcher.Stop();
                     processCreationWatcher.Dispose();
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
             }
             
             dataManager.AddLog(new LogEntry
@@ -248,10 +248,10 @@ namespace FireAntivirus.Services
                             AnalyzeProcessBehavior(process.Id);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
         }
         
         private void CleanupTerminatedProcesses()
@@ -276,7 +276,7 @@ namespace FireAntivirus.Services
                     monitoredProcesses.Remove(pid);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
         }
         
         private void QuickCheckProcess(Process process)
@@ -297,7 +297,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
         }
         
         private void MonitorProcessCreation()
@@ -330,10 +330,10 @@ namespace FireAntivirus.Services
                                 var process = Process.GetProcessById(processId);
                                 CheckProcess(process);
                             }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
                 };
                 
                 processCreationWatcher.Start();
@@ -499,7 +499,7 @@ namespace FireAntivirus.Services
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
         }
         
         private bool IsSuspiciousProcessName(string processName)
@@ -543,7 +543,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
             return string.Empty;
         }
         
@@ -608,7 +608,7 @@ namespace FireAntivirus.Services
                     CheckBehaviorPattern(process, behaviorInfo);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
         }
         
         private void CheckProcessCpuUsage(Process process, ProcessBehaviorInfo behaviorInfo)
@@ -642,7 +642,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
         }
         
         private void CheckBehaviorPattern(Process process, ProcessBehaviorInfo behaviorInfo)
@@ -667,7 +667,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
         }
         
         // 数字签名验证功能 - 使用.NET X509Certificate2
@@ -746,7 +746,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProcessMonitor.cs 捕获异常", ex.Message); }
             
             return "未知";
         }

@@ -241,7 +241,7 @@ namespace FireAntivirus.Services
                     watcher.EnableRaisingEvents = false;
                     watcher.Dispose();
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FileMonitor.cs 捕获异常", ex.Message); }
             }
             _fileWatchers.Clear();
         }
@@ -518,7 +518,7 @@ namespace FireAntivirus.Services
                         NotificationType.Error
                     );
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FileMonitor.cs 捕获异常", ex.Message); }
             }
             catch (Exception ex)
             {

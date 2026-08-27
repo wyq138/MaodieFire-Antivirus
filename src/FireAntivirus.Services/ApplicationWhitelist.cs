@@ -99,7 +99,7 @@ namespace FireAntivirus.Services
         
         private void InitializeDefaultWhitelist()
         {
-            // 操作系统核心进程
+            // ==================== 操作系统核心进程 ====================
             AddSystemProcess("explorer.exe");
             AddSystemProcess("svchost.exe");
             AddSystemProcess("services.exe");
@@ -108,20 +108,89 @@ namespace FireAntivirus.Services
             AddSystemProcess("csrss.exe");
             AddSystemProcess("wininit.exe");
             AddSystemProcess("smss.exe");
-            
+            AddSystemProcess("dwm.exe");
+            AddSystemProcess("fontdrvhost.exe");
+            AddSystemProcess("RuntimeBroker.exe");
+            AddSystemProcess("SearchIndexer.exe");
+            AddSystemProcess("SearchHost.exe");
+            AddSystemProcess("sihost.exe");
+            AddSystemProcess("taskhostw.exe");
+            AddSystemProcess("ctfmon.exe");
+            AddSystemProcess("dllhost.exe");
+            AddSystemProcess("WmiPrvSE.exe");
+            AddSystemProcess("MsMpEng.exe");           // Windows Defender
+            AddSystemProcess(" NisSrv.exe");           // Windows Defender
+            AddSystemProcess("mpdefend.exe");          // Windows Defender
+
+            // ==================== Windows系统工具进程 ====================
+            AddSystemProcess("cmd.exe");
+            AddSystemProcess("powershell.exe");
+            AddSystemProcess("WindowsPowerShell.exe");
+            AddSystemProcess("conhost.exe");
+            AddSystemProcess("taskmgr.exe");
+            AddSystemProcess("rundll32.exe");
+            AddSystemProcess("regedit.exe");
+            AddSystemProcess("control.exe");
+            AddSystemProcess("mmc.exe");
+            AddSystemProcess("msiexec.exe");
+            AddSystemProcess("diskpart.exe");
+            AddSystemProcess("netsh.exe");
+            AddSystemProcess("bcdedit.exe");
+            AddSystemProcess("sc.exe");
+            AddSystemProcess("schtasks.exe");
+
+            // ==================== 常见系统应用进程 ====================
+            AddSystemProcess("notepad.exe");
+            AddSystemProcess("calc.exe");
+            AddSystemProcess("mspaint.exe");
+            AddSystemProcess("write.exe");
+            AddSystemProcess("wordpad.exe");
+            AddSystemProcess("charmap.exe");
+            AddSystemProcess("osk.exe");
+            AddSystemProcess("magnify.exe");
+            AddSystemProcess("narrator.exe");
+            AddSystemProcess("utilman.exe");
+
+            // ==================== 杀毒软件自身进程 ====================
+            AddTrustedApplication("FireAntivirus.Host.exe", @"");
+            AddTrustedApplication("FireAntivirus.Services.exe", @"");
+            AddTrustedApplication("FireAntivirus.Service.exe", @"");
+            AddTrustedApplication("FireAntivirus.Engine.exe", @"");
+
             // 常见浏览器进程
             AddTrustedApplication("chrome.exe", @"C:\Program Files\Google\Chrome\Application\");
             AddTrustedApplication("msedge.exe", @"C:\Program Files (x86)\Microsoft\Edge\Application\");
             AddTrustedApplication("firefox.exe", @"C:\Program Files\Mozilla Firefox\");
-            
+            AddTrustedApplication("brave.exe", @"C:\Program Files\BraveSoftware\Brave-Browser\Application\");
+            AddTrustedApplication("opera.exe", @"C:\Program Files\Opera\");
+
             // 办公软件
             AddTrustedApplication("winword.exe", @"C:\Program Files\Microsoft Office\root\Office16\");
             AddTrustedApplication("excel.exe", @"C:\Program Files\Microsoft Office\root\Office16\");
             AddTrustedApplication("powerpnt.exe", @"C:\Program Files\Microsoft Office\root\Office16\");
-            
+            AddTrustedApplication("outlook.exe", @"C:\Program Files\Microsoft Office\root\Office16\");
+            AddTrustedApplication("onenote.exe", @"C:\Program Files\Microsoft Office\root\Office16\");
+
             // 开发工具
             AddTrustedApplication("devenv.exe", @"C:\Program Files\Microsoft Visual Studio\");
             AddTrustedApplication("Code.exe", @"C:\Users\{0}\AppData\Local\Programs\Microsoft VS Code\");
+            AddTrustedApplication("notepad++.exe", @"C:\Program Files\Notepad++\");
+
+            // ==================== 添加病毒库临时目录到排除路径 ====================
+            AddExcludedPath(Path.GetTempPath());
+            AddExcludedPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "Temp"));
+            AddExcludedPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp"));
+        }
+
+        /// <summary>
+        /// 添加排除路径（不扫描的目录）
+        /// </summary>
+        private void AddExcludedPath(string path)
+        {
+            if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+            {
+                _whitelistedPaths.Add(path);
+            }
         }
         
         private void AddSystemProcess(string processName)
@@ -276,7 +345,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationWhitelist.cs 捕获异常", ex.Message); }
             
             return null;
         }
@@ -294,7 +363,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationWhitelist.cs 捕获异常", ex.Message); }
             
             return 0;
         }
@@ -312,7 +381,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationWhitelist.cs 捕获异常", ex.Message); }
             
             return null;
         }
@@ -401,24 +470,42 @@ namespace FireAntivirus.Services
         {
             // 基于多个因素计算严重程度
             int score = 0;
-            
-            // 进程特征
-            if (processInfo.ProcessName.ToLower().Contains("temp")) score += 2;
-            if (processInfo.FilePath?.ToLower().Contains("temp") == true) score += 3;
-            if (processInfo.FilePath?.ToLower().Contains("download") == true) score += 2;
-            
+
+            // 进程特征 - 只对真正的可疑文件加分
+            // 只对temp/download目录中的可执行文件(.exe)加分
+            if (!string.IsNullOrEmpty(processInfo.FilePath))
+            {
+                string lowerPath = processInfo.FilePath.ToLower();
+                bool isExe = lowerPath.EndsWith(".exe");
+                bool isInTemp = lowerPath.Contains(Path.GetTempPath().ToLower()) ||
+                                lowerPath.Contains(@"\temp\") ||
+                                lowerPath.Contains(@"\tmp\");
+                bool isInDownload = lowerPath.Contains(@"\download\") ||
+                                   lowerPath.Contains(@"\downloads\");
+
+                // 只有.exe文件在temp/download目录才加分
+                if (isExe && isInTemp) score += 2;
+                if (isExe && isInDownload) score += 1;
+            }
+
             // 系统相关
             if (processInfo.ParentProcessId == 0) score += 1; // 孤儿进程
             if (processInfo.CommandLine?.Contains("-enc") == true) score += 4; // 编码命令
             if (processInfo.CommandLine?.Contains("bypass") == true) score += 3; // 绕过执行策略
-            
-            // 数字签名状态
-            if (!processInfo.DigitalSignature) score += 2;
-            
+            if (processInfo.CommandLine?.Contains("-nop") == true) score += 2; // 绕过执行策略
+
+            // 数字签名状态 - 有签名的不扣分
+            if (!processInfo.DigitalSignature && !string.IsNullOrEmpty(processInfo.FilePath))
+            {
+                // 只对有路径的可执行文件检查签名
+                if (processInfo.FilePath.ToLower().EndsWith(".exe"))
+                    score += 1;
+            }
+
             // 违规频率
             if (violationCount > 5) score += 2;
             if (violationCount > 10) score += 3;
-            
+
             if (score >= 8) return ViolationSeverity.Critical;
             if (score >= 5) return ViolationSeverity.High;
             if (score >= 3) return ViolationSeverity.Medium;

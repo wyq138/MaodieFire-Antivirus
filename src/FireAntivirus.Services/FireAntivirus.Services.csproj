@@ -20,6 +20,8 @@
     <ProjectReference Include="..\FireAntivirus.Engine\FireAntivirus.Engine.csproj" />
     <ProjectReference Include="..\FireAntivirus.Common\FireAntivirus.Common.csproj" />
     <ProjectReference Include="..\FireAntivirus.ClamAV\FireAntivirus.ClamAV.csproj" />
+    <ProjectReference Include="..\FireAntivirus.CloudScanner\FireAntivirus.CloudScanner.csproj" />
+    <ProjectReference Include="..\FireAntivirus.ThreatIntelligence\FireAntivirus.ThreatIntelligence.csproj" />
   </ItemGroup>
 
 </Project>

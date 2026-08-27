@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
@@ -41,18 +42,13 @@ namespace FireAntivirus.EmailSecurity
 
         private void LoadSpamSenders()
         {
-            // 模拟加载垃圾邮件发送者列表
-            _spamSenders.Add("spam@example.com");
-            _spamSenders.Add("marketing@example.com");
-            _spamSenders.Add("noreply@example.com");
+            // 垃圾邮件发送者列表由用户手动添加，初始为空
         }
 
         private void LoadMaliciousDomains()
         {
-            // 模拟加载恶意域名列表
-            _maliciousDomains.Add("spam-domain.com");
-            _maliciousDomains.Add("phishing-domain.com");
-            _maliciousDomains.Add("malware-domain.com");
+            // 恶意域名由用户手动添加，初始为空
+            // 实时检查已委托给 ContainsMaliciousLinks 使用 SignatureDatabaseUpdater.IsMaliciousUrl
         }
 
         private void LoadSuspiciousSubjects()
@@ -172,9 +168,14 @@ namespace FireAntivirus.EmailSecurity
 
         private bool ContainsMaliciousLinks(string body)
         {
-            // 模拟检查恶意链接
-            string[] maliciousDomains = { "malicious-domain.com", "phishing-domain.com", "malware-domain.com" };
-            return maliciousDomains.Any(domain => body.Contains(domain));
+            // 从邮件正文中提取所有URL并检查是否在签名数据库中
+            var urlMatches = Regex.Matches(body, @"https?://[^\s<>""']+", RegexOptions.IgnoreCase);
+            foreach (Match match in urlMatches)
+            {
+                if (SignatureDatabaseUpdater.IsMaliciousUrl(match.Value))
+                    return true;
+            }
+            return false;
         }
 
         private EmailSecurityResult CheckAttachments(List<string> attachments)
@@ -282,6 +283,18 @@ namespace FireAntivirus.EmailSecurity
         public List<string> GetSuspiciousSubjects()
         {
             return _suspiciousSubjects;
+        }
+
+        public void UpdateSettings(bool attachmentScan, bool phishingDetection, bool spamFilter)
+        {
+            _dataManager.AddLog(new LogEntry
+            {
+                Id = Guid.NewGuid().ToString(),
+                Time = DateTime.Now,
+                Type = "EmailSecuritySettingsUpdated",
+                Message = "邮件安全设置已更新",
+                Details = $"附件扫描: {attachmentScan}, 钓鱼检测: {phishingDetection}, 垃圾过滤: {spamFilter}"
+            });
         }
     }
 }

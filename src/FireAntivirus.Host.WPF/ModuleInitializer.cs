@@ -27,7 +27,7 @@ namespace FireAntivirus.Host
                             return AssemblyLoadContext.Default.LoadFromAssemblyPath(dllPath);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ModuleInitializer.cs 捕获异常", ex.Message); }
                     return null;
                 };
                 
@@ -36,11 +36,11 @@ namespace FireAntivirus.Host
                 {
                     foreach (var dll in Directory.GetFiles(libsDir, "*.dll"))
                     {
-                        try { AssemblyLoadContext.Default.LoadFromAssemblyPath(dll); } catch { }
+                        try { AssemblyLoadContext.Default.LoadFromAssemblyPath(dll); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ModuleInitializer.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ModuleInitializer.cs 捕获异常", ex.Message); }
         }
     }
 }

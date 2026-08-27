@@ -21,7 +21,7 @@ namespace FireAntivirus.ClamAV
         private string _freshclamConfPath;
         private bool _isInitialized;
         private Timer _autoUpdateTimer;
-        private int _autoUpdateIntervalHours = 4;
+        private int _autoUpdateIntervalHours = 1; // 每小时检查一次, 保证病毒库及时更新
 
         public bool IsAvailable => _isInitialized && File.Exists(_clamscanPath);
         public string ClamAVPath => _clamAVPath;

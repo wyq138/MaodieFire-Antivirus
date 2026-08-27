@@ -1,4 +1,4 @@
-﻿// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -57,7 +57,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 // 加载警报数据
                 AlertsGrid.ItemsSource = alerts;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void SetupEventHandlers()
@@ -105,7 +105,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 behaviorAnalysis?.EnableMLDetection(EnableMLDetection.IsChecked == true);
                 behaviorAnalysis?.EnableRealTimeBlocking(EnableRealTimeBlocking.IsChecked == true);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void UpdateStatistics()
@@ -114,13 +114,34 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 var processes = Process.GetProcesses();
                 ProcessesMonitored.Text = $"监控进程: {processes.Length} 个";
-                
-                // 模拟一些统计数据
-                totalEvents += new Random().Next(0, 5);
+
+                // 使用真实监控统计数据，不生成任何模拟数据
+                if (behaviorAnalysis != null)
+                {
+                    var stats = behaviorAnalysis.GetStatistics();
+                    totalEvents = (int)stats.TotalEventsProcessed;
+                    threatsDetected = (int)stats.ThreatsDetected;
+                    processesBlocked = (int)stats.ProcessesBlocked;
+
+                    // 刷新真实威胁告警列表
+                    var realAlerts = behaviorAnalysis.GetThreatAlerts(100);
+                    alerts.Clear();
+                    foreach (var alert in realAlerts)
+                    {
+                        alerts.Add(new BehaviorAlertItem
+                        {
+                            ProcessName = alert.ProcessName ?? "未知进程",
+                            Behavior = alert.Description ?? alert.TechniqueId ?? "未知行为",
+                            Risk = alert.RiskScore.ToString("F1"),
+                            Time = alert.DetectedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                        });
+                    }
+                }
+
                 TotalEvents.Text = totalEvents.ToString();
                 ThreatsDetected.Text = threatsDetected.ToString();
                 ProcessesBlocked.Text = processesBlocked.ToString();
-                
+
                 // 更新状态
                 StatusText.Text = EnableBehaviorMonitor.IsChecked == true ? "状态: 监控中" : "状态: 已暂停";
                 StatusText.Foreground = EnableBehaviorMonitor.IsChecked == true ? Brushes.Green : Brushes.Orange;
@@ -148,7 +169,7 @@ namespace FireAntivirus.Host.WPF.Pages
         private void UpdateLanguage()
         {
             try { TitleText.Text = _languageManager.GetString("BehaviorAnalysis", "行为分析"); }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysisPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 

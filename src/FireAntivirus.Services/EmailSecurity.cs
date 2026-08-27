@@ -446,7 +446,7 @@ namespace FireAntivirus.Services
                         }
 
                         // 清理临时文件
-                        try { Directory.Delete(tempPath, true); } catch { }
+                        try { Directory.Delete(tempPath, true); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurity.cs 捕获异常", ex.Message); }
                     }
                     catch (Exception ex)
                     {
@@ -561,7 +561,7 @@ namespace FireAntivirus.Services
                     _scanIntervalMinutes = settings.ScanIntervalMinutes;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurity.cs 捕获异常", ex.Message); }
         }
 
         private void SaveSettings()
@@ -577,7 +577,7 @@ namespace FireAntivirus.Services
                 };
                 _dataManager.SaveEmailSecuritySettings(settings);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurity.cs 捕获异常", ex.Message); }
         }
 
         private void LoadAccounts()
@@ -600,7 +600,7 @@ namespace FireAntivirus.Services
                     }).ToList();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurity.cs 捕获异常", ex.Message); }
         }
 
         private void SaveAccounts()
@@ -620,7 +620,7 @@ namespace FireAntivirus.Services
                 }).ToList();
                 _dataManager.SaveEmailAccounts(accounts);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurity.cs 捕获异常", ex.Message); }
         }
 
         private void SaveThreatEmail(EmailMessage email, string threatType, string reason)
@@ -638,7 +638,7 @@ namespace FireAntivirus.Services
                 };
                 _dataManager.SaveThreatEmail(threat);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurity.cs 捕获异常", ex.Message); }
         }
 
         public void UpdateSettings(bool enableAttachmentScan, bool enablePhishingDetection, bool enableSpamFilter)

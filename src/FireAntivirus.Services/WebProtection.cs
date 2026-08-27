@@ -247,7 +247,7 @@ namespace FireAntivirus.Services
                 File.WriteAllLines(HostsFilePath, lines, Encoding.UTF8);
                 FlushDnsCache();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtection.cs 捕获异常", ex.Message); }
         }
 
         /// <summary>
@@ -325,7 +325,7 @@ namespace FireAntivirus.Services
                 File.AppendAllLines(HostsFilePath, lines, Encoding.UTF8);
                 FlushDnsCache();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtection.cs 捕获异常", ex.Message); }
         }
 
         private void RemoveFromHostsFile(string domain)
@@ -340,7 +340,7 @@ namespace FireAntivirus.Services
                 File.WriteAllLines(HostsFilePath, lines, Encoding.UTF8);
                 FlushDnsCache();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtection.cs 捕获异常", ex.Message); }
         }
 
         private void FlushDnsCache()
@@ -349,7 +349,7 @@ namespace FireAntivirus.Services
             {
                 DnsFlushResolverCache();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtection.cs 捕获异常", ex.Message); }
         }
 
         private bool HasAdminPrivileges()
@@ -403,7 +403,7 @@ namespace FireAntivirus.Services
                         CheckBrowserActivity(process);
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtection.cs 捕获异常", ex.Message); }
 
                 Thread.Sleep(5000);
             }
@@ -469,7 +469,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtection.cs 捕获异常", ex.Message); }
         }
 
         private string GetProcessCommandLine(int processId)
@@ -484,7 +484,7 @@ namespace FireAntivirus.Services
                     return obj["CommandLine"] as string ?? string.Empty;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtection.cs 捕获异常", ex.Message); }
             return string.Empty;
         }
 
@@ -609,7 +609,7 @@ namespace FireAntivirus.Services
                 };
                 _dataManager.SaveWebProtectionData(data);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtection.cs 捕获异常", ex.Message); }
         }
 
         #endregion

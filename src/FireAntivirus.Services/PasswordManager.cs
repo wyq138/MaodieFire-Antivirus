@@ -248,7 +248,7 @@ namespace FireAntivirus.Services
                     _masterPasswordHash = hashData.Hash;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PasswordManager.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -428,7 +428,7 @@ namespace FireAntivirus.Services
                     };
                     decryptedPasswords.Add(decrypted);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PasswordManager.cs 捕获异常", ex.Message); }
             }
             
             return decryptedPasswords;
@@ -735,7 +735,7 @@ namespace FireAntivirus.Services
                     }).ToList();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PasswordManager.cs 捕获异常", ex.Message); }
         }
 
         private void SavePasswords()
@@ -757,7 +757,7 @@ namespace FireAntivirus.Services
                 }).ToList();
                 _dataManager.SaveStoredPasswords(data);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PasswordManager.cs 捕获异常", ex.Message); }
         }
 
         public void UpdateSettings(bool enablePasswordStorage)

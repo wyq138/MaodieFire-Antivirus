@@ -1,4 +1,4 @@
-﻿// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -47,13 +47,14 @@ namespace FireAntivirus.Host.WPF.Pages
             Loaded += async (s, e) =>
             {
                 await System.Threading.Tasks.Task.Run(() => InitializeService());
-                await System.Threading.Tasks.Task.Run(() => LoadReports());
+                // LoadReports 会更新 UI 控件(ReportsGrid)，必须在 UI 线程执行，否则跨线程异常导致闪退
+                LoadReports();
             };
         }
 
         private void InitializeService()
         {
-            try { reportService = new SecurityReportService(); } catch { }
+            try { reportService = new SecurityReportService(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void LoadReports()
@@ -135,7 +136,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void UpdateLanguage()
         {
-            try { TitleText.Text = _languageManager.GetString("SecurityReport", "安全报告"); } catch { }
+            try { TitleText.Text = _languageManager.GetString("SecurityReport", "安全报告"); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

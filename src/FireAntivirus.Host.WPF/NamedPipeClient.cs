@@ -116,7 +116,7 @@ namespace FireAntivirus.Host
                 }
                 Disconnected?.Invoke(this, EventArgs.Empty);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NamedPipeClient.cs 捕获异常", ex.Message); }
         }
 
         public void SendMessage(Message message)

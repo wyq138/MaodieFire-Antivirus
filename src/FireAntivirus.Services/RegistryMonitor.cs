@@ -141,7 +141,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RegistryMonitor.cs 捕获异常", ex.Message); }
         }
         
         private void CalculateRegistryHashes()
@@ -177,7 +177,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RegistryMonitor.cs 捕获异常", ex.Message); }
         }
         
         private void MonitorRegistry()
@@ -246,7 +246,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RegistryMonitor.cs 捕获异常", ex.Message); }
             }
         }
         
@@ -286,7 +286,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RegistryMonitor.cs 捕获异常", ex.Message); }
             }
         }
         
@@ -312,7 +312,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RegistryMonitor.cs 捕获异常", ex.Message); }
             }
         }
         
@@ -526,7 +526,7 @@ namespace FireAntivirus.Services
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RegistryMonitor.cs 捕获异常", ex.Message); }
         }
 
         public void ProtectRegistryKey(string keyPath, object level) { }

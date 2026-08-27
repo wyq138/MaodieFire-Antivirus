@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.IO;
@@ -585,7 +585,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 {
                     count += Directory.GetFiles(path, "*.*", SearchOption.AllDirectories).Length;
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ScanPage.xaml.cs 捕获异常", ex.Message); }
             }
             return count;
         }

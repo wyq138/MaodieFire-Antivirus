@@ -1,0 +1,53 @@
+{
+  "extensions": [
+    ".encrypted", ".locked", ".crypto", ".crypt", ".enc", ".zzz", ".ccc",
+    ".lockedfile", ".encryptedfile", ".wannacry",
+    ".wnry", ".wncry", ".wncryt", ".zepto", ".locky", ".odin", ".shit",
+    ".cerber", ".cerber2", ".cerber3", ".xbtl", ".ytbl",
+    ".sage", ".globe", ".nmore", ".wallet", ".globe2", ".purge",
+    ".dharma", ".java", ".lesli", ".arena", ".wannacash",
+    ".wcry", ".wCRY", ".WNCRY", ".WNCRYT", ".ZYKLON", ".ETH",
+    ".CRAB", ".GANDCRAB", ".STOP", ".DATASTOP", ".CLOP", ".MAKOP",
+    ".crinf", ".enlocked", ".aesir", ".thor", ".zzzzz", ".osiris",
+    ".cryptolocker", ".cryptowall", ".locklock", ".lockymap",
+    ".aaa", ".abc", ".xyz", ".porno", ".pornoasset",
+    ".encoding", ".encode", ".coded", ".code",
+    ".rsa", ".aes", ".rsa4096", ".aes256",
+    ".exx", ".dxx", ".axx", ".bxx", ".cxx",
+    ".vault", ".vaultcrypt", ".vaultencrypted",
+    ".goldeneye", ".globeimposter", ".sage2.0",
+    ".r5a", ".r4a", ".r3a", ".crjoker", ".joker",
+    ".keybtc@inbox_com", ".btc", ".HA3", ".toxcrypt", ".magic", ".SERP",
+    ".r16m01od13", ".kuneming", ".rsakey", ".no_more_ransom",
+    ".restorefiles", ".decrypt", ".shifu", ".rsencrypted", ".crypted",
+    ".encryptedrsa", ".encryptedaes", ".enciphered", ".lockedbydharma", ".bip",
+    ".wal", ".data", ".shadow", ".shadowbroker", ".adk", ".brrr", ".crab", ".crabsl",
+    ".decryptfiles", ".djvu", ".djvur", ".djvus", ".ewam", ".fbf", ".foop",
+    ".frend", ".gehad", ".harma", ".infow", ".karlos", ".korea", ".leto",
+    ".lotej", ".makeoffline", ".masodas", ".mesetas", ".nampohyu", ".neras",
+    ".nhiroshima", ".paas", ".puton", ".radman", ".rop", ".rooe",
+    ".stare", ".stop", ".trod", ".television", ".tfude", ".tfudet", ".tfudeq",
+    ".truke", ".txtp", ".usuf", ".vanss", ".vesrato", ".xoza", ".xtbl", ".zed",
+    ".zombie"
+  ],
+  "names": [
+    "WannaCry", "Petya", "NotPetya", "Locky", "Cerber", "CryptoLocker",
+    "CryptoWall", "TeslaCrypt", "CTB-Locker", "Sage", "Globe", "Jigsaw",
+    "Mamba", "SamSam", "Ryuk", "Dharma", "GandCrab", "Sodinokibi",
+    "Maze", "DoppelPaymer", "Netwalker", "Conti", "Avaddon", "DarkSide",
+    "REvil", "BlackCat", "BlackMatter", "Hive", "LockBit", "Babuk",
+    "Crypto", "Cryptowall", "Aesir", "Thor", "Odin", "Zepto", "Enlock",
+    "Locklock", "Lockymap", "Toxcrypt", "Joker", "Dharma",
+    "Filecoder", "Encoder", "Filecryptor", "Ransom", "Cryptor", "Encryptor",
+    "Djvu", "Stop", "Trojan.Encoder", "Ransom.Encrypt"
+  ],
+  "notes": [
+    "!READ_ME!.txt", "README.txt", "DECRYPT.txt", "RESTORE_FILES.txt",
+    "YOUR_FILES_ARE_ENCRYPTED.txt", "HOW_TO_DECRYPT.txt", "RECOVER-FILES.txt",
+    "!READ_TO_DECRYPT!.txt", "_readme.txt", "restore_files.txt",
+    "!_WHAT_is_!.txt", "!DECRYPT_INSTRUCTION!.txt", "!_DECRYPT_INFO_!.txt",
+    "DECRYPT_INSTRUCTIONS.HTML", "!GET_MY_FILES.TXT", "YOUR_FILES.txt",
+    "HELP_DECRYPT_YOUR_FILES.html", "DECRYPT_YOUR_FILES.HTML",
+    "recover-yo-files.txt", "GET_MY_FILES.txt", "FILES_ENCRYPTED.txt"
+  ]
+}

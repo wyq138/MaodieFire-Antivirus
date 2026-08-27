@@ -34,6 +34,11 @@ namespace FireAntivirus.Host
         private SystemStabilityMonitor systemStabilityMonitor;
         private SystemSecurityMonitor systemSecurityMonitor;
 
+        // 实时资源采样缓冲区（基于真实监控数据滚动记录）
+        private readonly object _historyLock = new object();
+        private readonly List<ResourceUsageHistory> _resourceHistory = new List<ResourceUsageHistory>();
+        private readonly int _historyMaxSamples = 24;
+
         public SystemMonitorManager()
         {
             dataManager = new DataManager();
@@ -537,27 +542,50 @@ namespace FireAntivirus.Host
         {
             try
             {
-                var history = new List<ResourceUsageHistory>();
-                // 这里可以实现历史记录功能，从数据库或日志中获取
-                // 暂时返回模拟数据
-                for (int i = hours; i >= 0; i--)
+                lock (_historyLock)
                 {
-                    var time = DateTime.Now.AddHours(-i);
-                    history.Add(new ResourceUsageHistory
+                    // 采集一次真实资源用量并追加到滚动缓冲区
+                    _resourceHistory.Add(SampleResourceUsage());
+
+                    // 仅保留最近的历史样本，避免无限增长
+                    while (_resourceHistory.Count > _historyMaxSamples * 4)
                     {
-                        Timestamp = time,
-                        CPUUsage = new Random().Next(20, 80),
-                        MemoryUsage = new Random().Next(30, 90),
-                        DiskUsage = new Random().Next(40, 85)
-                    });
+                        _resourceHistory.RemoveAt(0);
+                    }
+
+                    // 返回最近 hours+1 条真实样本；历史不足时只返回已采集到的真实数据
+                    return _resourceHistory
+                        .Skip(Math.Max(0, _resourceHistory.Count - (hours + 1)))
+                        .Select(e => new ResourceUsageHistory
+                        {
+                            Timestamp = e.Timestamp,
+                            CPUUsage = Math.Round(e.CPUUsage, 2),
+                            MemoryUsage = Math.Round(e.MemoryUsage, 2),
+                            DiskUsage = Math.Round(e.DiskUsage, 2)
+                        })
+                        .ToList();
                 }
-                return history;
             }
             catch (Exception ex)
             {
                 dataManager.LogError("获取资源使用历史失败", ex.Message, "SystemMonitorManager");
                 return new List<ResourceUsageHistory>();
             }
+        }
+
+        /// <summary>
+        /// 采样当前系统真实的 CPU / 内存 / 磁盘使用率
+        /// </summary>
+        private ResourceUsageHistory SampleResourceUsage()
+        {
+            var resourceInfo = systemResourceMonitor.GetSystemResourceInfo();
+            return new ResourceUsageHistory
+            {
+                Timestamp = DateTime.Now,
+                CPUUsage = resourceInfo.CPUUsage,
+                MemoryUsage = resourceInfo.MemoryUsage,
+                DiskUsage = resourceInfo.DiskUsage
+            };
         }
     }
 
@@ -700,9 +728,7 @@ namespace FireAntivirus.Host
 
                         processes.Add(processInfo);
                     }
-                    catch
-                    {
-                    }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemMonitorManager.cs exception", ex.Message);  }
                 }
                 return processes;
             }
@@ -2174,11 +2200,11 @@ namespace FireAntivirus.Host
                             cleanedSize += new FileInfo(file).Length;
                             File.Delete(file);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemMonitorManager.cs exception", ex.Message);  }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemMonitorManager.cs exception", ex.Message);  }
             return cleanedSize;
         }
 
@@ -2200,11 +2226,11 @@ namespace FireAntivirus.Host
                                 File.Delete(file);
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemMonitorManager.cs exception", ex.Message);  }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemMonitorManager.cs exception", ex.Message);  }
             return cleanedSize;
         }
 
@@ -2224,12 +2250,12 @@ namespace FireAntivirus.Host
                                 cleanedSize += new FileInfo(file).Length;
                                 File.Delete(file);
                             }
-                            catch { }
+                            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemMonitorManager.cs exception", ex.Message);  }
                         }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemMonitorManager.cs exception", ex.Message);  }
             return cleanedSize;
         }
 

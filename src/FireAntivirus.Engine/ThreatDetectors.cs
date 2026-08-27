@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using FireAntivirus.Common;
 
 namespace FireAntivirus.Engine
 {
@@ -109,7 +110,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"Shellcode分数: {shellcodeScore}, ROP分数: {ropScore}, 反调试分数: {antiDebugScore}";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ThreatDetectors.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -275,37 +276,18 @@ namespace FireAntivirus.Engine
     /// </summary>
     public class RansomwareDetector
     {
-        private readonly HashSet<string> _ransomwareExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ".encrypted", ".locked", ".crypto", ".crypt", ".enc", ".zzz", ".ccc",
-            ".locked", ".lockedfile", ".encryptedfile", ".crypto", ".wannacry",
-            ".wnry", ".wncry", ".wncryt", ".zepto", ".locky", ".odin", ".shit",
-            ".cerber", ".cerber2", ".cerber3", ".xbtl", ".ytbl", ".zepto",
-            ".sage", ".globe", ".nmore", ".wallet", ".globe2", ".purge",
-            ".dharma", ".java", ".lesli", ".arena", ". Scarab", ".wannacash",
-            ".wcry", ".wCRY", ".WNCRY", ".WNCRYT", ".ZYKLON", ".ETH",
-            ".CRAB", ".GANDCRAB", ".STOP", ".DATASTOP", ".CLOP", ".MAKOP"
-        };
+        private readonly HashSet<string> _ransomwareExtensions;
+        private readonly HashSet<string> _ransomwareNames;
+        private readonly List<string> _ransomNotes;
 
-        private readonly HashSet<string> _ransomwareNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        // 勒索软件特征从外部 JSON 加载（ThreatData/ransomware_signatures.json），不内嵌于 DLL
+        public RansomwareDetector()
         {
-            "WannaCry", "Petya", "NotPetya", "Locky", "Cerber", "CryptoLocker",
-            "CryptoWall", "TeslaCrypt", "CTB-Locker", "Sage", "Globe", "Jigsaw",
-            "Mamba", "SamSam", "Ryuk", "Dharma", "GandCrab", "Sodinokibi",
-            "Maze", "DoppelPaymer", "Netwalker", "Conti", "Avaddon", "DarkSide",
-            "REvil", "BlackCat", "BlackMatter", "Hive", "LockBit", "Babuk"
-        };
-
-        private readonly List<string> _ransomNotes = new List<string>
-        {
-            "!READ_ME!.txt", "README.txt", "DECRYPT.txt", "RESTORE_FILES.txt",
-            "YOUR_FILES_ARE_ENCRYPTED.txt", "HOW_TO_DECRYPT.txt", "RECOVER-FILES.txt",
-            "!READ_TO_DECRYPT!.txt", "_readme.txt", "restore_files.txt",
-            "!_WHAT_is_!.txt", "!DECRYPT_INSTRUCTION!.txt", "!_DECRYPT_INFO_!.txt",
-            "DECRYPT_INSTRUCTIONS.HTML", "!GET_MY_FILES.TXT", "YOUR_FILES.txt",
-            "HELP_DECRYPT_YOUR_FILES.html", "DECRYPT_YOUR_FILES.HTML",
-            "recover-yo-files.txt", "GET_MY_FILES.txt", "FILES_ENCRYPTED.txt"
-        };
+            ExternalThreatData.EnsureLoaded();
+            _ransomwareExtensions = ExternalThreatData.RansomwareExtensions;
+            _ransomwareNames = ExternalThreatData.RansomwareNames;
+            _ransomNotes = ExternalThreatData.RansomNotes;
+        }
 
         public DetectionResult Detect(string filePath, byte[] fileContent)
         {
@@ -358,7 +340,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"扩展名匹配: {hasRansomExt}, 勒索信: {isRansomNote}, 加密特征分数: {encryptionScore}";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ThreatDetectors.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -429,10 +411,11 @@ namespace FireAntivirus.Engine
             if (contentStr.Contains("File.Move") || contentStr.Contains("MoveFile")) score += 15;
             if (contentStr.Contains("File.Delete") || contentStr.Contains("DeleteFile")) score += 10;
 
-            // 检测影子拷贝删除命令
-            if (contentStr.Contains("vssadmin delete shadows")) score += 50;
-            if (contentStr.Contains("wbadmin delete catalog")) score += 40;
-            if (contentStr.Contains("bcdedit /set {default} recoveryenabled no")) score += 40;
+            // 检测影子拷贝删除命令（命令串从外部 JSON 加载，不内嵌于 DLL）
+            foreach (var cmd in ExternalThreatData.CommandIndicators)
+            {
+                if (contentStr.IndexOf(cmd, StringComparison.OrdinalIgnoreCase) >= 0) score += 40;
+            }
 
             return Math.Min(100, score);
         }
@@ -512,7 +495,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"行为: {behaviorScore}, 网络: {networkScore}, 注入: {injectionScore}, 持久化: {persistenceScore}";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ThreatDetectors.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -583,8 +566,9 @@ namespace FireAntivirus.Engine
             if (content.Contains("CreateProcess") && content.Contains("NtUnmapViewOfSection")) score += 40;
             if (content.Contains("ResumeThread")) score += 15;
 
-            // 反射式注入
-            if (content.Contains("ReflectiveLoader")) score += 40;
+            // 反射式注入（漏洞利用名从外部 JSON 加载）
+            if (ExternalThreatData.ExploitNames.Contains("ReflectiveLoader") &&
+                content.Contains("ReflectiveLoader")) score += 40;
 
             return Math.Min(100, score);
         }
@@ -699,7 +683,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"键盘记录: {keyloggerScore}, 屏幕监控: {screenMonitorScore}, 数据窃取: {dataTheftScore}";
                 }
             }
-            catch { }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "间谍软件检测失败", ex.Message); }
 
             return result;
         }
@@ -846,7 +830,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"弹窗: {popupScore}, 劫持: {hijackScore}, 注入: {injectScore}";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ThreatDetectors.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -983,7 +967,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"Hook: {hookScore}, 轮询: {pollingScore}, 原始输入: {rawInputScore}, 记录: {loggingScore}";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ThreatDetectors.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -1032,7 +1016,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"反向连接: {reverseConnectScore}, 监听: {listeningScore}, 命令执行: {cmdExecScore}";
                 }
             }
-            catch { }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "后门检测失败", ex.Message); }
 
             return result;
         }
@@ -1157,7 +1141,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"复制: {replicationScore}, 传播: {propagationScore}, 漏洞: {exploitScore}";
                 }
             }
-            catch { }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "蠕虫检测失败", ex.Message); }
 
             return result;
         }
@@ -1199,9 +1183,14 @@ namespace FireAntivirus.Engine
         {
             int score = 0;
 
-            // 已知漏洞利用
-            if (content.Contains("EternalBlue") || content.Contains("MS17-010")) score += 50;
-            if (content.Contains("BlueKeep") || content.Contains("CVE-2019-0708")) score += 50;
+            // 已知漏洞利用（利用名从外部 JSON 加载，不内嵌于 DLL，含 EternalBlue/MS17-010 等）
+            int matchedExploitCount = 0;
+            foreach (var e in ExternalThreatData.ExploitNames)
+            {
+                if (content.IndexOf(e, StringComparison.OrdinalIgnoreCase) >= 0) matchedExploitCount++;
+            }
+            if (matchedExploitCount > 0) score += 50;
+            if (content.Contains("CVE-2019-0708")) score += 50;
             if (content.Contains("PrintNightmare")) score += 45;
 
             return Math.Min(100, score);
@@ -1265,7 +1254,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"感染: {infectionScore}, 多态: {polymorphicScore}, 加壳: {packingScore}";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ThreatDetectors.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -1330,23 +1319,16 @@ namespace FireAntivirus.Engine
     /// </summary>
     public class MinerDetector
     {
-        private readonly HashSet<string> _minerPools = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "pool.minero.cc", "pool.monero.hashvault.pro", "pool.supportxmr.com",
-            "xmr-eu1.nanopool.org", "xmr-us-east1.nanopool.org", "xmr-asia1.nanopool.org",
-            "stratum+tcp://xmr.pool.minergate.com", "stratum+tcp://pool.monero.hashvault.pro",
-            "donate.v2.xmrig.com", "pool.xmrig.com", "mine.moneropool.com",
-            "xmr.crypto-pool.fr", "monerohash.com", "minexmr.com", "xmrpool.net",
-            "coinhive.com", "coin-hive.com", "crypto-loot.com", "authedmine.com"
-        };
+        private readonly HashSet<string> _minerPools;
+        private readonly HashSet<string> _minerBinaries;
 
-        private readonly HashSet<string> _minerBinaries = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        // 矿池地址/矿机二进制名从外部 JSON 加载（ThreatData/malicious_indicators.json），不内嵌于 DLL
+        public MinerDetector()
         {
-            "xmrig.exe", "xmr-stak.exe", "minerd.exe", "cpuminer.exe",
-            "ethminer.exe", "claymore.exe", "phoenixminer.exe", "nbminer.exe",
-            "t-rex.exe", "lolminer.exe", "teamredminer.exe", "bminer.exe",
-            "cryptonote.exe", "minergate.exe", "nicehash.exe", "ccminer.exe"
-        };
+            ExternalThreatData.EnsureLoaded();
+            _minerPools = ExternalThreatData.MiningPools;
+            _minerBinaries = ExternalThreatData.MiningBinaries;
+        }
 
         public DetectionResult Detect(string filePath, byte[] fileContent)
         {
@@ -1391,7 +1373,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"矿池: {poolScore}, 程序: {binaryScore}, 钱包: {walletScore}";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ThreatDetectors.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -1409,9 +1391,11 @@ namespace FireAntivirus.Engine
                 }
             }
 
-            // 检测stratum协议
-            if (content.Contains("stratum+tcp")) score += 35;
-            if (content.Contains("stratum://")) score += 35;
+            // 检测stratum协议（协议关键字从外部 JSON 加载）
+            foreach (var proto in ExternalThreatData.MiningProtocols)
+            {
+                if (content.Contains(proto)) { score += 35; break; }
+            }
 
             return Math.Min(100, score);
         }
@@ -1540,7 +1524,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"捆绑: {bundleScore}, 假优化: {fakeOptimizerScore}, 误导: {misleadingScore}";
                 }
             }
-            catch { }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "PUP检测失败", ex.Message); }
 
             return result;
         }

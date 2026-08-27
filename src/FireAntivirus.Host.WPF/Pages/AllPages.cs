@@ -1,4 +1,4 @@
-// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 所有页面定义 - 所有页面均已有独立XAML实现
 
 namespace FireAntivirus.Host.Pages

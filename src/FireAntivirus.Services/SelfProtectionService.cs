@@ -338,7 +338,7 @@ namespace FireAntivirus.Services
                             {
                                 File.SetAttributes(filePath, attributes | FileAttributes.ReadOnly);
                             }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SelfProtectionService.cs 捕获异常", ex.Message); }
                         }
                     }
                 }
@@ -473,7 +473,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SelfProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void DetectProcessTerminationAttempts()
@@ -488,7 +488,7 @@ namespace FireAntivirus.Services
                     // 由于是事后检测，主要用于日志记录和告警
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SelfProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void ProtectRegistry()
@@ -531,7 +531,7 @@ namespace FireAntivirus.Services
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SelfProtectionService.cs 捕获异常", ex.Message); }
         }
     }
 }

@@ -84,7 +84,7 @@ namespace FireAntivirus.Services
             {
                 File.AppendAllText(_logPath, $"[{DateTime.Now}] {message}\n");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void InitializeMonitors()
@@ -196,7 +196,7 @@ namespace FireAntivirus.Services
                     Details = $"监控器: {started}成功/{failed}失败, 初始化错误: {_initErrors.Count}"
                 });
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
             
             Log("保护服务启动完成");
         }
@@ -214,14 +214,14 @@ namespace FireAntivirus.Services
             // 停止所有监控器
             foreach (var monitor in _monitors)
             {
-                try { monitor.Stop(); } catch { }
+                try { monitor.Stop(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
             }
 
             // 停止通知服务
-            try { NotificationService.Instance.Stop(); } catch { }
+            try { NotificationService.Instance.Stop(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
 
             // 停止自我保护服务
-            try { _selfProtectionService?.Stop(); } catch { }
+            try { _selfProtectionService?.Stop(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
 
             try
             {
@@ -234,7 +234,7 @@ namespace FireAntivirus.Services
                     Details = "所有监控器已停止"
                 });
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
             
             Log("保护服务已停止");
         }
@@ -265,7 +265,7 @@ namespace FireAntivirus.Services
                         Details = ex.Message
                     });
                 }
-                catch { }
+                catch (System.Exception ex2) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex2.Message); }
             }
             Log("保护线程退出");
         }
@@ -295,7 +295,7 @@ namespace FireAntivirus.Services
             {
                 _dataManager?.UpdateVirusDatabase();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void CleanupQuarantine()
@@ -310,10 +310,10 @@ namespace FireAntivirus.Services
 
                 foreach (var item in oldItems)
                 {
-                    try { _dataManager?.DeleteFromQuarantine(item.Id); } catch { }
+                    try { _dataManager?.DeleteFromQuarantine(item.Id); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void CleanupLogs()
@@ -322,7 +322,7 @@ namespace FireAntivirus.Services
             {
                 _dataManager?.CleanupOldLogs(30);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ProtectionService.cs 捕获异常", ex.Message); }
     }
 
     public enum MonitorPriority

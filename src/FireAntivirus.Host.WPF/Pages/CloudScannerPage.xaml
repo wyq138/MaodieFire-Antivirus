@@ -73,6 +73,48 @@
                     </StackPanel>
                 </Border>
                 
+                <!-- 云引擎配置 -->
+                <Border Background="{DynamicResource CardBg}"
+                        BorderBrush="{DynamicResource BorderColor}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Margin="0,0,0,15"
+                        Padding="15">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="⚙️ 云引擎配置"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimary}"/>
+                            <Button Grid.Column="1" x:Name="ConfigBtn"
+                                    Content="配置 API Key"
+                                    Width="110"
+                                    Height="26"
+                                    Padding="0"
+                                    Click="ConfigBtn_Click"/>
+                        </Grid>
+
+                        <TextBlock x:Name="EnginesText"
+                                   Text="已启用引擎: 加载中..."
+                                   FontSize="11"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock x:Name="VtStatusText"
+                                   Text="VirusTotal: 未配置 API Key (仅使用免费引擎)"
+                                   FontSize="11"
+                                   Foreground="Orange"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock Text="免费引擎(MalwareBazaar+OTX)无需配置即可使用；配置 VirusTotal API Key 后可启用 70+ 引擎查杀"
+                                   FontSize="10"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- 扫描进度 -->
                 <Border x:Name="ProgressPanel"
                         Background="{DynamicResource CardBg}"

@@ -1,4 +1,4 @@
-﻿// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -29,7 +29,7 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 _ = System.Threading.Tasks.Task.Run(() =>
                 {
-                    try { backupService = new BackupService(new DataManager()); } catch { }
+                    try { backupService = new BackupService(new DataManager()); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupPage.xaml.cs 捕获异常", ex.Message); }
                     
                     Dispatcher.BeginInvoke(new Action(() =>
                     {
@@ -66,12 +66,12 @@ namespace FireAntivirus.Host.WPF.Pages
                             CreatedTime = info.CreationTime.ToString("yyyy-MM-dd HH:mm"),
                             Size = FormatSize(GetDirectorySize(dir))
                         });
-                    } catch { }
+                    } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupPage.xaml.cs 捕获异常", ex.Message); }
                 }
                 BackupTasksGrid.ItemsSource = null;
                 BackupTasksGrid.ItemsSource = backupTasks;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private long GetDirectorySize(string path)
@@ -82,7 +82,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 foreach (var file in System.IO.Directory.GetFiles(path, "*.*", System.IO.SearchOption.AllDirectories))
                     size += new System.IO.FileInfo(file).Length;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupPage.xaml.cs 捕获异常", ex.Message); }
             return size;
         }
 
@@ -141,7 +141,7 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 TitleText.Text = _languageManager.GetString("Backup", "备份恢复");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 

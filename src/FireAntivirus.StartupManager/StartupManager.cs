@@ -19,6 +19,11 @@ namespace FireAntivirus.StartupManager
         private List<StartupItem> _startupItems;
         private string _backupPath;
 
+        public StartupManager()
+            : this(new DataManager())
+        {
+        }
+
         public StartupManager(DataManager dataManager)
         {
             _dataManager = dataManager;
@@ -72,7 +77,7 @@ namespace FireAntivirus.StartupManager
                     _startupItems.Add(item);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs 捕获异常", ex.Message); }
         }
 
         private void LoadStartupFolderItems()
@@ -87,7 +92,7 @@ namespace FireAntivirus.StartupManager
                 var commonStartupPath = Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup);
                 LoadStartupFolderItems(commonStartupPath, "Common Startup Folder");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs 捕获异常", ex.Message); }
         }
 
         private void LoadStartupFolderItems(string folderPath, string location)
@@ -109,7 +114,7 @@ namespace FireAntivirus.StartupManager
                         item.ShortcutPath = file;
                         _startupItems.Add(item);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs 捕获异常", ex.Message); }
                 }
 
                 // 也检查其他可执行文件
@@ -130,7 +135,7 @@ namespace FireAntivirus.StartupManager
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs 捕获异常", ex.Message); }
         }
 
         private void LoadAutoStartServices()
@@ -164,7 +169,7 @@ namespace FireAntivirus.StartupManager
                     _startupItems.Add(item);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs 捕获异常", ex.Message); }
         }
 
         private void LoadScheduledTasks()
@@ -217,7 +222,7 @@ namespace FireAntivirus.StartupManager
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs 捕获异常", ex.Message); }
         }
 
         private StartupItem CreateStartupItem(string name, string path, string location, string type)
@@ -678,7 +683,7 @@ namespace FireAntivirus.StartupManager
                             AddStartupItem(name, path, location);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs 捕获异常", ex.Message); }
                 }
 
                 _dataManager.AddLog(new LogEntry

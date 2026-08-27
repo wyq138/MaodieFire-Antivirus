@@ -33,7 +33,7 @@ namespace FireAntivirus.ServiceHost
             {
                 File.AppendAllText(_logPath, $"[{DateTime.Now}] {message}\n");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "Program.cs 捕获异常", ex.Message); }
         }
 
         protected override void OnStart(string[] args)
@@ -131,7 +131,7 @@ namespace FireAntivirus.ServiceHost
             
             void Log(string message)
             {
-                try { File.AppendAllText(logPath, $"[{DateTime.Now}] {message}\n"); } catch { }
+                try { File.AppendAllText(logPath, $"[{DateTime.Now}] {message}\n"); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "Program.cs 捕获异常", ex.Message); }
             }
 
             // 检查是否以控制台模式运行

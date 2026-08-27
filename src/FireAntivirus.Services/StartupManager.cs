@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级启动项管理引擎 - 对标Autoruns/Sysinternals能力
 using System;
 using System.Collections.Concurrent;
@@ -173,7 +173,7 @@ namespace FireAntivirus.Services
                     CalculateRiskScore(item);
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return items.OrderBy(i => i.RiskLevel).ThenBy(i => i.Name).ToList();
         }
@@ -516,10 +516,10 @@ namespace FireAntivirus.Services
                             backups.Add(backup);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return backups.OrderByDescending(b => b.Timestamp).ToList();
         }
@@ -575,7 +575,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
             }
 
             return items;
@@ -617,10 +617,10 @@ namespace FireAntivirus.Services
 
                             items.Add(item);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
             }
 
             return items;
@@ -661,11 +661,11 @@ namespace FireAntivirus.Services
 
                             items.Add(item);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return items;
         }
@@ -702,11 +702,11 @@ namespace FireAntivirus.Services
 
                             items.Add(item);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return items;
         }
@@ -745,11 +745,11 @@ namespace FireAntivirus.Services
 
                             items.Add(item);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return items;
         }
@@ -787,11 +787,11 @@ namespace FireAntivirus.Services
 
                             items.Add(item);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return items;
         }
@@ -830,7 +830,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return items;
         }
@@ -853,7 +853,7 @@ namespace FireAntivirus.Services
                     item.FileSize = fileInfo.Length;
                     item.FileLastWrite = fileInfo.LastWriteTime;
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
             }
 
             // 获取签名信息
@@ -946,7 +946,7 @@ namespace FireAntivirus.Services
                         reasons.Add("隐藏文件");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
             }
 
             // 检查服务配置
@@ -1105,7 +1105,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return info;
         }
@@ -1143,7 +1143,7 @@ namespace FireAntivirus.Services
                 impact.BootDelayMs = impact.ImpactScore * 10;
                 impact.MemoryImpactMB = item.FileSize / (1024 * 1024);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return impact;
         }
@@ -1169,7 +1169,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
             }
 
             return dependencies;
@@ -1284,7 +1284,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1299,7 +1299,7 @@ namespace FireAntivirus.Services
                 File.Move(item.Path, disabledPath);
                 return true;
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1319,7 +1319,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1338,7 +1338,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1360,7 +1360,7 @@ namespace FireAntivirus.Services
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1382,7 +1382,7 @@ namespace FireAntivirus.Services
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1402,7 +1402,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1428,7 +1428,7 @@ namespace FireAntivirus.Services
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1461,7 +1461,7 @@ namespace FireAntivirus.Services
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1476,7 +1476,7 @@ namespace FireAntivirus.Services
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1495,7 +1495,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1524,7 +1524,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1540,7 +1540,7 @@ namespace FireAntivirus.Services
                     return true;
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1554,7 +1554,7 @@ namespace FireAntivirus.Services
                 CreateShortcut(shortcutPath, item.Path, "");
                 return true;
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1578,7 +1578,7 @@ namespace FireAntivirus.Services
                 process?.WaitForExit(10000);
                 return process?.ExitCode == 0;
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return false;
         }
@@ -1667,7 +1667,7 @@ namespace FireAntivirus.Services
                 // 简化实现
                 File.WriteAllText(shortcutPath, $"Target: {targetPath}\nArguments: {arguments}");
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
         }
 
         private string ComputeFileHash(string filePath)
@@ -1716,7 +1716,7 @@ namespace FireAntivirus.Services
                 analysis.CreationTime = fileInfo.CreationTime;
                 analysis.Extension = fileInfo.Extension;
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
 
             return analysis;
         }
@@ -1781,7 +1781,7 @@ namespace FireAntivirus.Services
                 var backupFile = Path.Combine(_backupPath, $"{backup.Id}.json");
                 File.WriteAllText(backupFile, System.Text.Json.JsonSerializer.Serialize(backup));
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
         }
 
         private bool RestoreFromBackup(StartupItemBackup backup)
@@ -1799,7 +1799,7 @@ namespace FireAntivirus.Services
                 var logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {operation}: {item.Name} ({item.Type}) - {item.Path}";
                 File.AppendAllText(logFile, logEntry + Environment.NewLine);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
         }
 
         private void MonitorCallback(object state)
@@ -1878,7 +1878,7 @@ namespace FireAntivirus.Services
                     };
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
         }
 
         #endregion

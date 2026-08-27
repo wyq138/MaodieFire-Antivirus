@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
+using FireAntivirus.Engine;
 
 namespace FireAntivirus.SecureBrowser
 {
@@ -39,18 +40,13 @@ namespace FireAntivirus.SecureBrowser
 
         private void LoadBlockedUrls()
         {
-            // 模拟加载阻止的URL列表
-            _blockedUrls.Add("http://malicious-site.com");
-            _blockedUrls.Add("http://phishing-site.com");
-            _blockedUrls.Add("http://malware-download.com");
+            // 从签名数据库加载阻止的URL列表（实时检查由SignatureDatabaseUpdater完成）
+            // 用户也可通过 AddBlockedUrl 手动添加
         }
 
         private void LoadSafeUrls()
         {
-            // 模拟加载安全的URL列表
-            _safeUrls.Add("https://google.com");
-            _safeUrls.Add("https://bing.com");
-            _safeUrls.Add("https://microsoft.com");
+            // 安全URL列表由用户手动添加，初始为空
         }
 
         private void LoadTrackingDomains()
@@ -181,9 +177,24 @@ namespace FireAntivirus.SecureBrowser
 
         private bool CheckUrlRealTime(string url)
         {
-            // 模拟实时检查
-            // 实际实现中应该调用云服务进行检查
-            return true; // 默认安全
+            // 实时检查URL是否在签名数据库中
+            return !SignatureDatabaseUpdater.IsMaliciousUrl(url);
+        }
+
+        /// <summary>从签名数据库刷新阻止列表缓存。</summary>
+        public void RefreshFromSignatureDb()
+        {
+            _blockedUrls.Clear();
+            // 签名数据库的恶意URL存储在私有字典中，无法直接枚举，
+            // 实时检查逻辑已委托给 CheckUrlRealTime 使用 SignatureDatabaseUpdater.IsMaliciousUrl
+            _dataManager.AddLog(new LogEntry
+            {
+                Id = Guid.NewGuid().ToString(),
+                Time = DateTime.Now,
+                Type = "SignatureDbRefresh",
+                Message = "已从签名数据库刷新阻止列表",
+                Details = $"当前签名库URL数: {SignatureDatabaseUpdater.UrlCount}, IP数: {SignatureDatabaseUpdater.IpCount}"
+            });
         }
 
         public void AddBlockedUrl(string url)

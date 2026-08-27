@@ -1,4 +1,4 @@
-// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,13 +9,14 @@ using System.Windows.Threading;
 using FireAntivirus.Services;
 using FireAntivirus.Data;
 using FireAntivirus.Common.Localization;
+using FireAntivirus.ApplicationMonitor;
 
 namespace FireAntivirus.Host.WPF.Pages
 {
     public partial class ApplicationMonitorPage : Page, IThemed
     {
         private Theme currentTheme = Theme.Light;
-        private ApplicationMonitor appMonitor;
+        private ApplicationMonitorManager appMonitor;
         private LanguageManager _languageManager = LanguageManager.Instance;
         private List<ProcessInfo> processList = new List<ProcessInfo>();
         private DispatcherTimer updateTimer;
@@ -61,7 +62,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void InitializeService()
         {
-            try { appMonitor = new ApplicationMonitor(new DataManager()); } catch { }
+            try { appMonitor = new ApplicationMonitorManager(new DataManager()); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void InitializePerformanceCounters()
@@ -74,7 +75,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 memCounter.NextValue();
                 lastCpuCheck = DateTime.Now;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void SetupTimer()
@@ -120,7 +121,7 @@ namespace FireAntivirus.Host.WPF.Pages
                             }
                             processCpuTime[p.Id] = totalTime;
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorPage.xaml.cs 捕获异常", ex.Message); }
                         
                         list.Add(new ProcessInfo
                         {
@@ -132,10 +133,10 @@ namespace FireAntivirus.Host.WPF.Pages
                             Path = TryGetProcessPath(p)
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorPage.xaml.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorPage.xaml.cs 捕获异常", ex.Message); }
             
             lastCpuCheck = currentTime;
             
@@ -165,7 +166,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 MemoryUsageText.Text = $"{memUsage:F0}%";
                 MemoryProgressBar.Value = Math.Min(memUsage, 100);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private string FormatBytes(long bytes)
@@ -193,6 +194,33 @@ namespace FireAntivirus.Host.WPF.Pages
         private void RefreshProcess_Click(object sender, RoutedEventArgs e)
         {
             _ = System.Threading.Tasks.Task.Run(() => LoadProcessesAsync());
+        }
+
+        /// <summary>
+        /// 查看可疑进程详情：优先显示列表中选中进程的详情，否则提示先选择
+        /// </summary>
+        private void ShowSuspiciousDetails_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (ProcessGrid.SelectedItem is ProcessInfo info)
+                {
+                    // 已选中进程，刷新详情面板并滚动到详情区域
+                    DetailProcessName.Text = $"进程名: {info.ProcessName}";
+                    DetailProcessPath.Text = $"路径: {info.Path}";
+                    DetailProcessUser.Text = $"状态: {info.Status}";
+                    DetailProcessThreads.Text = $"PID: {info.PID}";
+                    DetailProcessHandles.Text = $"内存: {info.Memory}";
+                    DetailProcessStartTime.Text = $"CPU: {info.CPU}";
+                    ProcessDetailPanel.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    System.Windows.MessageBox.Show("请先在进程列表中选择一个进程，再点击查看详情。", "提示",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void EndProcess_Click(object sender, RoutedEventArgs e)
@@ -230,7 +258,7 @@ public void ApplyTheme(Theme theme)
 
         private void UpdateLanguage()
         {
-            try { TitleText.Text = _languageManager.GetString("ApplicationMonitor", "应用监控"); } catch { }
+            try { TitleText.Text = _languageManager.GetString("ApplicationMonitor", "应用监控"); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitorPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 

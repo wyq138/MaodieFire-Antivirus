@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,6 +7,7 @@ using FireAntivirus.Services;
 using FireAntivirus.Data;
 using FireAntivirus.Engine;
 using FireAntivirus.Common.Localization;
+using FireAntivirus.StartupManager;
 
 namespace FireAntivirus.Host.WPF.Pages
 {
@@ -16,7 +17,7 @@ namespace FireAntivirus.Host.WPF.Pages
     public partial class ToolsPage : Page, IThemed
     {
         private Theme currentTheme = Theme.Light;
-        private StartupManager startupManager;
+        private FireAntivirus.StartupManager.StartupManager startupManager;
         private SystemOptimizerService systemOptimizer;
         private VulnerabilityScannerService vulnerabilityScanner;
         private LanguageManager _languageManager = LanguageManager.Instance;
@@ -42,7 +43,7 @@ namespace FireAntivirus.Host.WPF.Pages
         {
             try
             {
-                startupManager = new StartupManager();
+                startupManager = new FireAntivirus.StartupManager.StartupManager();
                 systemOptimizer = new SystemOptimizerService();
                 vulnerabilityScanner = new VulnerabilityScannerService();
             }
@@ -274,7 +275,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 var tempDir = new System.IO.DirectoryInfo(tempPath);
                 foreach (var file in tempDir.GetFiles("*.*", System.IO.SearchOption.AllDirectories))
                 {
-                    try { count++; size += file.Length; } catch { }
+                    try { count++; size += file.Length; } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ToolsPage.xaml.cs 捕获异常", ex.Message); }
                 }
 
                 // 扫描Windows临时文件夹
@@ -284,11 +285,11 @@ namespace FireAntivirus.Host.WPF.Pages
                     var winTempDir = new System.IO.DirectoryInfo(windowsTemp);
                     foreach (var file in winTempDir.GetFiles("*.*", System.IO.SearchOption.AllDirectories))
                     {
-                        try { count++; size += file.Length; } catch { }
+                        try { count++; size += file.Length; } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ToolsPage.xaml.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ToolsPage.xaml.cs 捕获异常", ex.Message); }
 
             return (count, size);
         }
@@ -310,10 +311,10 @@ namespace FireAntivirus.Host.WPF.Pages
                         file.Delete();
                         count++;
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ToolsPage.xaml.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ToolsPage.xaml.cs 捕获异常", ex.Message); }
 
             return (count, size);
         }
@@ -448,7 +449,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 VulnScannerDesc.Text = _languageManager.GetString("VulnerabilityScannerDesc", "扫描和修复系统高危漏洞");
                 VulnScannerBtn.Content = _languageManager.GetString("Run", "运行");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ToolsPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

@@ -10,6 +10,18 @@ using FireAntivirus.Data;
 
 namespace FireAntivirus.PasswordManager
 {
+    public class StoredPassword
+    {
+        public string Id { get; set; }
+        public string Title { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public string Url { get; set; }
+        public string Notes { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
     public class PasswordManager
     {
         private DataManager _dataManager;
@@ -116,9 +128,24 @@ namespace FireAntivirus.PasswordManager
             }
         }
 
-        public List<PasswordEntry> GetPasswords()
+        public List<PasswordEntry> GetPasswordEntries()
         {
             return _passwordEntries;
+        }
+
+        public List<StoredPassword> GetPasswords()
+        {
+            return _passwordEntries.Select(e => new StoredPassword
+            {
+                Id = e.Id,
+                Title = e.Title,
+                Username = e.Username,
+                Password = e.Password,
+                Url = e.Url,
+                Notes = e.Notes,
+                CreatedAt = e.CreatedAt,
+                UpdatedAt = e.UpdatedAt
+            }).ToList();
         }
 
         public PasswordEntry GetPassword(string id)

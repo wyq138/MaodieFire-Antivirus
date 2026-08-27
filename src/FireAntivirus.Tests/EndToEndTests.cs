@@ -182,7 +182,7 @@ namespace FireAntivirus.Tests
             result.PerformanceImpact = optimizer.GetPerformanceImpact();
             
             // 清理测试文件
-            try { File.Delete(protectedFile); } catch { }
+            try { File.Delete(protectedFile); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EndToEndTests.cs 捕获异常", ex.Message); }
             
             return result;
         }

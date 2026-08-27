@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -86,7 +86,7 @@ namespace FireAntivirus.NetworkSecurity
                 {
                     _monitoringTask.Wait(2000);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkSecurityManager.cs 捕获异常", ex.Message); }
             }
 
             _connections.Clear();

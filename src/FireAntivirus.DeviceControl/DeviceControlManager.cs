@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
+using Newtonsoft.Json;
 
 namespace FireAntivirus.DeviceControl
 {
@@ -15,6 +16,7 @@ namespace FireAntivirus.DeviceControl
         private DataManager _dataManager;
         private List<Device> _devices;
         private List<DevicePolicy> _policies;
+        private Dictionary<string, string> _devicePnpIds = new Dictionary<string, string>(); // device.Id -> PNPDeviceID
 
         public DeviceControlManager(DataManager dataManager)
         {
@@ -32,48 +34,75 @@ namespace FireAntivirus.DeviceControl
 
         private void LoadDevices()
         {
-            // 模拟加载设备列表
-            _devices.Add(new Device
+            try
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = "USB Flash Drive",
-                Type = DeviceType.USB,
-                Manufacturer = "Kingston",
-                Model = "DataTraveler",
-                SerialNumber = "1234567890",
-                Status = DeviceStatus.Connected,
-                ConnectedAt = DateTime.Now.AddHours(-2)
-            });
+                using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_DiskDrive"))
+                {
+                    foreach (ManagementObject disk in searcher.Get())
+                    {
+                        string name = disk["Name"]?.ToString() ?? "未知设备";
+                        string manufacturer = disk["Manufacturer"]?.ToString() ?? "未知厂商";
+                        string model = disk["Model"]?.ToString() ?? "未知型号";
+                        string serialNumber = disk["SerialNumber"]?.ToString() ?? "";
+                        string interfaceType = disk["InterfaceType"]?.ToString() ?? "";
+                        string pnpDeviceId = disk["PNPDeviceID"]?.ToString() ?? "";
 
-            _devices.Add(new Device
-            {
-                Id = Guid.NewGuid().ToString(),
-                Name = "External Hard Drive",
-                Type = DeviceType.HardDrive,
-                Manufacturer = "Seagate",
-                Model = "Backup Plus",
-                SerialNumber = "0987654321",
-                Status = DeviceStatus.Connected,
-                ConnectedAt = DateTime.Now.AddDays(-1)
-            });
+                        DeviceType deviceType = DeviceType.Other;
+                        if (interfaceType.IndexOf("USB", StringComparison.OrdinalIgnoreCase) >= 0)
+                            deviceType = DeviceType.USB;
+                        else if (interfaceType.IndexOf("SCSI", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                 interfaceType.IndexOf("ATA", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                 interfaceType.IndexOf("SATA", StringComparison.OrdinalIgnoreCase) >= 0)
+                            deviceType = DeviceType.HardDrive;
 
-            _devices.Add(new Device
+                        var device = new Device
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Name = name,
+                            Type = deviceType,
+                            Manufacturer = manufacturer,
+                            Model = model,
+                            SerialNumber = serialNumber,
+                            Status = DeviceStatus.Connected,
+                            ConnectedAt = DateTime.Now
+                        };
+
+                        _devices.Add(device);
+                        if (!string.IsNullOrEmpty(pnpDeviceId))
+                        {
+                            _devicePnpIds[device.Id] = pnpDeviceId;
+                        }
+                    }
+                }
+            }
+            catch
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = "Printer",
-                Type = DeviceType.Printer,
-                Manufacturer = "HP",
-                Model = "LaserJet Pro",
-                SerialNumber = "ABC123",
-                Status = DeviceStatus.Disconnected,
-                ConnectedAt = DateTime.Now.AddDays(-3),
-                DisconnectedAt = DateTime.Now.AddDays(-2)
-            });
+                // WMI 查询失败时，设备列表为空
+            }
         }
 
         private void LoadPolicies()
         {
-            // 模拟加载设备策略
+            string policiesFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "DeviceControl", "policies.json");
+            if (File.Exists(policiesFile))
+            {
+                try
+                {
+                    string json = File.ReadAllText(policiesFile);
+                    var loaded = JsonConvert.DeserializeObject<List<DevicePolicy>>(json);
+                    if (loaded != null && loaded.Count > 0)
+                    {
+                        _policies = loaded;
+                        return;
+                    }
+                }
+                catch
+                {
+                    // 文件损坏时重新生成默认策略
+                }
+            }
+
+            // 文件不存在或加载失败时，使用默认策略
             _policies.Add(new DevicePolicy
             {
                 Id = Guid.NewGuid().ToString(),
@@ -289,7 +318,29 @@ namespace FireAntivirus.DeviceControl
         {
             try
             {
-                // 模拟阻止设备
+                // 使用 WMI 禁用设备
+                if (_devicePnpIds.TryGetValue(device.Id, out string pnpDeviceId))
+                {
+                    try
+                    {
+                        using (var searcher = new ManagementObjectSearcher($"SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID = '{pnpDeviceId.Replace("'", "''")}'"))
+                        {
+                            foreach (ManagementObject pnpEntity in searcher.Get())
+                            {
+                                var result = pnpEntity.InvokeMethod("Disable", null);
+                                if (result != null)
+                                {
+                                    // result is uint, 0 = success
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // WMI 禁用失败时，仍标记状态
+                    }
+                }
+
                 device.Status = DeviceStatus.Blocked;
                 _dataManager.AddLog(new LogEntry
                 {
@@ -319,7 +370,29 @@ namespace FireAntivirus.DeviceControl
         {
             try
             {
-                // 模拟允许设备
+                // 使用 WMI 启用设备
+                if (_devicePnpIds.TryGetValue(device.Id, out string pnpDeviceId))
+                {
+                    try
+                    {
+                        using (var searcher = new ManagementObjectSearcher($"SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID = '{pnpDeviceId.Replace("'", "''")}'"))
+                        {
+                            foreach (ManagementObject pnpEntity in searcher.Get())
+                            {
+                                var result = pnpEntity.InvokeMethod("Enable", null);
+                                if (result != null)
+                                {
+                                    // result is uint, 0 = success
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // WMI 启用失败时，仍标记状态
+                    }
+                }
+
                 device.Status = DeviceStatus.Connected;
                 _dataManager.AddLog(new LogEntry
                 {
@@ -347,10 +420,10 @@ namespace FireAntivirus.DeviceControl
 
         private void SavePolicies()
         {
-            // 模拟保存策略到文件
             string policiesFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "DeviceControl", "policies.json");
             Directory.CreateDirectory(Path.GetDirectoryName(policiesFile));
-            // 实际实现中应该序列化策略到文件
+            string json = JsonConvert.SerializeObject(_policies, Formatting.Indented);
+            File.WriteAllText(policiesFile, json);
         }
     }
 }

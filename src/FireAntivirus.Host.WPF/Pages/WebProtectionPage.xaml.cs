@@ -1,4 +1,4 @@
-// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -10,6 +10,7 @@ using FireAntivirus.Services;
 using FireAntivirus.Data;
 using FireAntivirus.Engine;
 using FireAntivirus.Common.Localization;
+using FireAntivirus.WebProtection;
 
 namespace FireAntivirus.Host.WPF.Pages
 {
@@ -18,7 +19,7 @@ namespace FireAntivirus.Host.WPF.Pages
         private Theme currentTheme = Theme.Light;
         private System.Threading.CancellationTokenSource _cts = new();
         private bool _isLoaded = false;
-        private WebProtection webProtection;
+        private WebProtectionManager webProtection;
         private DataManager dataManager;
         private AntivirusEngine antivirusEngine;
         private LanguageManager _languageManager = LanguageManager.Instance;
@@ -58,7 +59,7 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 dataManager = new DataManager();
                 antivirusEngine = new AntivirusEngine();
-                webProtection = new WebProtection(dataManager, antivirusEngine);
+                webProtection = new WebProtectionManager(dataManager, antivirusEngine);
                 
                 // 加载列表 - 使用Dispatcher更新UI集合
                 var blockedSites = webProtection.GetBlockedWebsites().ToList();
@@ -198,7 +199,7 @@ namespace FireAntivirus.Host.WPF.Pages
         private void UpdateLanguage()
         {
             try { TitleText.Text = _languageManager.GetString("WebProtection", "网页防护"); }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WebProtectionPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

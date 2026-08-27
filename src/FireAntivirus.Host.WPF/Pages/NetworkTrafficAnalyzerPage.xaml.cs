@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -76,7 +76,7 @@ namespace FireAntivirus.Host.WPF.Pages
                     InitializeService();
                     LoadTrafficData();
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
             });
             
             SetupTimer();
@@ -87,7 +87,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void InitializeService()
         {
-            try { trafficAnalyzer = new NetworkTrafficAnalyzerService(); } catch { }
+            try { trafficAnalyzer = new NetworkTrafficAnalyzerService(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void SetupTimer()
@@ -111,7 +111,7 @@ namespace FireAntivirus.Host.WPF.Pages
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void UpdateTimer_Tick(object sender, EventArgs e)
@@ -147,7 +147,7 @@ namespace FireAntivirus.Host.WPF.Pages
                     DownloadTotalText.Text = $"总计: {FormatBytes(totalReceived)}";
                 }));
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void LoadAppTrafficAsync()
@@ -200,14 +200,14 @@ namespace FireAntivirus.Host.WPF.Pages
                                 });
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
                     }
                     
                     // 按连接数排序，取前20个
                     list.Sort((a, b) => b.Connections.CompareTo(a.Connections));
                     if (list.Count > 20) list = list.GetRange(0, 20);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
                 
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -236,10 +236,10 @@ namespace FireAntivirus.Host.WPF.Pages
                             ProcessId = 0 // .NET 6 不直接提供进程ID
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
             
             return connections;
         }
@@ -300,7 +300,7 @@ namespace FireAntivirus.Host.WPF.Pages
                     DownloadTotalText.Text = $"总计: {FormatBytes(currentTotalReceived)}";
                 }));
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
         }
         
         private void DrawTrafficChart()
@@ -359,7 +359,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 };
                 canvas.Children.Add(downloadLine);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private string FormatSpeed(long bytesPerSecond)
@@ -420,7 +420,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void UpdateLanguage()
         {
-            try { TitleText.Text = _languageManager.GetString("NetworkTraffic", "网络流量"); } catch { }
+            try { TitleText.Text = _languageManager.GetString("NetworkTraffic", "网络流量"); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 

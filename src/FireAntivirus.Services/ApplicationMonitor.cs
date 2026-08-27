@@ -94,13 +94,13 @@ namespace FireAntivirus.Services
                     {
                         MonitorProcess(process);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitor.cs 捕获异常", ex.Message); }
                 }
 
                 // 清理已结束的进程信息
                 CleanupProcessInfos(processes);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitor.cs 捕获异常", ex.Message); }
         }
 
         private void MonitorProcess(Process process)
@@ -132,7 +132,7 @@ namespace FireAntivirus.Services
                 // 检查进程资源使用情况
                 CheckProcessResources(process, processInfo);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitor.cs 捕获异常", ex.Message); }
         }
 
         private void CheckProcessResources(Process process, ProcessInfo processInfo)
@@ -176,7 +176,7 @@ namespace FireAntivirus.Services
                 processInfo.LastUpdate = DateTime.Now;
                 processInfo.MemoryUsage = memoryUsage;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationMonitor.cs 捕获异常", ex.Message); }
         }
 
         private void CleanupProcessInfos(Process[] currentProcesses)

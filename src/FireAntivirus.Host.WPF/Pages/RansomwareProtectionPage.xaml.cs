@@ -1,4 +1,4 @@
-﻿// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -46,7 +46,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 ProtectedFoldersList.ItemsSource = null;
                 ProtectedFoldersList.ItemsSource = protectedFolders;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void AddFolder_Click(object sender, RoutedEventArgs e)
@@ -101,7 +101,7 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 TitleText.Text = _languageManager.GetString("RansomwareProtection", "勒索防护");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

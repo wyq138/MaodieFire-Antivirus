@@ -381,7 +381,7 @@ namespace FireAntivirus.Services
                             cleanedBytes += fileInfo.Length;
                             fileInfo.Delete();
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizer.cs 捕获异常", ex.Message); }
                     }
 
                     // 清理空文件夹
@@ -396,11 +396,11 @@ namespace FireAntivirus.Services
                                 Directory.Delete(directory);
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizer.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizer.cs 捕获异常", ex.Message); }
             return cleanedBytes;
         }
 
@@ -421,11 +421,11 @@ namespace FireAntivirus.Services
                             cleanedBytes += fileInfo.Length;
                             fileInfo.Delete();
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizer.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizer.cs 捕获异常", ex.Message); }
             return cleanedBytes;
         }
 

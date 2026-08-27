@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -80,7 +80,7 @@ namespace FireAntivirus.BehaviorAnalysis
                 {
                     _analysisTask.Wait(2000);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
             }
 
             _monitoredProcesses.Clear();
@@ -111,7 +111,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     // 检查进程是否可疑
                     CheckSuspiciousProcess(processInfo);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
             }
 
             // 移除已结束的进程
@@ -142,7 +142,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     // 检查进程模块
                     CheckProcessModules(process, processInfo);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -160,7 +160,7 @@ namespace FireAntivirus.BehaviorAnalysis
                         // 检查可疑的网络连接
                         CheckSuspiciousNetworkConnection(connection);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
                 }
             }
         }
@@ -183,7 +183,7 @@ namespace FireAntivirus.BehaviorAnalysis
                         CheckDirectoryChanges(directory);
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -209,7 +209,7 @@ namespace FireAntivirus.BehaviorAnalysis
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -274,7 +274,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckCpuUsage(Process process, ProcessInfo processInfo)
@@ -294,7 +294,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckThreadCount(Process process, ProcessInfo processInfo)
@@ -312,7 +312,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckProcessModules(Process process, ProcessInfo processInfo)
@@ -334,7 +334,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckSuspiciousNetworkConnection(TcpConnectionInformation connection)

@@ -1,4 +1,4 @@
-﻿// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Windows;
 using System.Windows.Controls;
@@ -49,7 +49,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void InitializeService()
         {
-            try { scoreService = new SecurityScoreService(); } catch { }
+            try { scoreService = new SecurityScoreService(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScorePage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void CalculateScore()
@@ -110,7 +110,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void UpdateLanguage()
         {
-            try { TitleText.Text = _languageManager.GetString("SecurityScore", "安全评分"); } catch { }
+            try { TitleText.Text = _languageManager.GetString("SecurityScore", "安全评分"); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScorePage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

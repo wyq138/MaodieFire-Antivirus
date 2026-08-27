@@ -224,7 +224,7 @@ namespace FireAntivirus.Host
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemInfoPage.cs 捕获异常", ex.Message); }
         }
 
         private Panel CreateInfoPanel(string title, string[] infoItems, Point location, Size size)

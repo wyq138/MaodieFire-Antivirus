@@ -324,7 +324,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -405,7 +405,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -430,7 +430,7 @@ namespace FireAntivirus.Services
             {
                 process.Kill();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
         }
 
         private void CloseBlockedApplications()
@@ -449,7 +449,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -471,7 +471,7 @@ namespace FireAntivirus.Services
                         CheckBrowserContent(process);
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -502,7 +502,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
         }
 
         private bool IsCategoryMatch(string url, string category)
@@ -552,7 +552,7 @@ namespace FireAntivirus.Services
             {
                 process.Kill();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
         }
 
         private string GetProcessCommandLine(int processId)
@@ -566,7 +566,7 @@ namespace FireAntivirus.Services
                     return obj["CommandLine"] as string ?? string.Empty;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
             return string.Empty;
         }
 
@@ -609,7 +609,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
         }
 
         private void SaveSettings()
@@ -637,7 +637,7 @@ namespace FireAntivirus.Services
                 };
                 _dataManager.SaveParentalControlSettingsData(data);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
         }
 
         private void SaveUserUsage()
@@ -659,7 +659,7 @@ namespace FireAntivirus.Services
                     });
                 _dataManager.SaveParentalControlUsage(data);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
         }
 
         private UserUsageData GetCurrentUserUsage()

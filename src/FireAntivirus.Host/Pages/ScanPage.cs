@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Drawing;
 using System.Linq;
@@ -625,7 +625,7 @@ namespace FireAntivirus.Host
                     if (progressLabel != null)
                         progressLabel.Text = $"已扫描: {e.FilesScanned} / {e.TotalFiles} 个文件，发现: {scanResultsList?.Items.Count ?? 0} 个风险";
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ScanPage.cs 捕获异常", ex.Message); }
             }));
         }
 
@@ -648,7 +648,7 @@ namespace FireAntivirus.Host
                             progressLabel.Text = $"已扫描: 多个文件，发现: {scanResultsList.Items.Count} 个风险";
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ScanPage.cs 捕获异常", ex.Message); }
             }));
         }
 

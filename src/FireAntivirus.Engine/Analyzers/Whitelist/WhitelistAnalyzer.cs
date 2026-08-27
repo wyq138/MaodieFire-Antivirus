@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -339,7 +339,7 @@ namespace FireAntivirus.Engine.Analyzers.Whitelist
                     return cert2.Subject;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WhitelistAnalyzer.cs 捕获异常", ex.Message); }
             return "";
         }
 
@@ -360,7 +360,7 @@ namespace FireAntivirus.Engine.Analyzers.Whitelist
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(data, Newtonsoft.Json.Formatting.Indented);
                 File.WriteAllText(filePath, json);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WhitelistAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         public void LoadFromFile(string filePath)
@@ -403,7 +403,7 @@ namespace FireAntivirus.Engine.Analyzers.Whitelist
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WhitelistAnalyzer.cs 捕获异常", ex.Message); }
         }
     }
 

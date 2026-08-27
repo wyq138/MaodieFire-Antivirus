@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,6 +19,13 @@ namespace FireAntivirus.Engine.Analyzers.Security
         private readonly HashSet<string> _maliciousIPs;
         private readonly HashSet<string> _maliciousDomains;
         private readonly List<ThreatSignature> _signatures;
+        private readonly List<string> _feedWarnings;
+
+        /// <summary>已从外部特征库加载到的家族特征数量（用于自检，防止外置后杀毒效果被无声削弱）</summary>
+        public int LoadedSignatureCount => _signatures.Count;
+
+        /// <summary>外部特征库加载是否成功（配置缺失/损坏时返回 false，不再静默降级）</summary>
+        public bool ThreatFeedLoaded { get; private set; }
 
         public ThreatIntelligenceAnalyzer()
         {
@@ -27,71 +34,14 @@ namespace FireAntivirus.Engine.Analyzers.Security
             _maliciousIPs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             _maliciousDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             _signatures = new List<ThreatSignature>();
+            _feedWarnings = new List<string>();
             InitializeThreatIndicators();
         }
 
         private void InitializeThreatIndicators()
         {
-            // 已知恶意软件家族特征
-            _signatures.AddRange(new[]
-            {
-                new ThreatSignature
-                {
-                    Name = "WannaCry",
-                    Family = "勒索软件",
-                    Patterns = new[] { "WNcry@@", "WannaCry", "wcry.exe", "tasksche.exe", "mssecsvc.exe" },
-                    RiskLevel = "严重"
-                },
-                new ThreatSignature
-                {
-                    Name = "Emotet",
-                    Family = "银行木马",
-                    Patterns = new[] { "Emotet", "Geodo", "Heodo", "Cridex" },
-                    RiskLevel = "高"
-                },
-                new ThreatSignature
-                {
-                    Name = "TrickBot",
-                    Family = "银行木马",
-                    Patterns = new[] { "TrickBot", "TrickLoader", "trickbot" },
-                    RiskLevel = "高"
-                },
-                new ThreatSignature
-                {
-                    Name = "Ryuk",
-                    Family = "勒索软件",
-                    Patterns = new[] { "Ryuk", "HERMES", "RYUK" },
-                    RiskLevel = "严重"
-                },
-                new ThreatSignature
-                {
-                    Name = "Maze",
-                    Family = "勒索软件",
-                    Patterns = new[] { "Maze", "ChaCha", "mazecrypt" },
-                    RiskLevel = "严重"
-                },
-                new ThreatSignature
-                {
-                    Name = "CobaltStrike",
-                    Family = "渗透测试/后渗透",
-                    Patterns = new[] { "cobaltstrike", "beacon", "stager", "artifact.exe" },
-                    RiskLevel = "高"
-                },
-                new ThreatSignature
-                {
-                    Name = "Mimikatz",
-                    Family = "凭证窃取",
-                    Patterns = new[] { "mimikatz", "sekurlsa", "logonpasswords", "privilege::debug" },
-                    RiskLevel = "严重"
-                },
-                new ThreatSignature
-                {
-                    Name = "Meterpreter",
-                    Family = "后门",
-                    Patterns = new[] { "meterpreter", "reverse_tcp", "reverse_https", "staged" },
-                    RiskLevel = "严重"
-                }
-            });
+            // 已知恶意软件家族特征（数据外置到外部 JSON，避免在 DLL 内内嵌恶意命令串，详见 ThreatData/threat_signatures.json）
+            LoadThreatSignatures();
 
             // 已知恶意IP地址 - 来源：威胁情报数据库
             _maliciousIPs.UnionWith(new[]
@@ -241,6 +191,12 @@ namespace FireAntivirus.Engine.Analyzers.Security
                 {
                     result.Warnings.Add($"发现 {result.Threats.Count} 个威胁指标");
                 }
+
+                // 特征库加载异常必须透出，避免静默降级导致漏报
+                foreach (var w in _feedWarnings)
+                {
+                    result.Warnings.Add(w);
+                }
             }
             catch (Exception ex)
             {
@@ -248,6 +204,39 @@ namespace FireAntivirus.Engine.Analyzers.Security
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 从外部 JSON 加载恶意软件家族特征（不内嵌于 DLL）。
+        /// 这是杀毒效果的一部分，缺失/损坏必须暴露为告警，绝不静默降级导致漏报。
+        /// </summary>
+        private void LoadThreatSignatures()
+        {
+            var dataPath = Path.Combine(AppContext.BaseDirectory, "ThreatData", "threat_signatures.json");
+
+            if (!File.Exists(dataPath))
+            {
+                _feedWarnings.Add("威胁特征库缺失，请将 ThreatData/threat_signatures.json 部署到程序目录");
+                return;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(dataPath);
+                var loaded = System.Text.Json.JsonSerializer.Deserialize<List<ThreatSignature>>(json);
+                if (loaded == null || loaded.Count == 0)
+                {
+                    _feedWarnings.Add("威胁特征库内容为空或无法解析");
+                    return;
+                }
+
+                _signatures.AddRange(loaded);
+                ThreatFeedLoaded = true;
+            }
+            catch (Exception ex)
+            {
+                _feedWarnings.Add($"威胁特征库加载失败: {ex.Message}");
+            }
         }
 
         private void CheckSuspiciousStrings(string content, ThreatIntelligenceResult result)
@@ -341,7 +330,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ThreatIntelligenceAnalyzer.cs 捕获异常", ex.Message); }
         }
     }
 

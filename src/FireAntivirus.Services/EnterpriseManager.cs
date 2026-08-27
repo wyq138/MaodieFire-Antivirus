@@ -657,7 +657,7 @@ namespace FireAntivirus.Services
                 var response = await _httpClient.PostAsync($"{_serverUrl}/api/devices", content, cancellationToken);
                 response.EnsureSuccessStatusCode();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EnterpriseManager.cs 捕获异常", ex.Message); }
         }
 
         private async Task SyncScanRecordToServerAsync(ScanRecord scanRecord, CancellationToken cancellationToken = default)
@@ -672,7 +672,7 @@ namespace FireAntivirus.Services
                 var response = await _httpClient.PostAsync($"{_serverUrl}/api/scanrecords", content, cancellationToken);
                 response.EnsureSuccessStatusCode();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EnterpriseManager.cs 捕获异常", ex.Message); }
         }
 
         private async Task SyncThreatToServerAsync(Threat threat, CancellationToken cancellationToken = default)
@@ -687,7 +687,7 @@ namespace FireAntivirus.Services
                 var response = await _httpClient.PostAsync($"{_serverUrl}/api/threats", content, cancellationToken);
                 response.EnsureSuccessStatusCode();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EnterpriseManager.cs 捕获异常", ex.Message); }
         }
 
         private async Task SyncPolicyToServerAsync(Policy policy, CancellationToken cancellationToken = default)
@@ -702,7 +702,7 @@ namespace FireAntivirus.Services
                 var response = await _httpClient.PostAsync($"{_serverUrl}/api/policies", content, cancellationToken);
                 response.EnsureSuccessStatusCode();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EnterpriseManager.cs 捕获异常", ex.Message); }
         }
 
         private async Task SyncGroupToServerAsync(Group group, CancellationToken cancellationToken = default)
@@ -717,7 +717,7 @@ namespace FireAntivirus.Services
                 var response = await _httpClient.PostAsync($"{_serverUrl}/api/groups", content, cancellationToken);
                 response.EnsureSuccessStatusCode();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EnterpriseManager.cs 捕获异常", ex.Message); }
         }
 
         public void Enable()

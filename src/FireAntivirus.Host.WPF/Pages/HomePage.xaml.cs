@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.IO;
 using System.Reflection;
@@ -87,7 +87,7 @@ namespace FireAntivirus.Host.WPF.Pages
                         _languageManager.LanguageChanged += (s, ev) => UpdateLanguage();
                     });
                 } 
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "HomePage.xaml.cs 捕获异常", ex.Message); }
                 
                 await Task.Delay(100).ConfigureAwait(false);
                 UpdateLoadingStatus(40, "初始化服务...");
@@ -152,7 +152,7 @@ namespace FireAntivirus.Host.WPF.Pages
                     // 记录加载时间用于性能监控
                     Debug.WriteLine($"Loading step {progress}: {message} - {_loadingStopwatch.ElapsedMilliseconds}ms");
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "HomePage.xaml.cs 捕获异常", ex.Message); }
             });
         }
 
@@ -186,7 +186,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
                 try
                 {
-                    var processes = Process.GetProcessesByName("FireAntivirus.Service");
+                    var processes = Process.GetProcessesByName("FireAntivirus.ServiceHost");
                     
                     lock (_cacheLock)
                     {
@@ -266,84 +266,37 @@ namespace FireAntivirus.Host.WPF.Pages
 
             try
             {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                if (string.IsNullOrEmpty(baseDir))
+                // 实时签名库（abuse.ch Bazaar/URLhaus/Feodo，落盘 %ProgramData%\FireAntivirus\SignatureDatabase）
+                if (SignatureDatabaseUpdater.IsLoaded)
                 {
-                    baseDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".";
+                    int sigCount = SignatureDatabaseUpdater.HashCount + SignatureDatabaseUpdater.UrlCount + SignatureDatabaseUpdater.IpCount;
+                    DateTime when = SignatureDatabaseUpdater.LastUpdate;
+                    double days = when == DateTime.MinValue ? 0 : (DateTime.Now - when).TotalDays;
+                    string desc = $"签名库已加载: 哈希{SignatureDatabaseUpdater.HashCount} 恶意URL{SignatureDatabaseUpdater.UrlCount} 恶意IP{SignatureDatabaseUpdater.IpCount}";
+                    if (when != DateTime.MinValue) desc += $" | 更新于:{when:yyyy-MM-dd}";
+                    return (days < 7 ? "已更新" : "需更新", desc, days < 7 ? Colors.Green : Colors.Orange);
                 }
-                
-                string[] possibleDbPaths = new string[]
-                {
-                    Path.Combine(baseDir, "ClamAV", "db"),
-                    Path.Combine(baseDir, "clamav", "db"),
-                    Path.Combine(baseDir, "engine", "db"),
-                    Path.Combine(baseDir, "FireAntivirus.ClamAV", "ClamAV", "db"),
-                    Path.Combine(baseDir, "..", "ClamAV", "db"),
-                };
-                
-                string dbPath = null;
-                foreach (var path in possibleDbPaths)
-                {
-                    string fullPath = Path.GetFullPath(path);
-                    if (Directory.Exists(fullPath))
-                    {
-                        var cvdCheck = new[] { "daily.cvd", "main.cvd", "bytecode.cvd" };
-                        foreach (var cvd in cvdCheck)
-                        {
-                            if (File.Exists(Path.Combine(fullPath, cvd)))
-                            {
-                                dbPath = fullPath;
-                                break;
-                            }
-                        }
-                        if (dbPath != null) break;
-                        
-                        if (Directory.GetFiles(fullPath, "*.cvd").Length > 0 || 
-                            Directory.GetFiles(fullPath, "*.cld").Length > 0)
-                        {
-                            dbPath = fullPath;
-                            break;
-                        }
-                    }
-                }
-                
-                if (dbPath == null)
-                {
-                    return ("未安装", "病毒库文件不存在", Colors.Red);
-                }
-                
-                var cvdFiles = new[] { "daily.cvd", "main.cvd", "bytecode.cvd" };
-                DateTime latestUpdate = DateTime.MinValue;
-                
-                foreach (var cvd in cvdFiles)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                        return ("未知", "检查取消", Colors.Gray);
 
-                    var file = Path.Combine(dbPath, cvd);
-                    if (File.Exists(file))
-                    {
-                        var lastWrite = File.GetLastWriteTime(file);
-                        if (lastWrite > latestUpdate)
-                            latestUpdate = lastWrite;
-                    }
-                }
-                
-                if (latestUpdate != DateTime.MinValue)
+                // 内置威胁特征库（ThreatData/*.json：恶意进程、家族、勒索特征、行为指标）
+                ExternalThreatData.EnsureLoaded();
+                int builtin = ExternalThreatData.SuspiciousProcesses.Count
+                            + ExternalThreatData.MalwareFamilies.Count
+                            + ExternalThreatData.RansomwareNames.Count
+                            + ExternalThreatData.CommandIndicators.Count
+                            + ExternalThreatData.ExploitNames.Count;
+                if (builtin > 0)
                 {
-                    var daysSinceUpdate = (DateTime.Now - latestUpdate).TotalDays;
-                    if (daysSinceUpdate < 7)
-                        return ("已更新", $"更新于: {latestUpdate:yyyy-MM-dd}", Colors.Green);
-                    else
-                        return ("需更新", $"更新于: {latestUpdate:yyyy-MM-dd}", Colors.Orange);
+                    return ("已更新", $"内置特征库已加载({builtin})", Colors.Green);
                 }
-                else
-                {
-                    return ("未安装", "病毒库文件不存在", Colors.Red);
-                }
+
+                if (!string.IsNullOrEmpty(SignatureDatabaseUpdater.LastError))
+                    return ("需更新", $"更新失败: {SignatureDatabaseUpdater.LastError}", Colors.Orange);
+
+                return ("未安装", "病毒库文件不存在", Colors.Red);
             }
-            catch
+            catch (System.Exception ex)
             {
+                Log($"GetVirusDbStatus error: {ex.Message}");
                 return ("未知", "无法获取病毒库信息", Colors.Gray);
             }
         }
@@ -419,62 +372,14 @@ namespace FireAntivirus.Host.WPF.Pages
         {
             try
             {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                if (string.IsNullOrEmpty(baseDir))
+                // 实时签名库（abuse.ch 自动更新）
+                if (SignatureDatabaseUpdater.IsLoaded)
                 {
-                    baseDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".";
-                }
-                
-                string[] possibleDbPaths = new string[]
-                {
-                    Path.Combine(baseDir, "ClamAV", "db"),
-                    Path.Combine(baseDir, "clamav", "db"),
-                    Path.Combine(baseDir, "engine", "db"),
-                    Path.Combine(baseDir, "FireAntivirus.ClamAV", "ClamAV", "db"),
-                    Path.Combine(baseDir, "..", "ClamAV", "db"),
-                };
-                
-                string dbPath = null;
-                foreach (var path in possibleDbPaths)
-                {
-                    string fullPath = Path.GetFullPath(path);
-                    if (Directory.Exists(fullPath))
-                    {
-                        if (Directory.GetFiles(fullPath, "*.cvd").Length > 0 || 
-                            Directory.GetFiles(fullPath, "*.cld").Length > 0)
-                        {
-                            dbPath = fullPath;
-                            break;
-                        }
-                    }
-                }
+                    int sigCount = SignatureDatabaseUpdater.HashCount + SignatureDatabaseUpdater.UrlCount + SignatureDatabaseUpdater.IpCount;
+                    DateTime when = SignatureDatabaseUpdater.LastUpdate;
+                    double days = when == DateTime.MinValue ? 0 : (DateTime.Now - when).TotalDays;
 
-                if (dbPath == null)
-                {
-                    VirusDatabaseStatus.Text = "未安装";
-                    VirusDatabaseStatus.Foreground = new SolidColorBrush(Colors.Red);
-                    VirusDatabaseVersion.Text = "病毒库文件不存在";
-                    return;
-                }
-
-                var cvdFiles = new[] { "daily.cvd", "main.cvd", "bytecode.cvd" };
-                DateTime latestUpdate = DateTime.MinValue;
-                
-                foreach (var cvd in cvdFiles)
-                {
-                    var file = Path.Combine(dbPath, cvd);
-                    if (File.Exists(file))
-                    {
-                        var lastWrite = File.GetLastWriteTime(file);
-                        if (lastWrite > latestUpdate)
-                            latestUpdate = lastWrite;
-                    }
-                }
-                
-                if (latestUpdate != DateTime.MinValue)
-                {
-                    var daysSinceUpdate = (DateTime.Now - latestUpdate).TotalDays;
-                    if (daysSinceUpdate < 7)
+                    if (days < 7)
                     {
                         VirusDatabaseStatus.Text = "已更新";
                         VirusDatabaseStatus.Foreground = new SolidColorBrush(Colors.Green);
@@ -484,17 +389,42 @@ namespace FireAntivirus.Host.WPF.Pages
                         VirusDatabaseStatus.Text = "需更新";
                         VirusDatabaseStatus.Foreground = new SolidColorBrush(Colors.Orange);
                     }
-                    VirusDatabaseVersion.Text = $"更新于: {latestUpdate:yyyy-MM-dd}";
+                    VirusDatabaseVersion.Text = when == DateTime.MinValue
+                        ? $"签名库已加载({sigCount})"
+                        : $"签名库({sigCount}) | 更新于:{when:yyyy-MM-dd}";
+                    return;
                 }
-                else
+
+                // 内置威胁特征库（ThreatData/*.json）
+                ExternalThreatData.EnsureLoaded();
+                int builtin = ExternalThreatData.SuspiciousProcesses.Count
+                            + ExternalThreatData.MalwareFamilies.Count
+                            + ExternalThreatData.RansomwareNames.Count
+                            + ExternalThreatData.CommandIndicators.Count
+                            + ExternalThreatData.ExploitNames.Count;
+                if (builtin > 0)
                 {
-                    VirusDatabaseStatus.Text = "未安装";
-                    VirusDatabaseStatus.Foreground = new SolidColorBrush(Colors.Red);
-                    VirusDatabaseVersion.Text = "病毒库文件不存在";
+                    VirusDatabaseStatus.Text = "已更新";
+                    VirusDatabaseStatus.Foreground = new SolidColorBrush(Colors.Green);
+                    VirusDatabaseVersion.Text = $"内置特征库已加载({builtin})";
+                    return;
                 }
+
+                if (!string.IsNullOrEmpty(SignatureDatabaseUpdater.LastError))
+                {
+                    VirusDatabaseStatus.Text = "需更新";
+                    VirusDatabaseStatus.Foreground = new SolidColorBrush(Colors.Orange);
+                    VirusDatabaseVersion.Text = SignatureDatabaseUpdater.LastError;
+                    return;
+                }
+
+                VirusDatabaseStatus.Text = "未安装";
+                VirusDatabaseStatus.Foreground = new SolidColorBrush(Colors.Red);
+                VirusDatabaseVersion.Text = "病毒库文件不存在";
             }
-            catch
+            catch (System.Exception ex)
             {
+                Log($"UpdateVirusDatabaseInfo error: {ex.Message}");
                 VirusDatabaseStatus.Text = "未知";
                 VirusDatabaseVersion.Text = "无法获取病毒库信息";
             }
@@ -600,7 +530,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 string logMessage = $"[{DateTime.Now}] {message}\n";
                 File.AppendAllText(LogFilePath, logMessage);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "HomePage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private async void QuickScan_Click(object sender, RoutedEventArgs e)
@@ -727,7 +657,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 RecentActivityTitle.Text = _languageManager.GetString("RecentActivity", "最近活动");
                 RecentActivityText.Text = _languageManager.GetString("NoAbnormalActivity", "系统运行正常，无异常活动");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "HomePage.xaml.cs 捕获异常", ex.Message); }
         }
 
         public void ApplyTheme(Theme theme)

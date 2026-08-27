@@ -561,7 +561,7 @@ namespace FireAntivirus.Services
                 // 计算CPU使用率（简化处理）
                 processInfo.CpuUsage = 0.0;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysis.cs 捕获异常", ex.Message); }
         }
 
         private BehaviorNetworkConnectionInfo CreateBehaviorNetworkConnectionInfo(TcpConnectionInformation connection)
@@ -604,7 +604,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysis.cs 捕获异常", ex.Message); }
             return null;
         }
 
@@ -620,7 +620,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysis.cs 捕获异常", ex.Message); }
             return 0;
         }
 
@@ -639,7 +639,7 @@ namespace FireAntivirus.Services
 
                 LogToFile("ProcessTermination.log", logEntry);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysis.cs 捕获异常", ex.Message); }
         }
 
         private void LogNetworkConnectionClose(BehaviorNetworkConnectionInfo connectionInfo)
@@ -657,7 +657,7 @@ namespace FireAntivirus.Services
 
                 LogToFile("NetworkConnectionClose.log", logEntry);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysis.cs 捕获异常", ex.Message); }
         }
 
         private void LogAnalysisResult(BehaviorAnalysisResult result)
@@ -666,7 +666,7 @@ namespace FireAntivirus.Services
             {
                 LogToFile("BehaviorAnalysis.log", result);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysis.cs 捕获异常", ex.Message); }
         }
 
         private void LogToFile(string fileName, object data)
@@ -690,7 +690,7 @@ namespace FireAntivirus.Services
 
                 File.AppendAllText(logFile, json + Environment.NewLine);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BehaviorAnalysis.cs 捕获异常", ex.Message); }
         }
 
         public async Task<BehaviorAnalysisResult> AnalyzeProcessByIdAsync(int processId)

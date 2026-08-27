@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>FireAntivirus.MachineLearning</AssemblyName>
+    <RootNamespace>FireAntivirus.MachineLearning</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FireAntivirus.Common\FireAntivirus.Common.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Data\FireAntivirus.Data.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Engine\FireAntivirus.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

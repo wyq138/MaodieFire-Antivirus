@@ -1,4 +1,4 @@
-// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using FireAntivirus.Services;
 using FireAntivirus.Common.Localization;
+using FireAntivirus.StartupManager;
 
 namespace FireAntivirus.Host.WPF.Pages
 {
@@ -21,7 +22,7 @@ namespace FireAntivirus.Host.WPF.Pages
     public partial class StartupManagerPage : Page, IThemed
     {
         private Theme currentTheme = Theme.Light;
-        private StartupManager startupManager;
+        private FireAntivirus.StartupManager.StartupManager startupManager;
         private LanguageManager _languageManager = LanguageManager.Instance;
         private List<StartupItem> startupItems = new List<StartupItem>();
 
@@ -41,7 +42,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void InitializeService()
         {
-            try { startupManager = new StartupManager(); } catch { }
+            try { startupManager = new FireAntivirus.StartupManager.StartupManager(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManagerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void LoadStartupItems()
@@ -153,7 +154,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void UpdateLanguage()
         {
-            try { TitleText.Text = _languageManager.GetString("StartupManager", "启动管理"); } catch { }
+            try { TitleText.Text = _languageManager.GetString("StartupManager", "启动管理"); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManagerPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

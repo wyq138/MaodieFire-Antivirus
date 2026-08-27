@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -84,7 +84,7 @@ namespace FireAntivirus.PrivacyProtection
                 {
                     _monitoringTask.Wait(2000);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
             }
 
             _monitoredProcesses.Clear();
@@ -107,7 +107,7 @@ namespace FireAntivirus.PrivacyProtection
                     // 检查进程是否为隐私敏感进程
                     CheckPrivacySensitiveProcess(process);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -215,7 +215,7 @@ namespace FireAntivirus.PrivacyProtection
                         await Task.CompletedTask;
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -239,7 +239,7 @@ namespace FireAntivirus.PrivacyProtection
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -280,7 +280,7 @@ namespace FireAntivirus.PrivacyProtection
 
                 await Task.CompletedTask;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
         }
 
         private void MonitorCameraUsage()
@@ -306,7 +306,7 @@ namespace FireAntivirus.PrivacyProtection
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
         }
 
         private void MonitorMicrophoneUsage()
@@ -332,7 +332,7 @@ namespace FireAntivirus.PrivacyProtection
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
         }
 
         private async Task MonitorDataCollection()
@@ -345,7 +345,7 @@ namespace FireAntivirus.PrivacyProtection
 
                 await Task.CompletedTask;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
         }
 
         private void CheckBrowserDataCollection()
@@ -419,7 +419,7 @@ namespace FireAntivirus.PrivacyProtection
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
         }
 
         private void CleanupTempFiles()
@@ -437,14 +437,14 @@ namespace FireAntivirus.PrivacyProtection
                         {
                             File.Delete(file);
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
                     }
                 }
 
                 // 清理浏览器缓存
                 CleanupBrowserCache();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
         }
 
         private void CleanupBrowserCache()
@@ -469,10 +469,10 @@ namespace FireAntivirus.PrivacyProtection
                             {
                                 File.Delete(file);
                             }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyProtectionManager.cs 捕获异常", ex.Message); }
                 }
             }
         }

@@ -98,7 +98,7 @@ namespace FireAntivirus.Services
                         CheckBrowserProcess(process);
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BrowserMonitor.cs 捕获异常", ex.Message); }
             }
         }
         
@@ -144,7 +144,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BrowserMonitor.cs 捕获异常", ex.Message); }
         }
         
         private string ExtractUrl(string commandLine, string keyword)
@@ -161,7 +161,7 @@ namespace FireAntivirus.Services
                     return commandLine.Substring(start, end - start);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BrowserMonitor.cs 捕获异常", ex.Message); }
             return string.Empty;
         }
         
@@ -178,7 +178,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BrowserMonitor.cs 捕获异常", ex.Message); }
             return string.Empty;
         }
         
@@ -188,7 +188,7 @@ namespace FireAntivirus.Services
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BrowserMonitor.cs 捕获异常", ex.Message); }
         }
     }
 }

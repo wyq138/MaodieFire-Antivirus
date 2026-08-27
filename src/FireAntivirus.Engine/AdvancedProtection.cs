@@ -1030,7 +1030,7 @@ namespace FireAntivirus.Engine
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
 
                 return Math.Min(score, 1.0);
             }
@@ -1076,7 +1076,7 @@ namespace FireAntivirus.Engine
                         recommendations.Add("启用Windows防火墙以保护系统安全");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
                 
                 // 2. 检查Windows Defender状态
                 try
@@ -1095,7 +1095,7 @@ namespace FireAntivirus.Engine
                         recommendations.Add("更新病毒定义库");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
                 
                 // 3. 检查Windows更新状态
                 try
@@ -1108,7 +1108,7 @@ namespace FireAntivirus.Engine
                         recommendations.Add("运行Windows更新安装最新补丁");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
                 
                 // 4. 检查可疑启动项
                 try
@@ -1124,7 +1124,7 @@ namespace FireAntivirus.Engine
                         recommendations.Add("检查并移除可疑启动项");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
                 
                 // 5. 检查开放的共享文件夹
                 try
@@ -1137,7 +1137,7 @@ namespace FireAntivirus.Engine
                         recommendations.Add("检查网络共享权限设置");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
                 
                 // 6. 检查未授权的管理员账户
                 try
@@ -1150,7 +1150,7 @@ namespace FireAntivirus.Engine
                         recommendations.Add("检查管理员账户是否都必要");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
                 
                 // 7. 检查UAC设置
                 try
@@ -1162,7 +1162,7 @@ namespace FireAntivirus.Engine
                         recommendations.Add("启用UAC并设置为适当级别");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
                 
                 // 确定总体状态
                 status.SecurityScore = Math.Max(0, totalScore);
@@ -1201,7 +1201,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
             return (true, 0);
         }
         
@@ -1218,7 +1218,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
             return true;
         }
         
@@ -1246,7 +1246,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
             return 0;
         }
         
@@ -1273,7 +1273,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
             
             return suspicious;
         }
@@ -1295,7 +1295,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
             return shares;
         }
         
@@ -1308,7 +1308,7 @@ namespace FireAntivirus.Engine
                     return searcher.Get().Count;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
             return 1;
         }
         
@@ -1325,7 +1325,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedProtection.cs 捕获异常", ex.Message); }
             return true;
         }
 

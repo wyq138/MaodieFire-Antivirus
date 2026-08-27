@@ -1,4 +1,4 @@
-﻿// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Management;
@@ -124,10 +124,10 @@ namespace FireAntivirus.Host.WPF.Pages
                             SystemBootTimeLabel.Text = systemInfo[3];
                             SystemComputerNameLabel.Text = systemInfo[4];
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemInfoPage.xaml.cs 捕获异常", ex.Message); }
                     }));
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemInfoPage.xaml.cs 捕获异常", ex.Message); }
             });
         }
 
@@ -156,7 +156,7 @@ namespace FireAntivirus.Host.WPF.Pages
                         Disk4Label.Text = diskInfo.Length > 3 ? diskInfo[3] : "无数据";
                     }));
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemInfoPage.xaml.cs 捕获异常", ex.Message); }
             });
         }
 
@@ -449,7 +449,7 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 TitleText.Text = _languageManager.GetString("SystemInfo", "系统信息");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemInfoPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

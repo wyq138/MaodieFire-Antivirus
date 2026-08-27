@@ -1,11 +1,11 @@
-﻿{
+{
     ""UpdateUrls"": [
         ""https://database.clamav.net/main.cvd"",
         ""https://database.clamav.net/daily.cvd"",
         ""https://database.clamav.net/bytecode.cvd""
     ],
     ""LocalPath"": ""ClamAV\\db"",
-    ""AutoUpdateIntervalHours"": 4,
+    ""AutoUpdateIntervalHours"": 1,
     ""EnableAutoUpdate"": true,
     ""LastUpdateTime"": null,
     ""UpdateOnStartup"": true

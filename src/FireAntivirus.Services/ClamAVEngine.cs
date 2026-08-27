@@ -1,4 +1,4 @@
-﻿﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -146,7 +146,7 @@ namespace FireAntivirus.Services
                     System.IO.File.WriteAllText(configPath, config);
                     _dataManager?.LogInfo("Created freshclam.conf");
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ClamAVEngine.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -334,10 +334,10 @@ namespace FireAntivirus.Services
                     {
                         await Task.Run(() => UpdateVirusDatabase());
                     }
-                    catch { }
-                }, null, TimeSpan.FromHours(4), TimeSpan.FromHours(4));
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ClamAVEngine.cs 捕获异常", ex.Message); }
+                }, null, TimeSpan.FromHours(1), TimeSpan.FromHours(1));
 
-                _dataManager?.LogInfo("病毒库自动更新计划已启动，间隔: 4小时");
+                _dataManager?.LogInfo("病毒库自动更新计划已启动，间隔: 1小时");
             }
             catch (Exception ex)
             {
@@ -355,7 +355,7 @@ namespace FireAntivirus.Services
                     _autoUpdateTimer = null;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ClamAVEngine.cs 捕获异常", ex.Message); }
         }
     }
 }

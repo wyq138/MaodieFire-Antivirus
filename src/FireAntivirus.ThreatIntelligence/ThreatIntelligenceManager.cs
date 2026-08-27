@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 威胁情报管理器 - 接入 AlienVault OTX (免费,无需API密钥)
 // OTX API文档: https://otx.alienvault.com/api
 using System;

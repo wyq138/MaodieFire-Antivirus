@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -130,7 +130,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckSystemPrivacy(PrivacyResult result)
@@ -191,7 +191,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckRecentFiles(PrivacyResult result)
@@ -215,7 +215,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckClipboardHistory(PrivacyResult result)
@@ -239,7 +239,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckLocationServices(PrivacyResult result)
@@ -263,7 +263,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private void CheckDevicePermissions(PrivacyResult result)
@@ -306,7 +306,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PrivacyAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private int CalculatePrivacyScore(List<PrivacyIssue> issues)

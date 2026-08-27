@@ -211,71 +211,63 @@ namespace FireAntivirus.Engine.Detection
             return bytes;
         }
 
+        private void LoadBuiltinRules()
+        {
+            // YARA 规则从外部 JSON 加载（ThreatData/yara_rules.json），不把规则串编译进 DLL，
+            // 既避免杀软误报，也便于联网更新规则覆盖变种。
+            try
+            {
+                var file = Path.Combine(AppContext.BaseDirectory, "ThreatData", "yara_rules.json");
+                if (!File.Exists(file)) return;
+                var list = System.Text.Json.JsonSerializer.Deserialize<List<YaraRuleFileEntry>>(File.ReadAllText(file));
+                if (list == null) return;
+                foreach (var e in list)
+                {
+                    _rules.Add(new YaraRule
+                    {
+                        Name = e.Name,
+                        Description = e.Description,
+                        Severity = e.SeverityEnum,
+                        Patterns = e.Patterns ?? new List<string>(),
+                        HexPatterns = e.HexPatterns ?? new List<string>()
+                    });
+                }
+            }
+            catch
+            {
+                // 外部规则损坏时保持空，不崩引擎
+            }
+        }
+
         /// <summary>
         /// 加载内置规则
         /// </summary>
         private async Task LoadBuiltinRulesAsync()
         {
-            // 添加基础恶意软件检测规则
-            _rules.AddRange(new[]
-            {
-                new YaraRule
-                {
-                    Name = "Trojan.Generic",
-                    Description = "检测通用木马特征",
-                    Severity = ThreatSeverity.High,
-                    Patterns = new List<string>
-                    {
-                        "CreateRemoteThread", "VirtualAllocEx", "WriteProcessMemory"
-                    },
-                    HexPatterns = new List<string>
-                    {
-                        "4D 5A", // MZ头
-                        "E8 ?? ?? ?? ?? 59" // 常见调用模式
-                    }
-                },
-                
-                new YaraRule
-                {
-                    Name = "Ransomware.CryptoLocker",
-                    Description = "检测加密勒索软件特征",
-                    Severity = ThreatSeverity.Critical,
-                    Patterns = new List<string>
-                    {
-                        "AES", "RSA", "encrypt", "decrypt", "ransom", "bitcoin"
-                    }
-                },
-                
-                new YaraRule
-                {
-                    Name = "Spyware.Keylogger",
-                    Description = "检测键盘记录器",
-                    Severity = ThreatSeverity.High,
-                    Patterns = new List<string>
-                    {
-                        "GetAsyncKeyState", "SetWindowsHookEx", "WH_KEYBOARD"
-                    }
-                }
-            });
-
-            // 保存规则到文件供后续加载
-            await SaveRulesToFileAsync();
+            LoadBuiltinRules();
+            await Task.CompletedTask;
         }
 
         /// <summary>
         /// 检查规则更新
+        /// 规则通过特征库更新器联网拉取最新版本，此处无需内置下载逻辑
         /// </summary>
         private async Task CheckForRuleUpdatesAsync()
         {
             try
             {
-                // 实现规则更新检查逻辑
-                // 可以从GitHub或其他源获取最新规则
+                var updateFile = Path.Combine(AppContext.BaseDirectory, "ThreatData", "yara_rules.json");
+                // 若更新器已刷新外置规则文件，重新加载即可
+                if (File.Exists(updateFile))
+                {
+                    _rules.Clear();
+                    LoadBuiltinRules();
+                }
                 await Task.CompletedTask;
             }
             catch
             {
-                // 忽略更新失败，使用内置规则
+                // 更新失败则继续使用当前已加载规则
             }
         }
 
@@ -313,6 +305,31 @@ namespace FireAntivirus.Engine.Detection
         public ThreatSeverity Severity { get; set; }
         public List<string> Patterns { get; set; } = new List<string>();
         public List<string> HexPatterns { get; set; } = new List<string>();
+    }
+
+    /// <summary>外置 YARA 规则条目（ThreatData/yara_rules.json）</summary>
+    public class YaraRuleFileEntry
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Severity { get; set; }
+        public List<string> Patterns { get; set; } = new List<string>();
+        public List<string> HexPatterns { get; set; } = new List<string>();
+
+        public ThreatSeverity SeverityEnum
+        {
+            get
+            {
+                return Severity?.ToLowerInvariant() switch
+                {
+                    "low" => ThreatSeverity.Low,
+                    "medium" => ThreatSeverity.Medium,
+                    "high" => ThreatSeverity.High,
+                    "critical" => ThreatSeverity.Critical,
+                    _ => ThreatSeverity.Medium
+                };
+            }
+        }
     }
 
     /// <summary>

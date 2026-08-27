@@ -422,7 +422,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiPhishing.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -657,7 +657,7 @@ namespace FireAntivirus.Services
             {
                 url = Uri.UnescapeDataString(url);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiPhishing.cs 捕获异常", ex.Message); }
             
             return url;
         }
@@ -1057,9 +1057,9 @@ namespace FireAntivirus.Services
                     Directory.CreateDirectory(Path.GetDirectoryName(cacheFile));
                     File.WriteAllText(cacheFile, Newtonsoft.Json.JsonConvert.SerializeObject(info));
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiPhishing.cs 捕获异常", ex.Message); }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiPhishing.cs 捕获异常", ex.Message); }
             
             return info;
         }
@@ -1170,7 +1170,7 @@ namespace FireAntivirus.Services
                     Directory.CreateDirectory(Path.GetDirectoryName(cacheFile));
                     File.WriteAllText(cacheFile, Newtonsoft.Json.JsonConvert.SerializeObject(result));
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiPhishing.cs 捕获异常", ex.Message); }
             }
             catch (Exception ex)
             {
@@ -1288,7 +1288,7 @@ namespace FireAntivirus.Services
                     $"检测到钓鱼网站: {result.Domain}",
                     FireAntivirus.Common.Notification.NotificationType.Warning);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiPhishing.cs 捕获异常", ex.Message); }
         }
 
         /// <summary>
@@ -1467,7 +1467,7 @@ namespace FireAntivirus.Services
                 // DMARC验证 - 检查策略
                 result.DMARCValid = CheckDMARCPolicy(email.Sender);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiPhishing.cs 捕获异常", ex.Message); }
             
             return result;
         }

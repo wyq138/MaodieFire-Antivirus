@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级网络流量分析引擎 - 对标Wireshark/Zeek分析能力
 using System;
 using System.Collections.Concurrent;
@@ -344,7 +344,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
 
             return stats;
         }
@@ -542,7 +542,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
                 }
 
                 result.Latency = latencies.Count > 0 ? (long)latencies.Average() : -1;
@@ -561,7 +561,7 @@ namespace FireAntivirus.Services
                         watch.Stop();
                         dnsTimes.Add(watch.ElapsedMilliseconds);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
                 }
 
                 result.DNSResolutionTime = dnsTimes.Count > 0 ? (long)dnsTimes.Average() : -1;
@@ -602,7 +602,7 @@ namespace FireAntivirus.Services
                 });
                 process?.WaitForExit(10000);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -668,7 +668,7 @@ namespace FireAntivirus.Services
                     ThreatCount = _threatIndicators.Count
                 });
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
         }
 
         private void UpdateConnections()
@@ -1083,13 +1083,13 @@ namespace FireAntivirus.Services
 
                             connections.Add(conn);
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
 
                         offset += 20; // 每行20字节
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
 
             return connections;
         }
@@ -1136,13 +1136,13 @@ namespace FireAntivirus.Services
 
                             connections.Add(conn);
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
 
                         offset += 10; // 每行10字节
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
 
             return connections;
         }
@@ -1171,7 +1171,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
 
             return connections;
         }
@@ -1224,7 +1224,7 @@ namespace FireAntivirus.Services
                 var process = Process.GetProcessById(pid);
                 return process.ProcessName;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
 
             return "Unknown";
         }
@@ -1236,7 +1236,7 @@ namespace FireAntivirus.Services
                 var process = Process.GetProcessById(pid);
                 return process.MainModule?.FileName ?? "";
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzerService.cs 捕获异常", ex.Message); }
 
             return "";
         }

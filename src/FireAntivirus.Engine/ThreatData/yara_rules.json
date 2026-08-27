@@ -1,0 +1,23 @@
+[
+  {
+    "Name": "Trojan.Generic",
+    "Description": "检测通用木马特征",
+    "Severity": "High",
+    "Patterns": [ "CreateRemoteThread", "VirtualAllocEx", "WriteProcessMemory" ],
+    "HexPatterns": [ "4D 5A", "E8 ?? ?? ?? ?? 59" ]
+  },
+  {
+    "Name": "Ransomware.Crypto",
+    "Description": "检测加密勒索软件特征",
+    "Severity": "Critical",
+    "Patterns": [ "AES", "RSA", "encrypt", "decrypt", "ransom", "bitcoin" ],
+    "HexPatterns": []
+  },
+  {
+    "Name": "Spyware.Keylogger",
+    "Description": "检测键盘记录器",
+    "Severity": "High",
+    "Patterns": [ "GetAsyncKeyState", "SetWindowsHookEx", "WH_KEYBOARD" ],
+    "HexPatterns": []
+  }
+]

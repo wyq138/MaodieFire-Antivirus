@@ -1,4 +1,4 @@
-// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -10,6 +10,7 @@ using FireAntivirus.Services;
 using FireAntivirus.Data;
 using FireAntivirus.Engine;
 using FireAntivirus.Common.Localization;
+using FireAntivirus.EmailSecurity;
 
 namespace FireAntivirus.Host.WPF.Pages
 {
@@ -18,7 +19,7 @@ namespace FireAntivirus.Host.WPF.Pages
         private Theme currentTheme = Theme.Light;
         private System.Threading.CancellationTokenSource _cts = new();
         private bool _isLoaded = false;
-        private EmailSecurity emailSecurity;
+        private EmailSecurityManager emailSecurity;
         private DataManager dataManager;
         private AntivirusEngine antivirusEngine;
         private LanguageManager _languageManager = LanguageManager.Instance;
@@ -55,10 +56,10 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 dataManager = new DataManager();
                 antivirusEngine = new AntivirusEngine();
-                emailSecurity = new EmailSecurity(dataManager, antivirusEngine);
+                emailSecurity = new EmailSecurityManager(dataManager, antivirusEngine);
                 Dispatcher.Invoke(() => LoadScannedEmails());
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurityPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void SetupEventHandlers()
@@ -81,7 +82,7 @@ namespace FireAntivirus.Host.WPF.Pages
                 scannedEmails.Clear();
                 ScannedEmailsGrid.ItemsSource = scannedEmails;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurityPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void UpdateStatus()
@@ -125,7 +126,7 @@ namespace FireAntivirus.Host.WPF.Pages
         private void UpdateLanguage()
         {
             try { TitleText.Text = _languageManager.GetString("EmailSecurity", "邮件安全"); }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "EmailSecurityPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 

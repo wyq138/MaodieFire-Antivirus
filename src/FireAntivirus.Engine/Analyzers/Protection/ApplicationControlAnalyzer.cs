@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -178,7 +178,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                 info.CompanyName = versionInfo.CompanyName ?? "";
                 info.FileDescription = versionInfo.FileDescription ?? "";
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationControlAnalyzer.cs 捕获异常", ex.Message); }
 
             return info;
         }
@@ -224,7 +224,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                     result.IsTrusted = IsTrustedPublisher(cert.Subject);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationControlAnalyzer.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -312,7 +312,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                 using var process = Process.Start(psi);
                 process?.WaitForExit();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationControlAnalyzer.cs 捕获异常", ex.Message); }
 
             AddToBlacklist(filePath);
         }
@@ -331,7 +331,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                         apps.Add(GetApplicationInfo(path));
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ApplicationControlAnalyzer.cs 捕获异常", ex.Message); }
             }
 
             return apps;

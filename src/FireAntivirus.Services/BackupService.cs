@@ -296,7 +296,7 @@ namespace FireAntivirus.Services
                     _backupTasks = Newtonsoft.Json.JsonConvert.DeserializeObject<List<BackupTask>>(content) ?? new List<BackupTask>();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupService.cs 捕获异常", ex.Message); }
         }
 
         private void SaveBackupTasks()
@@ -308,7 +308,7 @@ namespace FireAntivirus.Services
                 string content = Newtonsoft.Json.JsonConvert.SerializeObject(_backupTasks);
                 File.WriteAllText(tasksFile, content);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupService.cs 捕获异常", ex.Message); }
         }
     }
 

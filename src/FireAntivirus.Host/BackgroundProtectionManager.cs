@@ -43,7 +43,7 @@ namespace FireAntivirus.Host
             {
                 _statusCheckTimer = new Timer(StatusCheckCallback, null, 5000, 10000);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackgroundProtectionManager.cs 捕获异常", ex.Message); }
         }
 
         public void StopStatusMonitoring()
@@ -53,7 +53,7 @@ namespace FireAntivirus.Host
                 _statusCheckTimer?.Dispose();
                 _statusCheckTimer = null;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackgroundProtectionManager.cs 捕获异常", ex.Message); }
         }
 
         private void StatusCheckCallback(object state)
@@ -86,10 +86,10 @@ namespace FireAntivirus.Host
                     {
                         mainForm.UpdateProtectionStatus(status);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackgroundProtectionManager.cs 捕获异常", ex.Message); }
                 }));
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackgroundProtectionManager.cs 捕获异常", ex.Message); }
             finally
             {
                 _isChecking = false;

@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级勒索防护引擎 - 对标卡巴斯基/诺顿防护能力
 using System;
 using System.Collections.Concurrent;
@@ -169,82 +169,60 @@ namespace FireAntivirus.Services
 
         private void InitializeExtensions()
         {
-            // 已知勒索软件扩展名 - 完整列表
-            var extensions = new[]
-            {
-                // WannaCry家族
-                ".wncry", ".wncryt", ".wnry", ".wcry", ".wannacry",
-                // CryptoLocker家族
-                ".encrypted", ".crypto", ".crinf", ".enlocked", ".enc",
-                // Locky家族
-                ".locky", ".zepto", ".odin", ".aesir", ".thor", ".zzzzz", ".osiris",
-                // CryptoWall家族
-                ".crypt", ".cryptolocker", ".cryptowall",
-                // Cerber家族
-                ".cerber", ".cerber2", ".cerber3",
-                // 其他常见勒索软件
-                ".lock", ".locked", ".lockedfile", ".locklock", ".lockymap",
-                ".aaa", ".abc", ".xyz", ".zzz", ".porno", ".pornoasset",
-                ".enc", ".encoding", ".encode", ".coded", ".code",
-                ".rsa", ".aes", ".rsa4096", ".aes256",
-                ".exx", ".dxx", ".axx", ".bxx", ".cxx",
-                ".vault", ".vaultcrypt", ".vaultencrypted",
-                ".petya", ".goldeneye", ".notpetya",
-                ".globe", ".globeimposter", ".globe2",
-                ".sage", ".sage2.0",
-                ".r5a", ".r4a", ".r3a",
-                ".crjoker", ".joker",
-                ".keybtc@inbox_com", ".btc",
-                ".HA3", ".toxcrypt", ".magic", ".SERP",
-                ".r16m01od13", ".lesli", ".kuneming", ".rsakey",
-                ".no_more_ransom", ".restorefiles", ".decrypt",
-                ".shifu", ".shit", ".sage", ".globe",
-                ".rsencrypted", ".crypted", ".cryptolocker",
-                ".encryptedrsa", ".encryptedaes", ".enciphered",
-                ".lockedbydharma", ".dharma", ".bip",
-                ".wallet", ".wal", ".data",
-                ".shadow", ".shadowbroker",
-                ".adk", ".arena", ".brrr", ".crab", ".crabsl",
-                ".decryptfiles", ".djvu", ".djvur", ".djvus",
-                ".ewam", ".fbf", ".foop", ".frend", ".gehad",
-                ".harma", ".infow", ".karlos", ".korea", ".leto",
-                ".lotej", ".makeoffline", ".masodas", ".mesetas",
-                ".nampohyu", ".neras", ".nhiroshima", ".paas",
-                ".puton", ".radman", ".rop", ".rooe", ".shadow",
-                ".stare", ".stop", ".trod", ".television",
-                ".tfude", ".tfudet", ".tfudeq", ".truke",
-                ".txtp", ".usuf", ".vanss", ".vesrato",
-                ".xoza", ".xtbl", ".zed", ".zombie"
-            };
-
-            foreach (var ext in extensions)
-            {
-                _suspiciousExtensions.Add(ext.ToLower());
-            }
+            // 勒索软件扩展名从外置威胁特征库(ransomware_signatures.json)动态加载，
+            // 不将恶意特征字符串编译进本 DLL，避免杀软对杀毒软件二进制的误报。
+            LoadRansomwareFeaturesFromThreatData(
+                loadExtensions: (HashSet<string> extensions) =>
+                {
+                    _suspiciousExtensions.Clear();
+                    foreach (var ext in extensions)
+                        _suspiciousExtensions.Add(ext.ToLower());
+                });
         }
 
         private void InitializeKnownRansomware()
         {
-            // 已知勒索软件进程名
-            var processes = new[]
-            {
-                "wannacry", "wcry", "wnry", "wncry", "wncryt",
-                "locky", "zepto", "odin", "thor", "aesir",
-                "cerber", "cerber2", "cerber3",
-                "cryptolocker", "crypto", "cryptowall",
-                "petya", "notpetya", "goldeneye",
-                "globe", "globeimposter",
-                "teslacrypt", "alpha", "beta",
-                "ctb-locker", "ctblocker",
-                "filecoder", "encoder", "filecryptor",
-                "ransom", "cryptor", "encryptor",
-                "trojan.encoder", "trojan.ransom",
-                "malware.encoder", "malware.ransom"
-            };
+            // 勒索软件进程/家族名从外置威胁特征库(ransomware_signatures.json)动态加载，
+            // 不将恶意特征字符串编译进本 DLL，避免杀软误报。
+            LoadRansomwareFeaturesFromThreatData(
+                loadNames: (HashSet<string> names) =>
+                {
+                    _knownRansomwareProcesses.Clear();
+                    foreach (var n in names)
+                        _knownRansomwareProcesses.Add(n.ToLower());
+                });
+        }
 
-            foreach (var proc in processes)
+        /// <summary>
+        /// 从 FireAntivirus.Engine.ThreatData 外置特征库加载勒索软件扩展名/家族名。
+        /// 若外部 JSON 缺失或为空，则不做降级硬编码（保持集合为空并不会影响正常文件操作，
+        /// 但会丢失勒索识别能力），并把加载状态记录到威胁日志便于排查。
+        /// </summary>
+        private void LoadRansomwareFeaturesFromThreatData(
+            Action<HashSet<string>> loadExtensions = null,
+            Action<HashSet<string>> loadNames = null)
+        {
+            try
             {
-                _knownRansomwareProcesses.Add(proc.ToLower());
+                FireAntivirus.Engine.ExternalThreatData.EnsureLoaded();
+
+                if (loadExtensions != null && FireAntivirus.Engine.ExternalThreatData.RansomwareExtensions.Count > 0)
+                    loadExtensions(FireAntivirus.Engine.ExternalThreatData.RansomwareExtensions);
+
+                if (loadNames != null && FireAntivirus.Engine.ExternalThreatData.RansomwareNames.Count > 0)
+                    loadNames(FireAntivirus.Engine.ExternalThreatData.RansomwareNames);
+
+                if (FireAntivirus.Engine.ExternalThreatData.LastWarnings.Count > 0)
+                {
+                    var msg = string.Join(" | ", FireAntivirus.Engine.ExternalThreatData.LastWarnings);
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                        "RansomwareProtectionService 特征库加载告警", msg);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error,
+                    "RansomwareProtectionService 加载外置特征库失败", ex.Message);
             }
         }
 
@@ -349,7 +327,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void InitializePerformanceCounters()
@@ -363,7 +341,7 @@ namespace FireAntivirus.Services
                 _baselineDiskWriteRate = _diskWriteCounter.NextValue();
                 _baselineDiskReadRate = _diskReadCounter.NextValue();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -578,10 +556,10 @@ namespace FireAntivirus.Services
                             });
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         public RansomwareProtectionSettings GetSettings()
@@ -650,10 +628,10 @@ namespace FireAntivirus.Services
                             Timestamp = DateTime.Now
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         public void QuarantineFile(string filePath, string reason)
@@ -678,7 +656,7 @@ namespace FireAntivirus.Services
                     Timestamp = DateTime.Now
                 });
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         public ProtectionStatistics GetStatistics()
@@ -746,7 +724,7 @@ namespace FireAntivirus.Services
                     watcher.EnableRaisingEvents = false;
                     watcher.Dispose();
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
             }
             _watchers.Clear();
         }
@@ -841,7 +819,7 @@ namespace FireAntivirus.Services
                     Timestamp = DateTime.Now
                 });
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void OnFileCreated(object sender, FileSystemEventArgs e)
@@ -921,7 +899,7 @@ namespace FireAntivirus.Services
                 if ((attr & FileAttributes.Hidden) != 0 || (attr & FileAttributes.System) != 0)
                     return true;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
 
             // 忽略程序文件
             if (directory.Contains("program files") || directory.Contains("programdata"))
@@ -964,7 +942,7 @@ namespace FireAntivirus.Services
                     _lastModificationReset = DateTime.Now;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void CheckSuspiciousProcesses()
@@ -1001,7 +979,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
             }
         }
 
@@ -1054,7 +1032,7 @@ namespace FireAntivirus.Services
 
                 profile.BehaviorScore = Math.Min(100, score);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void CheckDiskActivityAnomaly()
@@ -1076,7 +1054,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void CheckShadowCopyStatus()
@@ -1100,7 +1078,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private bool IsMassModificationHappening(string filePath)
@@ -1169,7 +1147,7 @@ namespace FireAntivirus.Services
                     Timestamp = DateTime.Now
                 });
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -1197,7 +1175,7 @@ namespace FireAntivirus.Services
 
                 _lastHoneypotCheck = DateTime.Now;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void DeployHoneypotInFolder(string folderPath)
@@ -1250,7 +1228,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private byte[] CreateHoneypotContent(string fileType)
@@ -1282,7 +1260,7 @@ namespace FireAntivirus.Services
                     return honeypotFiles.Any(h => h.Equals(filePath, StringComparison.OrdinalIgnoreCase));
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
 
             return false;
         }
@@ -1297,7 +1275,7 @@ namespace FireAntivirus.Services
                     return File.ReadAllLines(listFile).Length;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
 
             return 0;
         }
@@ -1320,7 +1298,7 @@ namespace FireAntivirus.Services
                 // 监控影子副本删除命令
                 // vssadmin delete shadows /all /quiet
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -1344,7 +1322,7 @@ namespace FireAntivirus.Services
                 // 清理旧备份
                 CleanupOldBackups();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void BackupImportantFiles(string folderPath)
@@ -1369,10 +1347,10 @@ namespace FireAntivirus.Services
 
                         BackupFile(file);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void CleanupOldBackups()
@@ -1391,7 +1369,7 @@ namespace FireAntivirus.Services
                     {
                         file.Delete();
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
                 }
 
                 // 检查备份目录大小
@@ -1410,7 +1388,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -1565,7 +1543,7 @@ namespace FireAntivirus.Services
                 var keyFile = quarantinePath + ".key";
                 File.WriteAllBytes(keyFile, key);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private void LogThreat(ThreatEvent threat)
@@ -1585,7 +1563,7 @@ namespace FireAntivirus.Services
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(threats, Newtonsoft.Json.Formatting.Indented);
                 File.WriteAllText(_threatLogPath, json);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionService.cs 捕获异常", ex.Message); }
         }
 
         private int GetThreatsTodayCount()

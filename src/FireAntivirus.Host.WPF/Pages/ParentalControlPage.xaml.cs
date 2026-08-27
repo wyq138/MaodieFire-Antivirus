@@ -1,4 +1,4 @@
-// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.ObjectModel;
 using System.Windows;
@@ -7,13 +7,14 @@ using System.Windows.Media;
 using FireAntivirus.Services;
 using FireAntivirus.Data;
 using FireAntivirus.Common.Localization;
+using FireAntivirus.ParentalControl;
 
 namespace FireAntivirus.Host.WPF.Pages
 {
     public partial class ParentalControlPage : Page, IThemed
     {
         private Theme currentTheme = Theme.Light;
-        private ParentalControl parentalControl;
+        private ParentalControlManager parentalControl;
         private DataManager dataManager;
         private LanguageManager _languageManager = LanguageManager.Instance;
         private ObservableCollection<string> users = new ObservableCollection<string>();
@@ -35,13 +36,13 @@ namespace FireAntivirus.Host.WPF.Pages
             try
             {
                 dataManager = new DataManager();
-                parentalControl = new ParentalControl(dataManager);
+                parentalControl = new ParentalControlManager(dataManager);
                 
                 // 加载用户列表
                 users.Add("默认用户");
                 UsersListBox.ItemsSource = users;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControlPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void SetupEventHandlers()
@@ -124,7 +125,7 @@ namespace FireAntivirus.Host.WPF.Pages
         private void UpdateLanguage()
         {
             try { TitleText.Text = _languageManager.GetString("ParentalControl", "家长控制"); }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControlPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,6 +9,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Net.Http;
+using Newtonsoft.Json.Linq;
 using FireAntivirus.Data;
 using FireAntivirus.Common;
 using FireAntivirus.Engine.Analyzers;
@@ -68,10 +70,16 @@ namespace FireAntivirus.Engine
     public class AntivirusEngine : IDisposable
     {
         #region 扫描缓存
-        private static readonly Dictionary<string, (ScanResult result, DateTime timestamp)> _scanCache = 
+        private static readonly Dictionary<string, (ScanResult result, DateTime timestamp)> _scanCache =
             new Dictionary<string, (ScanResult, DateTime)>(StringComparer.OrdinalIgnoreCase);
         private static readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
         private static readonly object _cacheLock = new object();
+
+        // 云查杀哈希缓存(持久化24小时,避免重复查询)
+        private static readonly Dictionary<string, (ScanResult result, DateTime timestamp)> _cloudHashCache =
+            new Dictionary<string, (ScanResult, DateTime)>(StringComparer.OrdinalIgnoreCase);
+        private static readonly TimeSpan _cloudCacheExpiration = TimeSpan.FromHours(24);
+        private static readonly object _cloudCacheLock = new object();
         #endregion
 
         #region 字段和属性
@@ -79,7 +87,69 @@ namespace FireAntivirus.Engine
         private bool _isScanning;
         private bool _isPaused;
         private CancellationTokenSource _cancellationTokenSource;
-        
+
+        // 内置云查杀客户端(MalwareBazaar + OTX + VirusTotal + HybridAnalysis)
+        private static readonly HttpClient _cloudHttpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(15)
+        };
+        private const string MalwareBazaarApiUrl = "https://mb-api.abuse.ch/api/v1/";
+        private const string OtxApiBaseUrl = "https://otx.alienvault.com/api/v1";
+        private const string VirusTotalApiBaseUrl = "https://www.virustotal.com/api/v3";
+
+        // 云查杀静态配置 (UI 通过 UpdateCloudScanConfig 同步,避免循环依赖)
+        private static volatile bool s_enableMalwareBazaar = true;
+        private static volatile bool s_enableOTX = true;
+        private static volatile bool s_enableVirusTotal = false;        // 默认禁用,需用户配置 Key
+        private static volatile bool s_enableHybridAnalysis = false;    // 默认禁用,需用户配置 Key
+        private static string s_virusTotalApiKey = string.Empty;
+        private static string s_hybridAnalysisApiKey = string.Empty;
+
+        /// <summary>
+        /// 更新内置云查杀配置 (供 UI 调用,从 CloudScanConfig 同步过来)
+        /// </summary>
+        public static void UpdateCloudScanConfig(
+            bool enableMalwareBazaar,
+            bool enableOTX,
+            bool enableVirusTotal,
+            bool enableHybridAnalysis,
+            string virusTotalApiKey,
+            string hybridAnalysisApiKey)
+        {
+            s_enableMalwareBazaar = enableMalwareBazaar;
+            s_enableOTX = enableOTX;
+            s_enableVirusTotal = enableVirusTotal && !string.IsNullOrWhiteSpace(virusTotalApiKey);
+            s_enableHybridAnalysis = enableHybridAnalysis && !string.IsNullOrWhiteSpace(hybridAnalysisApiKey);
+            s_virusTotalApiKey = virusTotalApiKey ?? string.Empty;
+            s_hybridAnalysisApiKey = hybridAnalysisApiKey ?? string.Empty;
+        }
+
+        /// <summary>是否启用内置云查杀(默认开启,对标国际大厂)</summary>
+        public bool EnableCloudScan { get; set; } = true;
+
+        /// <summary>云查杀超时秒数</summary>
+        public int CloudScanTimeoutSeconds { get; set; } = 15;
+
+        /// <summary>手动触发一次特征库立即更新（供 UI "立即更新"按钮调用）。</summary>
+        public async Task<SignatureDatabaseUpdater.SignatureUpdateResult> UpdateSignatureDatabaseAsync()
+        {
+            return await SignatureDatabaseUpdater.UpdateAsync();
+        }
+
+        /// <summary>当前特征库状态只读快照（供 UI/自检显示更新状态）。</summary>
+        public SignatureDatabaseStatus GetSignatureDatabaseStatus()
+        {
+            return new SignatureDatabaseStatus
+            {
+                IsLoaded = SignatureDatabaseUpdater.IsLoaded,
+                HashCount = SignatureDatabaseUpdater.HashCount,
+                UrlCount = SignatureDatabaseUpdater.UrlCount,
+                IpCount = SignatureDatabaseUpdater.IpCount,
+                LastUpdate = SignatureDatabaseUpdater.LastUpdate,
+                LastError = SignatureDatabaseUpdater.LastError
+            };
+        }
+
         public bool IsInitialized { get; private set; } = true;
         
         // 分析器
@@ -136,6 +206,17 @@ namespace FireAntivirus.Engine
         {
             this.dataManager = dataManager ?? new DataManager();
             InitializeAnalyzers();
+            StartSignatureDatabaseUpdater();
+        }
+
+        /// <summary>
+        /// 后台启动自动更新特征库（加载已持久化特征 + 首次拉取最新特征 + 定时自动更新）。
+        /// 纯后台、不阻塞、绝不抛异常，失败不影响引擎运行。
+        /// </summary>
+        private static async void StartSignatureDatabaseUpdater()
+        {
+            try { await SignatureDatabaseUpdater.InitializeAsync(); }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "特征库更新初始化失败", ex.Message); }
         }
 
         private void InitializeAnalyzers()
@@ -246,38 +327,80 @@ namespace FireAntivirus.Engine
                     }
                 }
 
-                // 3. ClamAV病毒扫描
-                var clamavResult = ScanWithClamAV(filePath);
-                if (clamavResult.IsInfected)
+                // ===== 主力引擎: 实时云多引擎查杀(病毒库始终实时, 对标国际大厂) =====
+                // MalwareBazaar(真实恶意样本库) / VirusTotal(70+引擎聚合) / OTX(社区情报)
+                // 命中且置信度高(>=0.8)即权威确认; 置信度低(<0.8)则作为一票参与下方共识表决
+                ScanResult cloudResult = null;
+                bool cloudHit = false;
+                bool cloudConfirmed = false;
+                if (EnableCloudScan)
                 {
-                    return clamavResult;
+                    cloudResult = ScanWithBuiltInCloud(filePath);
+                    cloudHit = cloudResult != null && cloudResult.IsInfected;
+                    cloudConfirmed = cloudHit && cloudResult.Confidence >= 0.8;
                 }
 
-                // 4. 启发式分析
+                // 云端权威确认(MB实库 / VT多引擎) -> 直接判定, 杜绝漏报
+                if (cloudConfirmed)
+                {
+                    cloudResult.Confidence = Math.Max(cloudResult.Confidence, 0.95);
+                    cloudResult.AdditionalInfo = "云端多引擎(实时病毒库)权威确认";
+                    return cloudResult;
+                }
+
+                // ===== 本地多引擎并行收集证据 =====
+                // ClamAV特征 + 启发式 + 静态 + 威胁检测器, 全部参与计数, 互相印证
+                var localHits = new List<ScanResult>();
+                if (cloudHit) localHits.Add(cloudResult); // 云端弱信号也计入一票, 不漏报
+
+                var clamavResult = ScanWithClamAV(filePath);
+                if (clamavResult.IsInfected) localHits.Add(clamavResult);
+
                 if (heuristicEngine != null)
                 {
                     var heuristicResult = heuristicEngine.Scan(filePath);
-                    if (heuristicResult.IsInfected && heuristicResult.Confidence > 0.9)
-                    {
-                        return heuristicResult;
-                    }
+                    if (heuristicResult.IsInfected) localHits.Add(heuristicResult);
                 }
 
-                // 5. 静态分析
                 if (staticAnalyzer != null)
                 {
-                    var staticResult = staticAnalyzer.AnalyzeFile(filePath).FirstOrDefault() ?? new ScanResult { FilePath = filePath };
-                    if (staticResult.IsInfected)
-                    {
-                        result = staticResult;
-                    }
+                    var staticHit = staticAnalyzer.AnalyzeFile(filePath).FirstOrDefault() ?? new ScanResult { FilePath = filePath };
+                    if (staticHit.IsInfected) localHits.Add(staticHit);
                 }
 
-                // 6. 威胁检测器分析
                 var threatResult = ScanWithThreatDetectors(filePath);
-                if (threatResult.IsInfected)
+                if (threatResult.IsInfected) localHits.Add(threatResult);
+
+                int localVotes = localHits.Count;
+
+                // ===== 多引擎共识判定(杜绝误报) =====
+                // ≥2个独立引擎一致命中 -> 确认感染
+                if (localVotes >= 2)
                 {
-                    return threatResult;
+                    var strong = localHits.OrderByDescending(x => x.Confidence).First();
+                    result.IsInfected = true;
+                    result.ThreatName = strong.ThreatName;
+                    result.ThreatType = strong.ThreatType;
+                    result.Severity = strong.Severity ?? "High";
+                    result.Confidence = 0.9;
+                    result.DetectionMethod = "MultiEngine-Consensus";
+                    result.AdditionalInfo = $"本地/云端共{localVotes}个检测引擎一致命中, 云端未权威确认或未收录";
+                    return result;
+                }
+
+                // 单一引擎命中,云端未权威确认 -> 报为"可疑/低置信"
+                // 保留上报(不漏报), 同时低置信并提示可能存在误报(杜绝对误报误杀)
+                if (localVotes == 1)
+                {
+                    var s = localHits[0];
+                    result.IsInfected = true;
+                    result.ThreatName = s.ThreatName;
+                    result.ThreatType = s.ThreatType;
+                    result.Severity = "Low";
+                    result.Confidence = Math.Min(Math.Max(s.Confidence, 0.35), 0.5);
+                    result.DetectionMethod = "Suspicious-Single";
+                    result.AdditionalInfo = "仅单一引擎命中且云端未权威确认, 可能存在误报, 请人工核实后再处理";
+                    return result;
                 }
 
                 result.DetectionMethod = "Clean";
@@ -395,7 +518,7 @@ namespace FireAntivirus.Engine
                     if (File.Exists(fp)) return fp;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
             return null;
         }
 
@@ -407,7 +530,7 @@ namespace FireAntivirus.Engine
             {
                 // 读取文件内容供检测器使用
                 byte[] fileContent = null;
-                try { fileContent = File.ReadAllBytes(filePath); } catch { }
+                try { fileContent = File.ReadAllBytes(filePath); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
 
                 // 使用各种威胁检测器
                 var detectors = new List<(dynamic detector, string name)>
@@ -448,13 +571,340 @@ namespace FireAntivirus.Engine
                                 };
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
 
             return result;
+        }
+        #endregion
+
+        #region 内置云查杀(MalwareBazaar + OTX)
+        /// <summary>
+        /// 内置云查杀 - 通过文件哈希并行查询 MalwareBazaar + AlienVault OTX
+        /// 两个免费 API 均无需 API Key, 真实可用
+        /// </summary>
+        private ScanResult ScanWithBuiltInCloud(string filePath)
+        {
+            var result = new ScanResult
+            {
+                FilePath = filePath,
+                IsInfected = false,
+                DetectionTime = DateTime.Now,
+                DetectionMethod = "Cloud-BuiltIn"
+            };
+
+            try
+            {
+                // 计算 SHA256(云查杀主键)
+                string sha256 = GetFileHash(filePath);
+                if (string.IsNullOrEmpty(sha256))
+                    return result;
+
+                result.FileHash = HexStringToBytes(sha256);
+
+                // 自动更新特征库命中 -> 权威确认（实时病毒库，覆盖最新变种）
+                if (SignatureDatabaseUpdater.TryGetHashThreat(sha256, out var sigThreat))
+                {
+                    result.IsInfected = true;
+                    result.ThreatName = sigThreat ?? "Malware";
+                    result.ThreatType = "Malware";
+                    result.Severity = "High";
+                    result.Confidence = 0.95;
+                    result.DetectionMethod = "SignatureDB";
+                    result.AdditionalInfo = "命中自动更新特征库(实时病毒库)权威确认";
+                    return result;
+                }
+
+                // 检查云查杀缓存
+                lock (_cloudCacheLock)
+                {
+                    if (_cloudHashCache.TryGetValue(sha256, out var cached))
+                    {
+                        if (DateTime.Now - cached.timestamp < _cloudCacheExpiration)
+                        {
+                            var cachedCopy = new ScanResult
+                            {
+                                FilePath = filePath,
+                                IsInfected = cached.result.IsInfected,
+                                ThreatName = cached.result.ThreatName,
+                                ThreatType = cached.result.ThreatType,
+                                Severity = cached.result.Severity,
+                                Confidence = cached.result.Confidence,
+                                DetectionMethod = "(cloud-cached) " + cached.result.DetectionMethod,
+                                DetectionTime = cached.result.DetectionTime,
+                                FileHash = cached.result.FileHash
+                            };
+                            return cachedCopy;
+                        }
+                        _cloudHashCache.Remove(sha256);
+                    }
+                }
+
+                // 按配置并行查询各云引擎
+                var tasks = new List<Task<(bool isMalicious, string threatName, int positiveCount, int totalCount)>>();
+                var taskNames = new List<string>();
+
+                if (s_enableMalwareBazaar)
+                {
+                    var mbTask = QueryMalwareBazaarAsync(sha256).ContinueWith(t =>
+                        t.IsCompletedSuccessfully ? (t.Result.isMalicious, t.Result.threatName, t.Result.isMalicious ? 1 : 0, 1)
+                                                  : (false, null, 0, 1));
+                    tasks.Add(mbTask);
+                    taskNames.Add("MalwareBazaar");
+                }
+
+                if (s_enableOTX)
+                {
+                    var otxTask = QueryOtxHashAsync(sha256).ContinueWith(t =>
+                        t.IsCompletedSuccessfully ? (t.Result.isMalicious, t.Result.threatName, t.Result.isMalicious ? 1 : 0, 1)
+                                                  : (false, null, 0, 1));
+                    tasks.Add(otxTask);
+                    taskNames.Add("OTX");
+                }
+
+                if (s_enableVirusTotal)
+                {
+                    var vtTask = QueryVirusTotalAsync(sha256);
+                    tasks.Add(vtTask);
+                    taskNames.Add("VirusTotal");
+                }
+
+                if (tasks.Count == 0)
+                {
+                    result.DetectionMethod = "Cloud-BuiltIn-Disabled";
+                    return result;
+                }
+
+                // 等待所有查询完成(或超时)
+                Task.WhenAll(tasks).Wait(TimeSpan.FromSeconds(CloudScanTimeoutSeconds));
+
+                bool detected = false;
+                string threatName = null;
+                string threatType = null;
+                double confidence = 0.0;
+                var matched = new List<string>();
+                int totalEngines = 0;
+                int positiveEngines = 0;
+
+                for (int i = 0; i < tasks.Count; i++)
+                {
+                    if (!tasks[i].IsCompletedSuccessfully) continue;
+                    var (isMal, name, pos, total) = tasks[i].Result;
+                    totalEngines += total;
+                    positiveEngines += pos;
+                    if (isMal)
+                    {
+                        detected = true;
+                        threatName ??= name ?? taskNames[i];
+                        threatType = "Malware";
+                        // 置信度分级(供上层共识判定使用):
+                        //  VirusTotal 多引擎(>=2)实锤=0.98; MalwareBazaar 真实恶意样本库=0.95;
+                        //  OTX / VirusTotal单引擎 为社区/弱证据, 降为0.6, 避免单一弱信号直接误报
+                        double conf = taskNames[i] == "VirusTotal"
+                                ? (pos >= 2 ? 0.98 : 0.6)
+                                : taskNames[i] == "MalwareBazaar" ? 0.95 : 0.6;
+                        confidence = Math.Max(confidence, conf);
+                        matched.Add($"{taskNames[i]}: {name ?? "hit"}");
+                    }
+                }
+
+                if (detected)
+                {
+                    result.IsInfected = true;
+                    result.ThreatName = threatName;
+                    result.ThreatType = threatType;
+                    result.Severity = "High";
+                    result.Confidence = confidence;
+                    result.DetectionMethod = "Cloud-BuiltIn";
+                    result.AdditionalInfo = string.Join("; ", matched);
+                    result.MatchedSignatures = matched;
+                }
+                else
+                {
+                    result.DetectionMethod = "Cloud-BuiltIn-Clean";
+                }
+
+                // 写入云查杀缓存(无论结果)
+                lock (_cloudCacheLock)
+                {
+                    _cloudHashCache[sha256] = (new ScanResult
+                    {
+                        FilePath = filePath,
+                        IsInfected = result.IsInfected,
+                        ThreatName = result.ThreatName,
+                        ThreatType = result.ThreatType,
+                        Severity = result.Severity,
+                        Confidence = result.Confidence,
+                        DetectionMethod = result.DetectionMethod,
+                        DetectionTime = result.DetectionTime,
+                        FileHash = result.FileHash
+                    }, DateTime.Now);
+
+                    // 清理过期缓存
+                    if (_cloudHashCache.Count > 5000)
+                    {
+                        var expired = _cloudHashCache
+                            .Where(k => DateTime.Now - k.Value.timestamp > _cloudCacheExpiration)
+                            .Select(k => k.Key).ToList();
+                        foreach (var k in expired) _cloudHashCache.Remove(k);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"内置云查杀错误: {ex.Message}");
+                result.DetectionMethod = "Cloud-BuiltIn-Error";
+            }
+
+            return result;
+        }
+
+        /// <summary>查询 MalwareBazaar(abuse.ch 免费 API, 无需 Key)</summary>
+        private async Task<(bool isMalicious, string threatName)> QueryMalwareBazaarAsync(string sha256)
+        {
+            try
+            {
+                using var formData = new MultipartFormDataContent
+                {
+                    { new StringContent("get_info"), "query" },
+                    { new StringContent(sha256), "hash" }
+                };
+
+                var response = await _cloudHttpClient.PostAsync(MalwareBazaarApiUrl, formData);
+                if (!response.IsSuccessStatusCode) return (false, null);
+
+                var json = JObject.Parse(await response.Content.ReadAsStringAsync());
+                string status = json["query_status"]?.ToString() ?? "";
+
+                if (status.Equals("ok", StringComparison.OrdinalIgnoreCase))
+                {
+                    var data = json["data"] as JArray;
+                    if (data != null && data.Count > 0)
+                    {
+                        string sig = data[0]["signature"]?.ToString();
+                        return (true, sig ?? "MalwareBazaar.Hit");
+                    }
+                }
+                return (false, null);
+            }
+            catch
+            {
+                return (false, null);
+            }
+        }
+
+        /// <summary>查询 AlienVault OTX(免费 API, 无需 Key)</summary>
+        private async Task<(bool isMalicious, string threatName)> QueryOtxHashAsync(string sha256)
+        {
+            try
+            {
+                string url = $"{OtxApiBaseUrl}/indicators/file/{sha256}/general";
+                var response = await _cloudHttpClient.GetStringAsync(url);
+                var json = JObject.Parse(response);
+
+                int pulseCount = json["pulse_info"]?["count"]?.Value<int>() ?? 0;
+                var pulses = json["pulse_info"]?["pulses"] as JArray;
+                var analysis = json["analysis"];
+
+                if (pulseCount > 0 && pulses != null && pulses.Count > 0)
+                {
+                    string name = pulses[0]?["name"]?.ToString() ?? "OTX Threat";
+                    return (true, name);
+                }
+
+                // OTX 沙箱分析结果
+                if (analysis != null && analysis["malware"] != null && analysis["malware"].Value<bool>())
+                {
+                    return (true, "OTX Sandbox: Malware");
+                }
+
+                return (false, null);
+            }
+            catch
+            {
+                return (false, null);
+            }
+        }
+
+        /// <summary>
+        /// 查询 VirusTotal v3 API (70+ 国际杀毒引擎聚合查询)
+        /// 需用户配置 API Key (https://www.virustotal.com/gui/my-apikey 免费申请)
+        /// 免费版限制: 4 次/分钟, 500 次/天
+        /// </summary>
+        private async Task<(bool isMalicious, string threatName, int positiveCount, int totalCount)> QueryVirusTotalAsync(string sha256)
+        {
+            int totalEngines = 0;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(s_virusTotalApiKey))
+                    return (false, null, 0, 0);
+
+                var request = new HttpRequestMessage(HttpMethod.Get, $"{VirusTotalApiBaseUrl}/files/{sha256}");
+                request.Headers.Add("x-apikey", s_virusTotalApiKey);
+                request.Headers.Add("accept", "application/json");
+
+                var response = await _cloudHttpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    // 404 表示文件未被 VT 收录,认为是干净
+                    // 429 限速,跳过
+                    return (false, null, 0, 0);
+                }
+
+                var json = JObject.Parse(await response.Content.ReadAsStringAsync());
+                var stats = json["data"]?["attributes"]?["last_analysis_stats"];
+                if (stats == null) return (false, null, 0, 0);
+
+                int malicious = stats["malicious"]?.Value<int>() ?? 0;
+                int suspicious = stats["suspicious"]?.Value<int>() ?? 0;
+                int harmless = stats["harmless"]?.Value<int>() ?? 0;
+                int undetected = stats["undetected"]?.Value<int>() ?? 0;
+
+                totalEngines = malicious + suspicious + harmless + undetected;
+                int positive = malicious + suspicious;
+
+                // 获取威胁名(从 last_analysis_results 中找第一个 malicious 引擎的分类结果)
+                string threatName = null;
+                var results = json["data"]?["attributes"]?["last_analysis_results"] as JObject;
+                if (results != null)
+                {
+                    foreach (var prop in results.Properties())
+                    {
+                        var category = prop.Value?["category"]?.ToString();
+                        if (category == "malicious")
+                        {
+                            threatName = prop.Value?["result"]?.ToString();
+                            if (!string.IsNullOrEmpty(threatName))
+                            {
+                                threatName = $"{prop.Name}: {threatName}";
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                bool isMal = positive > 0;
+                if (isMal && string.IsNullOrEmpty(threatName))
+                    threatName = $"VirusTotal:{positive}/{totalEngines}";
+
+                return (isMal, threatName, positive, totalEngines);
+            }
+            catch
+            {
+                return (false, null, 0, totalEngines);
+            }
+        }
+
+        private static byte[] HexStringToBytes(string hex)
+        {
+            if (string.IsNullOrEmpty(hex) || hex.Length % 2 != 0) return null;
+            var bytes = new byte[hex.Length / 2];
+            for (int i = 0; i < bytes.Length; i++)
+                bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            return bytes;
         }
         #endregion
 
@@ -523,7 +973,7 @@ namespace FireAntivirus.Engine
 
                 return false; // 签名存在但不在信任列表中，不可信
             }
-            catch { }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "验证文件签名失败", ex.Message); }
 
             return false;
         }
@@ -604,10 +1054,10 @@ namespace FireAntivirus.Engine
                             files.Add(file);
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "获取文件大小失败", ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "枚举扫描文件失败", ex.Message); }
 
             return files;
         }
@@ -645,7 +1095,7 @@ namespace FireAntivirus.Engine
             var results = new List<ScanResult>();
             if (memoryScanner != null)
             {
-                try { results.AddRange(memoryScanner.ScanSystemMemory()); } catch { }
+                try { results.AddRange(memoryScanner.ScanSystemMemory()); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
             }
             return results;
         }
@@ -655,7 +1105,7 @@ namespace FireAntivirus.Engine
             var results = new List<ScanResult>();
             if (registryScanner != null)
             {
-                try { results.AddRange(registryScanner.ScanRegistry()); } catch { }
+                try { results.AddRange(registryScanner.ScanRegistry()); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
             }
             return results;
         }
@@ -665,7 +1115,7 @@ namespace FireAntivirus.Engine
             var results = new List<ScanResult>();
             if (startupScanner != null)
             {
-                try { results.AddRange(startupScanner.ScanStartupItems()); } catch { }
+                try { results.AddRange(startupScanner.ScanStartupItems()); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
             }
             return results;
         }
@@ -675,7 +1125,8 @@ namespace FireAntivirus.Engine
             var results = new List<ScanResult>();
             if (networkScanner != null)
             {
-                try { results.AddRange(networkScanner.ScanNetworkConnections()); } catch { }
+                try { results.AddRange(networkScanner.ScanNetworkConnections()); }
+                catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "网络连接扫描失败", ex.Message); }
             }
             return results;
         }

@@ -257,12 +257,12 @@ namespace FireAntivirus.Host
                                     }
                                 }
                             }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ContextMenuManagerForm.cs 捕获异常", ex.Message); }
                         }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ContextMenuManagerForm.cs 捕获异常", ex.Message); }
         }
     }
 }

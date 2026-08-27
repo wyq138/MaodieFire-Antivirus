@@ -1,8 +1,9 @@
-﻿// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using FireAntivirus.Services;
 using FireAntivirus.Common.Localization;
 
@@ -15,15 +16,28 @@ namespace FireAntivirus.Host.WPF.Pages
         private Theme currentTheme = Theme.Light;
         private SystemOptimizerService optimizer;
         private LanguageManager _languageManager = LanguageManager.Instance;
+        private DispatcherTimer refreshTimer;
+        private System.Diagnostics.PerformanceCounter cpuCounter;
+        private System.Diagnostics.PerformanceCounter memCounter;
+        private bool _isLoaded = false;
 
         public SystemOptimizerPage()
         {
             InitializeComponent();
             _languageManager.LanguageChanged += (sender, e) => UpdateLanguage();
             
+            Unloaded += (s, e) =>
+            {
+                _isLoaded = false;
+                refreshTimer?.Stop();
+                cpuCounter?.Dispose();
+                memCounter?.Dispose();
+            };
+            
             // 延迟加载：将数据加载逻辑移到Loaded事件中
             Loaded += (s, e) =>
             {
+                _isLoaded = true;
                 InitializeService();
                 LoadSystemStatus();
             };
@@ -31,37 +45,48 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void InitializeService()
         {
-            try { optimizer = new SystemOptimizerService(); } catch { }
+            try { optimizer = new SystemOptimizerService(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void LoadSystemStatus()
         {
             try
             {
-                var cpuCounter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
-                var memCounter = new System.Diagnostics.PerformanceCounter("Memory", "% Committed Bytes In Use");
+                cpuCounter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
+                memCounter = new System.Diagnostics.PerformanceCounter("Memory", "% Committed Bytes In Use");
                 
                 cpuCounter.NextValue();
+                memCounter.NextValue();
                 
-                // 异步加载系统状态，避免阻塞UI
-                System.Threading.Tasks.Task.Run(async () =>
-                {
-                    await System.Threading.Tasks.Task.Delay(100);
-                    
-                    float cpu = cpuCounter.NextValue();
-                    float mem = memCounter.NextValue();
-                    
-                    Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        CpuUsage.Text = $"CPU: {cpu:F1}%";
-                        CpuProgress.Value = cpu;
-                        MemoryUsage.Text = $"内存: {mem:F1}%";
-                        MemoryProgress.Value = mem;
-                        EstimatedSpace.Text = "预计可释放: 256 MB";
-                    }));
-                });
+                // 每2秒定时刷新CPU/内存，避免数值长时间不动导致用户误以为卡死
+                refreshTimer = new DispatcherTimer();
+                refreshTimer.Interval = TimeSpan.FromSeconds(2);
+                refreshTimer.Tick += (s, e) => RefreshDynamicInfo();
+                refreshTimer.Start();
+                
+                RefreshDynamicInfo();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerPage.xaml.cs 捕获异常", ex.Message); }
+        }
+
+        private void RefreshDynamicInfo()
+        {
+            if (!_isLoaded) return;
+            try
+            {
+                float cpu = cpuCounter?.NextValue() ?? 0;
+                float mem = memCounter?.NextValue() ?? 0;
+                
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    CpuUsage.Text = $"CPU: {Math.Min(cpu, 100):F1}%";
+                    CpuProgress.Value = Math.Min(cpu, 100);
+                    MemoryUsage.Text = $"内存: {Math.Min(mem, 100):F1}%";
+                    MemoryProgress.Value = Math.Min(mem, 100);
+                    EstimatedSpace.Text = "预计可释放: 256 MB";
+                }));
+            }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void Optimize_Click(object sender, RoutedEventArgs e)
@@ -79,7 +104,7 @@ namespace FireAntivirus.Host.WPF.Pages
 
         private void UpdateLanguage()
         {
-            try { TitleText.Text = _languageManager.GetString("SystemOptimizer", "系统优化"); } catch { }
+            try { TitleText.Text = _languageManager.GetString("SystemOptimizer", "系统优化"); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

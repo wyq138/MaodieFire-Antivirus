@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级安全浏览器引擎 - 对标Safe Browsing/SmartScreen能力
 using System;
 using System.Collections.Concurrent;
@@ -511,7 +511,7 @@ namespace FireAntivirus.Services
                     result.RiskScore += homoglyphs.Count * 20;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -984,7 +984,7 @@ namespace FireAntivirus.Services
 
                 domains.AddRange(_knownPhishingDomains);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
 
             return domains.Distinct().ToList();
         }
@@ -1031,7 +1031,7 @@ namespace FireAntivirus.Services
 
                 _knownPhishingDomains.Add(domain);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
         }
 
         public void RemoveFromBlacklist(string domain)
@@ -1049,7 +1049,7 @@ namespace FireAntivirus.Services
 
                 _knownPhishingDomains.Remove(domain);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -1064,7 +1064,7 @@ namespace FireAntivirus.Services
                 return _bankingDomains.Contains(uri.Host.ToLower()) ||
                        _bankingDomains.Any(d => uri.Host.ToLower().EndsWith("." + d));
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
 
             return false;
         }
@@ -1102,7 +1102,7 @@ namespace FireAntivirus.Services
                 var entry = $"\n127.0.0.1 {domain}  # FireAntivirus Blocked";
                 File.AppendAllText(_hostsPath, entry);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
         }
 
         public void RemoveFromHostsFile(string domain)
@@ -1117,7 +1117,7 @@ namespace FireAntivirus.Services
                     File.WriteAllLines(_hostsPath, lines);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -1156,7 +1156,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
 
             return settings;
         }
@@ -1201,7 +1201,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -1236,11 +1236,11 @@ namespace FireAntivirus.Services
                                 });
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
 
             return history.OrderByDescending(h => h.VisitTime).Take(100).ToList();
         }
@@ -1262,12 +1262,12 @@ namespace FireAntivirus.Services
                     {
                         foreach (var file in Directory.GetFiles(path, "*.*", SearchOption.AllDirectories))
                         {
-                            try { File.Delete(file); } catch { }
+                            try { File.Delete(file); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
                         }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecureBrowserService.cs 捕获异常", ex.Message); }
         }
 
         #endregion

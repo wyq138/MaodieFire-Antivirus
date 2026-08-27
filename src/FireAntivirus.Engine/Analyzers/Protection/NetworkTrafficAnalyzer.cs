@@ -1,4 +1,4 @@
-// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -71,7 +71,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                             info.ProcessPath = GetProcessPath(process);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzer.cs 捕获异常", ex.Message); }
 
                     result.Connections.Add(info);
 
@@ -105,7 +105,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                             info.ProcessName = process.ProcessName;
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzer.cs 捕获异常", ex.Message); }
 
                     result.Connections.Add(info);
                 }
@@ -158,7 +158,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkTrafficAnalyzer.cs 捕获异常", ex.Message); }
 
             return null;
         }

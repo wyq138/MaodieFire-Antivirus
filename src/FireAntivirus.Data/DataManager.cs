@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -403,7 +403,7 @@ namespace FireAntivirus.Data
 
         public DataManager()
         {
-            // 抖音用户 耆耋杀毒软件 开发，严禁非法反编译
+            // 耄耋软件工作室 开发，严禁非法反编译
             dataPath = FireAntivirus.Common.PathHelper.GetDataPath();
             quarantinePath = FireAntivirus.Common.PathHelper.GetQuarantinePath();
             logsPath = FireAntivirus.Common.PathHelper.GetLogsPath();
@@ -1284,7 +1284,7 @@ namespace FireAntivirus.Data
         
         public bool IsWhitelisted(string filePath)
         {
-            // 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+            // 耄耋软件工作室 开发，严禁非法反编译
             var trustItems = trustList;
             
             // 1. 路径白名单检查
@@ -1306,7 +1306,7 @@ namespace FireAntivirus.Data
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataManager.cs exception", ex.Message);  }
 
             // 3. 证书白名单检查
             try
@@ -1337,7 +1337,7 @@ namespace FireAntivirus.Data
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataManager.cs exception", ex.Message);  }
 
             // 4. 系统关键文件白名单
             if (IsSystemCriticalFile(filePath))
@@ -3382,9 +3382,7 @@ namespace FireAntivirus.Data
                     size += new FileInfo(file).Length;
                 }
             }
-            catch
-            {
-            }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataManager.cs exception", ex.Message);  }
             return size;
         }
 

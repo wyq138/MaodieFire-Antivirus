@@ -1,0 +1,70 @@
+{
+  "suspiciousProcessNames": [
+    "mimikatz",
+    "procdump",
+    "lazagne",
+    "wce",
+    "fgdump",
+    "pwdump",
+    "cachedump",
+    "lsadump",
+    "samdump",
+    "ntdsutil",
+    "vssadmin",
+    "thumbs!Edge",
+    "svchost64"
+  ],
+  "commandIndicators": [
+    "vssadmin delete shadows",
+    "wbadmin delete catalog",
+    "bcdedit /set {default} recoveryenabled no"
+  ],
+  "exploitNames": [
+    "EternalBlue",
+    "MS17-010",
+    "ReflectiveLoader"
+  ],
+  "miningProtocols": [
+    "stratum+tcp",
+    "stratum://"
+  ],
+  "miningPools": [
+    "pool.minero.cc",
+    "pool.monero.hashvault.pro",
+    "pool.supportxmr.com",
+    "xmr-eu1.nanopool.org",
+    "xmr-us-east1.nanopool.org",
+    "xmr-asia1.nanopool.org",
+    "pool.minexmr.com",
+    "xmrpool.eu",
+    "donate.v2.xmrig.com",
+    "pool.xmrig.com",
+    "mine.moneropool.com",
+    "xmr.crypto-pool.fr",
+    "monerohash.com",
+    "minexmr.com",
+    "xmrpool.net",
+    "coinhive.com",
+    "coin-hive.com",
+    "crypto-loot.com",
+    "authedmine.com"
+  ],
+  "miningBinaries": [
+    "xmrig.exe",
+    "xmr-stak.exe",
+    "minerd.exe",
+    "cpuminer.exe",
+    "ethminer.exe",
+    "claymore.exe",
+    "phoenixminer.exe",
+    "nbminer.exe",
+    "t-rex.exe",
+    "lolminer.exe",
+    "teamredminer.exe",
+    "bminer.exe",
+    "cryptonote.exe",
+    "minergate.exe",
+    "nicehash.exe",
+    "ccminer.exe"
+  ]
+}

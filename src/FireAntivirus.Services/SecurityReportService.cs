@@ -1,4 +1,4 @@
-// 抖音用户 耆耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级安全报告引擎 - 对标企业级安全审计报告
 using System;
 using System.Collections.Generic;
@@ -66,7 +66,7 @@ namespace FireAntivirus.Services
                     }
                     InitializeTemplates();
                     _templatesLoaded = true;
-                } catch { }
+                } catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             }
             
             if (!_auditLogsLoaded)
@@ -75,7 +75,7 @@ namespace FireAntivirus.Services
                 {
                     LoadAuditLogs();
                     _auditLogsLoaded = true;
-                } catch { }
+                } catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             }
             
             if (!_configLoaded)
@@ -84,7 +84,7 @@ namespace FireAntivirus.Services
                 {
                     LoadScheduledConfig();
                     _configLoaded = true;
-                } catch { }
+                } catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             }
         }
 
@@ -181,11 +181,11 @@ namespace FireAntivirus.Services
                                 _auditLogs.Add(entry);
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
         }
 
         private void LoadScheduledConfig()
@@ -199,7 +199,7 @@ namespace FireAntivirus.Services
                         File.ReadAllText(configPath));
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             _scheduledConfig ??= new ScheduledReportConfig();
         }
@@ -329,7 +329,7 @@ namespace FireAntivirus.Services
                 var line = JsonSerializer.Serialize(entry);
                 File.AppendAllText(_auditLogPath, line + Environment.NewLine);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
         }
 
         /// <summary>
@@ -443,7 +443,7 @@ namespace FireAntivirus.Services
                         Format = DetermineFormat(file)
                     });
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             }
 
             return files.OrderByDescending(f => f.CreatedTime).ToList();
@@ -711,7 +711,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
                 }
 
                 // 最近更新
@@ -773,7 +773,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             // 远程桌面检查
             try
@@ -806,7 +806,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             // UAC检查
             try
@@ -830,7 +830,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             // Guest账户检查
             try
@@ -853,7 +853,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             // 空密码检查
             try
@@ -877,7 +877,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             // 自动播放检查
             try
@@ -901,7 +901,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             // PowerShell策略检查
             try
@@ -925,7 +925,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             return vulnerabilities.OrderByDescending(v => v.CVSSScore).ToList();
         }
@@ -966,7 +966,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             }
 
             // 启动文件夹
@@ -1012,10 +1012,10 @@ namespace FireAntivirus.Services
                             StartType = service.StartType.ToString()
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             return services.OrderBy(s => s.Name).ToList();
         }
@@ -1091,11 +1091,11 @@ namespace FireAntivirus.Services
                                     });
                                 }
                             }
-                            catch { }
+                            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             }
 
             return programs
@@ -1346,7 +1346,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             return inventory;
         }
@@ -1366,7 +1366,7 @@ namespace FireAntivirus.Services
 
                 trend.ScoreTrend = "稳定";
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
             return trend;
         }
@@ -1441,7 +1441,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             return addresses;
         }
 
@@ -1457,7 +1457,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             return "";
         }
 
@@ -1473,7 +1473,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             return "";
         }
 
@@ -1489,7 +1489,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             return "";
         }
 
@@ -1505,7 +1505,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             return "";
         }
 

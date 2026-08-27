@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -64,96 +64,34 @@ namespace FireAntivirus.Engine
         private Dictionary<string, MalwareSignature> InitializeMaliciousHashes()
         {
             var hashes = new Dictionary<string, MalwareSignature>(StringComparer.OrdinalIgnoreCase);
-            
-            // EICAR测试文件
-            hashes["275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"] = new MalwareSignature
+
+            // 内置已知恶意哈希从外部 JSON 加载（ThreatData/known_hashes.json），
+            // 不把家族名/哈希串编译进 DLL，避免杀软误报；真实大规模哈希由特征库更新器运行时注入 AddMaliciousHash。
+            try
             {
-                ThreatName = "EICAR-Test-File",
-                ThreatType = "Test",
-                Severity = "Low",
-                FirstSeen = DateTime.Parse("1990-01-01")
-            };
-            
-            // WannaCry勒索软件
-            hashes["ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa"] = new MalwareSignature
-            {
-                ThreatName = "Ransom.WannaCry",
-                ThreatType = "Ransomware",
-                Severity = "Critical",
-                FirstSeen = DateTime.Parse("2017-05-12")
-            };
-            
-            // Emotet银行木马
-            hashes["5a1c5c9e5a1c5c9e5a1c5c9e5a1c5c9e5a1c5c9e5a1c5c9e5a1c5c9e5a1c5c9e"] = new MalwareSignature
-            {
-                ThreatName = "Trojan.Emotet",
-                ThreatType = "Trojan",
-                Severity = "High",
-                FirstSeen = DateTime.Parse("2014-01-01")
-            };
-            
-            // TrickBot木马
-            hashes["6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b"] = new MalwareSignature
-            {
-                ThreatName = "Trojan.TrickBot",
-                ThreatType = "Trojan",
-                Severity = "High",
-                FirstSeen = DateTime.Parse("2016-01-01")
-            };
-            
-            // QakBot木马
-            hashes["7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c"] = new MalwareSignature
-            {
-                ThreatName = "Trojan.QakBot",
-                ThreatType = "Trojan",
-                Severity = "High",
-                FirstSeen = DateTime.Parse("2007-01-01")
-            };
-            
-            // Mirai僵尸网络
-            hashes["8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d"] = new MalwareSignature
-            {
-                ThreatName = "Bot.Mirai",
-                ThreatType = "Botnet",
-                Severity = "High",
-                FirstSeen = DateTime.Parse("2016-08-01")
-            };
-            
-            // Ryuk勒索软件
-            hashes["9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e"] = new MalwareSignature
-            {
-                ThreatName = "Ransom.Ryuk",
-                ThreatType = "Ransomware",
-                Severity = "Critical",
-                FirstSeen = DateTime.Parse("2018-08-01")
-            };
-            
-            // Conti勒索软件
-            hashes["0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f"] = new MalwareSignature
-            {
-                ThreatName = "Ransom.Conti",
-                ThreatType = "Ransomware",
-                Severity = "Critical",
-                FirstSeen = DateTime.Parse("2020-05-01")
-            };
-            
-            // LockBit勒索软件
-            hashes["1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"] = new MalwareSignature
-            {
-                ThreatName = "Ransom.LockBit",
-                ThreatType = "Ransomware",
-                Severity = "Critical",
-                FirstSeen = DateTime.Parse("2019-09-01")
-            };
-            
-            // BlackCat勒索软件
-            hashes["2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"] = new MalwareSignature
-            {
-                ThreatName = "Ransom.BlackCat",
-                ThreatType = "Ransomware",
-                Severity = "Critical",
-                FirstSeen = DateTime.Parse("2021-12-01")
-            };
+                var file = Path.Combine(AppContext.BaseDirectory, "ThreatData", "known_hashes.json");
+                if (File.Exists(file))
+                {
+                    var list = System.Text.Json.JsonSerializer.Deserialize<List<MalwareHashEntry>>(File.ReadAllText(file));
+                    if (list != null)
+                    {
+                        foreach (var e in list)
+                        {
+                            if (!string.IsNullOrEmpty(e.Sha256))
+                            {
+                                hashes[e.Sha256] = new MalwareSignature
+                                {
+                                    ThreatName = e.ThreatName,
+                                    ThreatType = e.ThreatType,
+                                    Severity = e.Severity,
+                                    FirstSeen = DateTime.TryParse(e.FirstSeen, out var dt) ? dt : DateTime.MinValue
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            catch { /* 外置文件损坏时保持空集合，不崩扫描 */ }
 
             return hashes;
         }
@@ -196,7 +134,7 @@ namespace FireAntivirus.Engine
                             var hashStr = BitConverter.ToString(hash).Replace("-", "").ToLower();
                             trustedHashes.Add(hashStr);
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CloudScanner.cs 捕获异常", ex.Message); }
                     }
                 }
                 
@@ -225,12 +163,12 @@ namespace FireAntivirus.Engine
                                 var hashStr = BitConverter.ToString(hash).Replace("-", "").ToLower();
                                 trustedHashes.Add(hashStr);
                             }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CloudScanner.cs 捕获异常", ex.Message); }
                         }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CloudScanner.cs 捕获异常", ex.Message); }
             
             return trustedHashes;
         }
@@ -610,7 +548,7 @@ namespace FireAntivirus.Engine
                     _ => "危险"
                 };
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CloudScanner.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -719,6 +657,16 @@ namespace FireAntivirus.Engine
         public string ThreatType { get; set; }
         public string Severity { get; set; }
         public DateTime FirstSeen { get; set; }
+    }
+
+    /// <summary>外置已知哈希条目（ThreatData/known_hashes.json）</summary>
+    public class MalwareHashEntry
+    {
+        public string Sha256 { get; set; }
+        public string ThreatName { get; set; }
+        public string ThreatType { get; set; }
+        public string Severity { get; set; }
+        public string FirstSeen { get; set; }
     }
 
     internal class VirusTotalResponse

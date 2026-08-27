@@ -1,3 +1,4 @@
+using FireAntivirus.CloudScanner;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
 using System;

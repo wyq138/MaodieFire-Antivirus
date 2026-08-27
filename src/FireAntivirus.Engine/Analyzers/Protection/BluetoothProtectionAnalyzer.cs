@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -88,7 +88,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                     break;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BluetoothProtectionAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private List<BluetoothDeviceInfo> GetPairedDevices()
@@ -116,7 +116,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                 // 解析输出
                 devices = ParseBluetoothDevices(output);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BluetoothProtectionAnalyzer.cs 捕获异常", ex.Message); }
 
             return devices;
         }
@@ -150,7 +150,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BluetoothProtectionAnalyzer.cs 捕获异常", ex.Message); }
 
             return devices;
         }
@@ -216,7 +216,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                     result.HasValidConfiguration = discovery != null;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BluetoothProtectionAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         public void AuthorizeDevice(string deviceName)
@@ -256,7 +256,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                 using var process = Process.Start(psi);
                 process?.WaitForExit();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BluetoothProtectionAnalyzer.cs 捕获异常", ex.Message); }
         }
     }
 

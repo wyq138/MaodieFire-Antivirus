@@ -303,7 +303,7 @@ namespace FireAntivirus.Host.WPF
                     return GC.GetTotalMemory(true) / 1024.0 / 1024.0 * 0.1; // 估算LOH为总内存的10%
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedMemoryMonitor.cs 捕获异常", ex.Message); }
             
             return 0;
         }
@@ -363,7 +363,7 @@ namespace FireAntivirus.Host.WPF
                     // 强制清理弱引用
                     GC.Collect(2, GCCollectionMode.Forced);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AdvancedMemoryMonitor.cs 捕获异常", ex.Message); }
             });
         }
 

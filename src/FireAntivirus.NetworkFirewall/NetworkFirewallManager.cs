@@ -1,13 +1,17 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
+using Newtonsoft.Json;
 
 namespace FireAntivirus.NetworkFirewall
 {
@@ -35,7 +39,26 @@ namespace FireAntivirus.NetworkFirewall
 
         private void LoadRules()
         {
-            // 模拟加载防火墙规则
+            string rulesFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "Firewall", "rules.json");
+            if (File.Exists(rulesFile))
+            {
+                try
+                {
+                    string json = File.ReadAllText(rulesFile);
+                    var loaded = JsonConvert.DeserializeObject<List<FirewallRule>>(json);
+                    if (loaded != null && loaded.Count > 0)
+                    {
+                        _rules = loaded;
+                        return;
+                    }
+                }
+                catch
+                {
+                    // 文件损坏时重新生成默认规则
+                }
+            }
+
+            // 文件不存在或加载失败时，使用默认规则
             _rules.Add(new FirewallRule
             {
                 Id = Guid.NewGuid().ToString(),
@@ -78,32 +101,46 @@ namespace FireAntivirus.NetworkFirewall
 
         private void LoadConnections()
         {
-            // 模拟加载网络连接
-            _connections.Add(new NetworkConnection
+            try
             {
-                Id = Guid.NewGuid().ToString(),
-                ProcessName = "chrome.exe",
-                LocalAddress = "127.0.0.1",
-                LocalPort = 54321,
-                RemoteAddress = "192.168.1.1",
-                RemotePort = 80,
-                Protocol = "TCP",
-                State = "Established",
-                CreatedAt = DateTime.Now.AddMinutes(-5)
-            });
+                var properties = IPGlobalProperties.GetIPGlobalProperties();
+                var tcpConnections = properties.GetActiveTcpConnections();
+                var pidMapping = GetTcpConnectionPidMapping();
 
-            _connections.Add(new NetworkConnection
+                foreach (var conn in tcpConnections)
+                {
+                    string processName = "System";
+                    if (pidMapping.TryGetValue(conn.LocalEndPoint, out int pid))
+                    {
+                        try
+                        {
+                            var proc = Process.GetProcessById(pid);
+                            processName = proc.ProcessName;
+                        }
+                        catch
+                        {
+                            // 进程可能已退出
+                        }
+                    }
+
+                    _connections.Add(new NetworkConnection
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ProcessName = processName,
+                        LocalAddress = conn.LocalEndPoint.Address.ToString(),
+                        LocalPort = conn.LocalEndPoint.Port,
+                        RemoteAddress = conn.RemoteEndPoint.Address.ToString(),
+                        RemotePort = conn.RemoteEndPoint.Port,
+                        Protocol = "TCP",
+                        State = conn.State.ToString(),
+                        CreatedAt = DateTime.Now
+                    });
+                }
+            }
+            catch
             {
-                Id = Guid.NewGuid().ToString(),
-                ProcessName = "firefox.exe",
-                LocalAddress = "127.0.0.1",
-                LocalPort = 65432,
-                RemoteAddress = "192.168.1.2",
-                RemotePort = 443,
-                Protocol = "TCP",
-                State = "Established",
-                CreatedAt = DateTime.Now.AddMinutes(-3)
-            });
+                // 获取连接失败时不加载任何连接
+            }
         }
 
         public FirewallRuleResult AddRule(FirewallRule rule)
@@ -302,12 +339,87 @@ namespace FireAntivirus.NetworkFirewall
             return _isEnabled;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MIB_TCPROW_OWNER_PID
+        {
+            public uint state;
+            public uint localAddr;
+            public byte localPort1;
+            public byte localPort2;
+            public byte localPort3;
+            public byte localPort4;
+            public uint remoteAddr;
+            public byte remotePort1;
+            public byte remotePort2;
+            public byte remotePort3;
+            public byte remotePort4;
+            public uint owningPid;
+        }
+
+        private enum TCP_TABLE_CLASS
+        {
+            TCP_TABLE_BASIC_LISTENER,
+            TCP_TABLE_BASIC_CONNECTIONS,
+            TCP_TABLE_BASIC_ALL,
+            TCP_TABLE_OWNER_PID_LISTENER,
+            TCP_TABLE_OWNER_PID_CONNECTIONS,
+            TCP_TABLE_OWNER_PID_ALL,
+            TCP_TABLE_OWNER_MODULE_LISTENER,
+            TCP_TABLE_OWNER_MODULE_CONNECTIONS,
+            TCP_TABLE_OWNER_MODULE_ALL
+        }
+
+        [DllImport("iphlpapi.dll", SetLastError = true)]
+        private static extern uint GetExtendedTcpTable(IntPtr pTcpTable, ref int pdwSize, bool bOrder, int ulAf, TCP_TABLE_CLASS TableClass, int reserved);
+
         private void SaveRules()
         {
-            // 模拟保存规则到文件
             string rulesFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "Firewall", "rules.json");
             Directory.CreateDirectory(Path.GetDirectoryName(rulesFile));
-            // 实际实现中应该序列化规则到文件
+            string json = JsonConvert.SerializeObject(_rules, Formatting.Indented);
+            File.WriteAllText(rulesFile, json);
+        }
+
+        private Dictionary<IPEndPoint, int> GetTcpConnectionPidMapping()
+        {
+            var mapping = new Dictionary<IPEndPoint, int>();
+            int bufferSize = 0;
+            uint ret = GetExtendedTcpTable(IntPtr.Zero, ref bufferSize, false, 2, TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL, 0);
+            if (ret != 0 && ret != 122) // ERROR_INSUFFICIENT_BUFFER
+                return mapping;
+
+            IntPtr buffer = Marshal.AllocHGlobal(bufferSize);
+            try
+            {
+                ret = GetExtendedTcpTable(buffer, ref bufferSize, false, 2, TCP_TABLE_CLASS.TCP_TABLE_OWNER_PID_ALL, 0);
+                if (ret != 0)
+                    return mapping;
+
+                int tableSize = Marshal.ReadInt32(buffer);
+                int rowSize = Marshal.SizeOf(typeof(MIB_TCPROW_OWNER_PID));
+                IntPtr rowPtr = buffer + 4;
+
+                for (int i = 0; i < tableSize; i++)
+                {
+                    var row = (MIB_TCPROW_OWNER_PID)Marshal.PtrToStructure(rowPtr, typeof(MIB_TCPROW_OWNER_PID));
+                    rowPtr += rowSize;
+
+                    var localEndPoint = new IPEndPoint(
+                        new IPAddress((long)row.localAddr),
+                        (row.localPort1 << 8) | row.localPort2);
+
+                    if (!mapping.ContainsKey(localEndPoint))
+                    {
+                        mapping[localEndPoint] = (int)row.owningPid;
+                    }
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+
+            return mapping;
         }
     }
 }

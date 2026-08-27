@@ -428,7 +428,7 @@ namespace FireAntivirus.Host
                                         path = "未知路径";
                                     }
                                 }
-                                catch { }
+                                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkPage.cs 捕获异常", ex.Message); }
                             }
 
                             // 检查是否已经添加了相同的进程
@@ -464,7 +464,7 @@ namespace FireAntivirus.Host
                     return process["ExecutablePath"]?.ToString() ?? "未知路径";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkPage.cs 捕获异常", ex.Message); }
             return "未知路径";
         }
 

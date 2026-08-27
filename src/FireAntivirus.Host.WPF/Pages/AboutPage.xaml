@@ -48,7 +48,7 @@
                            Margin="0,0,0,15"/>
                 
                 <TextBlock x:Name="DeveloperLabel"
-                           Text="开发者: 耄耋安全软件团队"
+                           Text="开发者: 耄耋软件工作室"
                            FontSize="14"
                            Foreground="{DynamicResource TextPrimary}"
                            Margin="0,0,0,15"/>

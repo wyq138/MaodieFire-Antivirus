@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -52,7 +52,7 @@ namespace FireAntivirus.Services
                         _defenderService.OnProgressChanged += (progress) => 
                         {
                             try { OnProgressChanged?.Invoke(this, ConvertProgress(progress, "Windows Defender")); }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
                         };
                     }
                     catch { _defenderAvailable = false; }
@@ -182,7 +182,7 @@ namespace FireAntivirus.Services
                             return result;
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
                 }
                 
                 // ??2: ClamAV
@@ -323,10 +323,10 @@ namespace FireAntivirus.Services
                                             Engine = "ClamAV"
                                         });
                                     }
-                                    catch { }
+                                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
                                 }
                             }
-                            catch { }
+                            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
                         }
                     };
                     
@@ -345,7 +345,7 @@ namespace FireAntivirus.Services
                             Engine = "ClamAV"
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
                     
                     await Task.Run(() => process.WaitForExit()).ConfigureAwait(false);
                     
@@ -364,7 +364,7 @@ namespace FireAntivirus.Services
                             Engine = "ClamAV"
                         });
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -381,7 +381,7 @@ namespace FireAntivirus.Services
                         Engine = "ClamAV"
                     });
                 }
-                catch { }
+                catch (System.Exception ex2) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex2.Message); }
             }
             
             return result;
@@ -493,7 +493,7 @@ namespace FireAntivirus.Services
                         {
                             await client.DownloadFileTaskAsync("https://database.clamav.net/" + file, Path.Combine(databasePath, file));
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
                     }
                 }
                 
@@ -546,7 +546,7 @@ namespace FireAntivirus.Services
                     _defenderService.StopScan();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
             
             _cts?.Cancel();
             IsScanning = false;
@@ -554,8 +554,8 @@ namespace FireAntivirus.Services
         
         public void Dispose()
         {
-            try { _defenderService?.Dispose(); } catch { }
-            try { _cts?.Dispose(); } catch { }
+            try { _defenderService?.Dispose(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
+            try { _cts?.Dispose(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
         }
     }
     

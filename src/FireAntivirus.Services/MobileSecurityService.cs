@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级移动设备安全引擎 - 对标企业MDM安全能力
 using System;
 using System.Collections.Concurrent;
@@ -99,7 +99,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
         }
 
         private void SaveConfiguration()
@@ -114,7 +114,7 @@ namespace FireAntivirus.Services
                 File.WriteAllText(blockedPath, JsonSerializer.Serialize(_blockedDevices.Values.ToList(),
                     new JsonSerializerOptions { WriteIndented = true }));
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
         }
 
         private void InitializeSensitiveFileRules()
@@ -197,7 +197,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
 
             // 通过ADB获取Android设备
             if (!string.IsNullOrEmpty(_adbPath))
@@ -232,7 +232,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
             }
 
             // 检测便携设备（如iPhone）
@@ -263,7 +263,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
 
             // 检测可移动存储
             try
@@ -286,7 +286,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
 
             return devices;
         }
@@ -719,7 +719,7 @@ namespace FireAntivirus.Services
 
                 fingerprint.Components = components;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
 
             return fingerprint;
         }
@@ -885,7 +885,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -973,7 +973,7 @@ namespace FireAntivirus.Services
                 // 检查越狱迹象
                 // iOS设备通过USB连接时，越狱设备可能有特殊文件
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
         }
 
         private bool IsSuspiciousPackage(string packageName)
@@ -1034,7 +1034,7 @@ namespace FireAntivirus.Services
                     info.SecurityPatchLevel = process.StandardOutput.ReadToEnd().Trim();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
 
             return info;
         }
@@ -1069,7 +1069,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
 
             return false;
         }
@@ -1207,7 +1207,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
 
             return devices;
         }
@@ -1312,7 +1312,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
         }
 
         private void LogActivity(string activityType, string deviceId, string description)
@@ -1323,7 +1323,7 @@ namespace FireAntivirus.Services
                 var logEntry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} | {activityType} | {deviceId} | {description}";
                 File.AppendAllText(logFile, logEntry + Environment.NewLine);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
         }
 
         private void SaveTransferLogs()
@@ -1333,7 +1333,7 @@ namespace FireAntivirus.Services
                 var logPath = Path.Combine(_configPath, "transfer_logs.json");
                 File.WriteAllText(logPath, JsonSerializer.Serialize(_transferLogs.TakeLast(1000).ToList()));
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MobileSecurityService.cs 捕获异常", ex.Message); }
         }
 
         #endregion

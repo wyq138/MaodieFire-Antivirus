@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.IO;
 using System.Security.Cryptography;
@@ -1013,7 +1013,7 @@ namespace FireAntivirus.Common
             return list[rng.Next(list.Count)];
         }
 
-        // 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+        // 耄耋软件工作室 开发，严禁非法反编译
 
         public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
         {
@@ -2015,7 +2015,7 @@ namespace FireAntivirus.Common
 
         public static IDbConnection CreateSqliteConnection(string filePath)
         {
-            // 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+            // 耄耋软件工作室 开发，严禁非法反编译
             // 使用反射创建SQLiteConnection，避免直接依赖
             var assembly = Assembly.LoadFrom(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "System.Data.SQLite.dll"));
             var connectionType = assembly.GetType("System.Data.SQLite.SQLiteConnection");

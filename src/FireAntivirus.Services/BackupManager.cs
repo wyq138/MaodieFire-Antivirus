@@ -347,7 +347,7 @@ namespace FireAntivirus.Services
                     string entryName = Path.Combine(entryPrefix, relativePath);
                     archive.CreateEntryFromFile(file, entryName);
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupManager.cs 捕获异常", ex.Message); }
             }
         }
 

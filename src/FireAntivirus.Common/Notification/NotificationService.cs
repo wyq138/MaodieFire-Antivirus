@@ -101,27 +101,22 @@ private NotificationService()
         {
             try
             {
-                if (_notifyIcon == null) return;
-
-                string iconPath = GetIconPath(type);
-                Icon icon = null;
-                try { if (File.Exists(iconPath)) icon = new Icon(iconPath); } catch { }
-
-                // 显示托盘通知
-                _notifyIcon.BalloonTipTitle = title;
-                _notifyIcon.BalloonTipText = message;
-                _notifyIcon.BalloonTipIcon = GetToolTipIcon(type);
-                _notifyIcon.ShowBalloonTip(3000);
-
-                // 只对真正的病毒威胁弹窗通知
-                if (type == NotificationType.Error)
+                // 显示托盘通知（短暂提示）
+                if (_notifyIcon != null)
                 {
-                    try
-                    {
-                        MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    catch { }
+                    string iconPath = GetIconPath(type);
+                    Icon icon = null;
+                    try { if (File.Exists(iconPath)) icon = new Icon(iconPath); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
+
+                    _notifyIcon.BalloonTipTitle = title;
+                    _notifyIcon.BalloonTipText = message;
+                    _notifyIcon.BalloonTipIcon = GetToolTipIcon(type);
+                    _notifyIcon.ShowBalloonTip(3000);
                 }
+
+                // 所有类型的通知都使用自定义通知窗口（显示在右下角）
+                // 不再使用MessageBox.Show（会显示在屏幕中央）
+                ShowNotificationForm(title, message, type);
 
                 FireAntivirus.Common.LogHelper.Info("安全通知", $"标题: {title}\n消息: {message}");
             }
@@ -155,7 +150,7 @@ private NotificationService()
                 // 暂时注释掉日志检查逻辑，避免循环引用
                 // 后续可以通过事件或其他方式实现安全事件的监控
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
         }
 
         private bool IsSecurityThreat(string logType)
@@ -202,7 +197,7 @@ private NotificationService()
                             iconSet = true;
                             break;
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
                     }
                 }
                 
@@ -327,7 +322,7 @@ private NotificationService()
                             Process.Start(mainExePath);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
                 };
             }
             catch (Exception ex)
@@ -438,7 +433,7 @@ private NotificationService()
                         Process.Start(mainExePath, "-logs");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
             };
 
             buttonPanel.Controls.Add(detailsButton);
@@ -480,11 +475,37 @@ private NotificationService()
 
         private void UpdateNotificationPosition()
         {
-            Screen screen = Screen.PrimaryScreen;
-            _notificationForm.Location = new Point(
-                screen.WorkingArea.Width - _notificationForm.Width - 10,
-                screen.WorkingArea.Height - _notificationForm.Height - 10
-            );
+            try
+            {
+                // 获取主显示器的工作区域
+                Screen screen = Screen.PrimaryScreen;
+                if (screen == null)
+                {
+                    // 如果无法获取主屏幕，使用默认位置
+                    _notificationForm.Location = new Point(100, 100);
+                    return;
+                }
+
+                // 计算右下角位置（考虑任务栏等）
+                int x = screen.WorkingArea.Right - _notificationForm.Width - 10;
+                int y = screen.WorkingArea.Bottom - _notificationForm.Height - 10;
+
+                // 确保窗口在屏幕范围内
+                x = Math.Max(0, x);
+                y = Math.Max(0, y);
+
+                _notificationForm.Location = new Point(x, y);
+            }
+            catch (Exception ex)
+            {
+                // 如果位置设置失败，使用默认位置
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "更新通知窗口位置失败", ex.Message);
+                try
+                {
+                    _notificationForm.Location = new Point(100, 100);
+                }
+                catch { }
+            }
         }
 
         private void ShowNotificationForm(string title, string message, NotificationType type)
@@ -611,7 +632,7 @@ private NotificationService()
                     _notificationForm.Dispose();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
         }
     }
 

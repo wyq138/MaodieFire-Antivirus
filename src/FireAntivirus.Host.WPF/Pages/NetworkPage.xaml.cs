@@ -1,4 +1,4 @@
-﻿// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -295,7 +295,7 @@ namespace FireAntivirus.Host.WPF.Pages
                                         path = "未知路径";
                                     }
                                 }
-                                catch { }
+                                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkPage.xaml.cs 捕获异常", ex.Message); }
                             }
 
                             if (!apps.Any(a => a.AppName == appName))
@@ -329,7 +329,7 @@ namespace FireAntivirus.Host.WPF.Pages
                     return process["ExecutablePath"]?.ToString() ?? "未知路径";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkPage.xaml.cs 捕获异常", ex.Message); }
             return "未知路径";
         }
 
@@ -421,7 +421,7 @@ namespace FireAntivirus.Host.WPF.Pages
             {
                 TitleText.Text = _languageManager.GetString("NetworkProtection", "网络防护");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NetworkPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         private class NetworkStatus

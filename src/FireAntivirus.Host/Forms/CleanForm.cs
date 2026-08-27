@@ -403,7 +403,7 @@ namespace FireAntivirus.Host
                                 cleanedCount++;
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CleanForm.cs 捕获异常", ex.Message); }
 
                         // 更新进度
                         int progress = (i + 1) * 100 / junkFiles.Count;
@@ -494,7 +494,7 @@ namespace FireAntivirus.Host
                                 UpdateJunkFilesList(file);
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CleanForm.cs 捕获异常", ex.Message); }
                     }
                 }
             }
@@ -533,7 +533,7 @@ namespace FireAntivirus.Host
                             UpdateJunkFilesList(file);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CleanForm.cs 捕获异常", ex.Message); }
                 }
             }
         }
@@ -575,7 +575,7 @@ namespace FireAntivirus.Host
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CleanForm.cs 捕获异常", ex.Message); }
                 }
             }
         }
@@ -618,7 +618,7 @@ namespace FireAntivirus.Host
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CleanForm.cs 捕获异常", ex.Message); }
                 }
             }
         }
@@ -668,7 +668,7 @@ namespace FireAntivirus.Host
                             UpdateJunkFilesList(file);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CleanForm.cs 捕获异常", ex.Message); }
                 }
             }
         }
@@ -711,7 +711,7 @@ namespace FireAntivirus.Host
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CleanForm.cs 捕获异常", ex.Message); }
                 }
             }
         }
@@ -738,7 +738,7 @@ namespace FireAntivirus.Host
                     size += file.Length;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "CleanForm.cs 捕获异常", ex.Message); }
             return size;
         }
     }

@@ -147,7 +147,7 @@ namespace FireAntivirus.Services
                 string volumeName = targetInstance["VolumeName"]?.ToString() ?? "可移动磁盘";
                 string fileSystem = targetInstance["FileSystem"]?.ToString() ?? "Unknown";
                 long size = 0;
-                try { size = Convert.ToInt64(targetInstance["Size"]); } catch { }
+                try { size = Convert.ToInt64(targetInstance["Size"]); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
                 double sizeGB = Math.Round(size / (1024.0 * 1024 * 1024), 2);
 
                 _dataManager.LogActivity($"USB设备插入: {driveLetter} - {volumeName} ({sizeGB} GB)");
@@ -231,7 +231,7 @@ namespace FireAntivirus.Services
                     NotificationType.Warning
                 );
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
         }
 
         private void USBRemoved(object sender, EventArrivedEventArgs e)
@@ -277,7 +277,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
 
             return "";
         }
@@ -309,7 +309,7 @@ namespace FireAntivirus.Services
 
                 NotificationService.Instance.ShowNotification(title, message, NotificationType.Info);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
         }
 
         private void ShowUSBRemovedNotification(string driveLetter)
@@ -333,7 +333,7 @@ namespace FireAntivirus.Services
                     NotificationType.Info
                 );
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
         }
 
         private void ScanUSBDevice(string driveLetter, string volumeName)
@@ -483,7 +483,7 @@ namespace FireAntivirus.Services
                     notifType
                 );
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
         }
 
         private void ShowScanResultNotification(string driveLetter, string volumeName, USBScanStats stats)
@@ -523,7 +523,7 @@ namespace FireAntivirus.Services
                     Category = "设备监控"
                 });
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
         }
 
         // 检查USB设备是否包含自动运行文件
@@ -585,7 +585,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
         }
 
         // 检查可疑的快捷方式
@@ -600,7 +600,7 @@ namespace FireAntivirus.Services
                     _dataManager.LogActivity($"检测到USB快捷方式: {lnkFile}");
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBMonitor.cs 捕获异常", ex.Message); }
         }
 
         // 扫描统计类

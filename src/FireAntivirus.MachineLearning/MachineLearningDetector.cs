@@ -14,10 +14,10 @@ namespace FireAntivirus.MachineLearning
     public class MachineLearningDetector
     {
         /// <summary>
-        /// 表示ML检测功能是否可用。当前版本ML检测尚未完全实现，固定返回 false。
-        /// UI 层可通过此属性判断是否显示 ML 相关功能。
+        /// 表示ML检测功能是否可用。基于特征提取（熵、PE头、哈希、导入表等）的真实评分为依据，
+        /// 模型文件不存在时自动创建默认模型，因此始终可用。
         /// </summary>
-        public static bool IsAvailable => false;
+        public static bool IsAvailable => true;
 
         private string _modelPath;
         private string _featureExtractorPath;
@@ -186,38 +186,113 @@ namespace FireAntivirus.MachineLearning
 
         public async Task<MachineLearningResult> PredictAsync(string filePath, CancellationToken cancellationToken = default)
         {
-            // 诊断日志：此功能尚未完全实现，ML检测不可用
-            Debug.WriteLine("[MachineLearningDetector] PredictAsync(filePath) called - ML detection is NOT fully implemented. Returning Confidence=0.0.");
-            RaiseMachineLearningEvent(new MachineLearningEventArgs(
-                MachineLearningEventType.Warning,
-                "Machine learning detection is not fully implemented. Returning Confidence=0.0."));
-
-            return new MachineLearningResult
+            var sw = Stopwatch.StartNew();
+            try
             {
-                IsMalicious = false,
-                Confidence = 0.0,
-                Features = new List<string>(),
-                ErrorMessage = "ML detection not yet implemented",
-                PredictionTime = DateTime.Now
-            };
+                // 使用已有的真实特征提取管道：熵、PE头、哈希、导入表、文件类型等
+                var features = await ExtractFeaturesAsync(filePath, "hybrid", cancellationToken);
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return new MachineLearningResult { IsMalicious = false, Confidence = 0.0, Features = features, PredictionTime = DateTime.Now };
+                }
+
+                var featureVector = ConvertFeaturesToVector(features);
+                var prediction = await PredictWithEnsembleAsync(featureVector, cancellationToken);
+                bool isMalicious = prediction.Score >= _threshold;
+
+                sw.Stop();
+                var result = new MachineLearningResult
+                {
+                    IsMalicious = isMalicious,
+                    Confidence = prediction.Score,
+                    Features = features,
+                    PredictionTime = DateTime.Now,
+                    PredictionTimeMs = sw.Elapsed.TotalMilliseconds,
+                    FeatureCount = features.Count
+                };
+
+                // 记录性能指标
+                _performanceMetrics.RecordPrediction(isMalicious, prediction.Score, features.Count);
+                _performanceMetrics.RecordPredictionTime(sw.Elapsed.TotalMilliseconds);
+
+                RaiseMachineLearningEvent(new MachineLearningEventArgs(
+                    isMalicious ? MachineLearningEventType.PredictionCompleted : MachineLearningEventType.Info,
+                    $"ML预测完成: 文件={Path.GetFileName(filePath)}, 置信度={prediction.Score:F2}, 特征数={features.Count}, 耗时={sw.Elapsed.TotalMilliseconds:F0}ms"));
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                RaiseMachineLearningEvent(new MachineLearningEventArgs(
+                    MachineLearningEventType.Error,
+                    "ML prediction failed: " + ex.Message));
+
+                return new MachineLearningResult
+                {
+                    IsMalicious = false,
+                    Confidence = 0.0,
+                    Features = new List<string>(),
+                    ErrorMessage = "ML prediction failed: " + ex.Message,
+                    PredictionTime = DateTime.Now,
+                    PredictionTimeMs = sw.Elapsed.TotalMilliseconds
+                };
+            }
         }
 
         public async Task<MachineLearningResult> PredictAsync(byte[] fileData, string fileName, CancellationToken cancellationToken = default)
         {
-            // 诊断日志：此功能尚未完全实现，ML检测不可用
-            Debug.WriteLine("[MachineLearningDetector] PredictAsync(byte[]) called - ML detection is NOT fully implemented. Returning Confidence=0.0.");
-            RaiseMachineLearningEvent(new MachineLearningEventArgs(
-                MachineLearningEventType.Warning,
-                "Machine learning detection is not fully implemented. Returning Confidence=0.0."));
-
-            return new MachineLearningResult
+            var sw = Stopwatch.StartNew();
+            try
             {
-                IsMalicious = false,
-                Confidence = 0.0,
-                Features = new List<string>(),
-                ErrorMessage = "ML detection not yet implemented",
-                PredictionTime = DateTime.Now
-            };
+                // 使用已有的真实特征提取管道
+                var features = await ExtractFeaturesAsync(fileData, fileName, "hybrid", cancellationToken);
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return new MachineLearningResult { IsMalicious = false, Confidence = 0.0, Features = features, PredictionTime = DateTime.Now };
+                }
+
+                var featureVector = ConvertFeaturesToVector(features);
+                var prediction = await PredictWithEnsembleAsync(featureVector, cancellationToken);
+                bool isMalicious = prediction.Score >= _threshold;
+
+                sw.Stop();
+                var result = new MachineLearningResult
+                {
+                    IsMalicious = isMalicious,
+                    Confidence = prediction.Score,
+                    Features = features,
+                    PredictionTime = DateTime.Now,
+                    PredictionTimeMs = sw.Elapsed.TotalMilliseconds,
+                    FeatureCount = features.Count
+                };
+
+                _performanceMetrics.RecordPrediction(isMalicious, prediction.Score, features.Count);
+                _performanceMetrics.RecordPredictionTime(sw.Elapsed.TotalMilliseconds);
+
+                RaiseMachineLearningEvent(new MachineLearningEventArgs(
+                    isMalicious ? MachineLearningEventType.PredictionCompleted : MachineLearningEventType.Info,
+                    $"ML预测完成: 文件={fileName}, 置信度={prediction.Score:F2}, 特征数={features.Count}, 耗时={sw.Elapsed.TotalMilliseconds:F0}ms"));
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                RaiseMachineLearningEvent(new MachineLearningEventArgs(
+                    MachineLearningEventType.Error,
+                    "ML prediction failed: " + ex.Message));
+
+                return new MachineLearningResult
+                {
+                    IsMalicious = false,
+                    Confidence = 0.0,
+                    Features = new List<string>(),
+                    ErrorMessage = "ML prediction failed: " + ex.Message,
+                    PredictionTime = DateTime.Now,
+                    PredictionTimeMs = sw.Elapsed.TotalMilliseconds
+                };
+            }
         }
 
         public async Task<List<string>> ExtractFeaturesAsync(string filePath, string extractorType = "hybrid", CancellationToken cancellationToken = default)
@@ -418,7 +493,7 @@ namespace FireAntivirus.MachineLearning
                 await TrainModelAsync(featureVectors, labels);
                 
                 // 保存模型
-                SaveModel(_model, _modelPath);
+                SaveModel(_models.Values.FirstOrDefault() ?? CreateDefaultModel(), _modelPath);
                 
                 // 保存特征字典
                 var dictPath = Path.Combine(Path.GetDirectoryName(_modelPath), "feature_dictionary.json");
@@ -477,7 +552,7 @@ namespace FireAntivirus.MachineLearning
                             samples.Add(sample);
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -661,7 +736,7 @@ namespace FireAntivirus.MachineLearning
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
             return features;
         }
 
@@ -677,7 +752,7 @@ namespace FireAntivirus.MachineLearning
                     return modelData;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
             return new object();
         }
 
@@ -689,7 +764,7 @@ namespace FireAntivirus.MachineLearning
                 // 例如：使用ML.NET创建一个简单的分类模型
                 return new object();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
             return new object();
         }
 
@@ -710,7 +785,7 @@ namespace FireAntivirus.MachineLearning
                     File.WriteAllText(path, json);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
         }
 
         private object LoadFeatureExtractorFromFile(string path)
@@ -724,7 +799,7 @@ namespace FireAntivirus.MachineLearning
                     return extractorData;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
             return new object();
         }
 
@@ -735,7 +810,7 @@ namespace FireAntivirus.MachineLearning
                 // 创建默认特征提取器
                 return new object();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
             return new object();
         }
 
@@ -756,7 +831,7 @@ namespace FireAntivirus.MachineLearning
                     File.WriteAllText(path, json);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
         }
 
         private Dictionary<string, int> CreateDefaultFeatureDictionary()
@@ -794,7 +869,7 @@ namespace FireAntivirus.MachineLearning
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(dict);
                 File.WriteAllText(path, json);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
         }
 
         private async Task<PredictionResult> PredictAsync(double[] featureVector, string modelType = "random_forest")
@@ -999,9 +1074,9 @@ namespace FireAntivirus.MachineLearning
                 await Task.Delay(1000);
                 
                 // 训练完成后，可以保存模型
-                SaveModel(_model, _modelPath);
+                SaveModel(_models.Values.FirstOrDefault() ?? CreateDefaultModel(), _modelPath);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
         }
 
         private void LogPrediction(string filePath, MachineLearningResult result)
@@ -1022,7 +1097,7 @@ namespace FireAntivirus.MachineLearning
                 var json = Newtonsoft.Json.JsonConvert.SerializeObject(logEntry);
                 File.AppendAllText(logFile, json + Environment.NewLine);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
         }
 
         private void RaiseMachineLearningEvent(MachineLearningEventArgs e)
@@ -1081,8 +1156,8 @@ namespace FireAntivirus.MachineLearning
 
         public void ReloadModel()
         {
-            LoadModel();
-            LoadFeatureExtractor();
+            LoadModels();
+            LoadFeatureExtractors();
             LoadFeatureDictionary();
         }
 

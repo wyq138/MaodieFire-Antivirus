@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Forms;
 using System.Runtime;
@@ -102,14 +104,14 @@ public partial class MainWindow : Window
                 
                 // 获取服务程序路径（优先从libs目录查找）
                 string baseDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                string libsServicePath = Path.Combine(baseDir ?? "", "libs", "FireAntivirus.Service.exe");
+                string libsServicePath = Path.Combine(baseDir ?? "", "libs", "FireAntivirus.ServiceHost.exe");
                 if (File.Exists(libsServicePath))
                 {
                     _serviceExePath = libsServicePath;
                 }
                 else
                 {
-                    _serviceExePath = Path.Combine(baseDir ?? "", "FireAntivirus.Service.exe");
+                    _serviceExePath = Path.Combine(baseDir ?? "", "FireAntivirus.ServiceHost.exe");
                 }
                 
                 File.AppendAllText(startupLogPath, $"[3] 服务路径: {_serviceExePath}\n");
@@ -133,7 +135,10 @@ public partial class MainWindow : Window
         {
             // 初始化系统托盘
             InitializeTrayIcon();
-            
+
+            // 强制设置窗口/任务栏图标，规避 XAML pack 资源解析失效导致的默认图标问题
+            ForceSetWindowIcon();
+
             // 启动看门狗客户端
             StartWatchdogClient();
             
@@ -789,6 +794,42 @@ private void InitializeTrayIcon()
         }
         
         /// <summary>
+        /// 强制设置窗口图标（标题栏 + 任务栏 + Alt+Tab）。
+        /// 直接从 cat_icon.ico 文件生成窗口图标，避免 XAML pack URI 资源解析失败时任务栏显示默认图标。
+        /// </summary>
+        private void ForceSetWindowIcon()
+        {
+            string startupLogPath = Path.Combine(
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? 
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                "startup.log"
+            );
+
+            try
+            {
+                string iconPath = GetIconPath();
+                if (string.IsNullOrEmpty(iconPath) || !File.Exists(iconPath))
+                {
+                    File.AppendAllText(startupLogPath, "[窗口图标] 未找到图标文件，保持默认\n");
+                    return;
+                }
+
+                using (var ico = new System.Drawing.Icon(iconPath))
+                {
+                    Icon = Imaging.CreateBitmapSourceFromHIcon(
+                        ico.Handle,
+                        System.Windows.Int32Rect.Empty,
+                        BitmapSizeOptions.FromEmptyOptions());
+                }
+                File.AppendAllText(startupLogPath, $"[窗口图标] 已设置: {iconPath}\n");
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllText(startupLogPath, $"[窗口图标异常] {ex.GetType().Name}: {ex.Message}\n");
+            }
+        }
+        
+        /// <summary>
         /// 显示主窗口
         /// </summary>
         private void ShowMainWindow()
@@ -824,11 +865,11 @@ private void InitializeTrayIcon()
             bool serviceRunning = false;
             try
             {
-                var processes = Process.GetProcessesByName("FireAntivirus.Service");
+                var processes = Process.GetProcessesByName("FireAntivirus.ServiceHost");
                 serviceRunning = processes.Length > 0;
                 foreach (var p in processes) p.Dispose();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex.Message); }
 
             string warningMsg = serviceRunning
                 ? "确定要退出耄耋安全软件吗？\n\n退出后实时防护将停止，电脑将失去病毒防护。\n\n注意：后台防护服务正在运行，退出后将停止防护。"
@@ -869,13 +910,13 @@ private void InitializeTrayIcon()
             // 停止后台服务
             try
             {
-                var serviceProcesses = Process.GetProcessesByName("FireAntivirus.Service");
+                var serviceProcesses = Process.GetProcessesByName("FireAntivirus.ServiceHost");
                 foreach (var proc in serviceProcesses)
                 {
-                    try { proc.Kill(); } catch { }
+                    try { proc.Kill(); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex.Message); }
             
             // 退出程序
             Application.Current.Shutdown();
@@ -949,7 +990,7 @@ private void InitializeTrayIcon()
                     _protectionTimer = null;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex.Message); }
             
             // 停止并释放高级监控定时器
             try
@@ -961,7 +1002,7 @@ private void InitializeTrayIcon()
                     _monitoringTimer = null;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex.Message); }
             
             // 清理所有性能监控组件
             try
@@ -971,7 +1012,7 @@ private void InitializeTrayIcon()
                 _gcOptimizer?.GetType(); // 确保引用保持，但GC优化器不需要显式释放
                 // 性能分析器和测试套件不需要显式释放
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex.Message); }
         }
 
         private void StartBackgroundService()
@@ -999,7 +1040,7 @@ private void InitializeTrayIcon()
                 }
                 
                 // 检查是否已经在运行
-                var existingProcesses = Process.GetProcessesByName("FireAntivirus.Service");
+                var existingProcesses = Process.GetProcessesByName("FireAntivirus.ServiceHost");
                 if (existingProcesses.Length > 0)
                 {
                     File.AppendAllText(startupLogPath, $"[启动服务] 服务已在运行，进程数: {existingProcesses.Length}\n");
@@ -1194,7 +1235,7 @@ private void InitializeTrayIcon()
                     ContentFrame.Content = placeholderPage;
                     PageTitle.Text = pageName;
                 }
-                catch { }
+                catch (System.Exception ex2) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex2.Message); }
             }
         }
         private string GetPageTitle(string pageName)
@@ -1290,7 +1331,7 @@ private void InitializeTrayIcon()
                     themedPage.ApplyTheme(theme);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex.Message); }
         }
 
 private void StartProtectionMonitor()
@@ -1317,7 +1358,7 @@ private void StartProtectionMonitor()
         {
             try
             {
-                var processes = Process.GetProcessesByName("FireAntivirus.Service");
+                var processes = Process.GetProcessesByName("FireAntivirus.ServiceHost");
                 bool isProtected = processes.Length > 0;
                 foreach (var p in processes) p.Dispose();
                 
@@ -1348,7 +1389,7 @@ private void StartProtectionMonitor()
                     }
                 }));
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainWindow.xaml.cs 捕获异常", ex.Message); }
         }
         
         public void UpdateProtectionStatus(Dictionary<string, bool> status)
@@ -1369,4 +1410,3 @@ private void StartProtectionMonitor()
         void ApplyTheme(Theme theme);
     }
 }
-

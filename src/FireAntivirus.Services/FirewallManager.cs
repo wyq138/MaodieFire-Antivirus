@@ -246,7 +246,7 @@ namespace FireAntivirus.Services
                 
                 _dataManager.LogInfo($"防火墙恶意IP库加载完成: {_maliciousIPs.Count}个IP");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FirewallManager.cs 捕获异常", ex.Message); }
         }
 
         private void AddKnownMaliciousIPRanges()
@@ -474,7 +474,7 @@ namespace FireAntivirus.Services
                             });
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FirewallManager.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -496,7 +496,7 @@ namespace FireAntivirus.Services
                     connections = ParseNetstatOutput(output);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FirewallManager.cs 捕获异常", ex.Message); }
             
             return connections;
         }
@@ -554,7 +554,7 @@ namespace FireAntivirus.Services
                     connections.Add(conn);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FirewallManager.cs 捕获异常", ex.Message); }
             
             return connections;
         }
@@ -730,7 +730,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FirewallManager.cs 捕获异常", ex.Message); }
         }
 
         private bool IsSuspiciousProcessLocation(string path)
@@ -786,7 +786,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FirewallManager.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -820,7 +820,7 @@ namespace FireAntivirus.Services
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FirewallManager.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -910,14 +910,34 @@ namespace FireAntivirus.Services
                     return TrustLevel.Suspicious;
                 }
                 
-                // 验证签名
-                // TODO: 实现签名验证
-                
+                // 验证数字签名：已签名且信任的发布者为可信应用
+                if (IsSignedAndTrusted(path))
+                {
+                    return TrustLevel.Trusted;
+                }
+
                 return TrustLevel.Unknown;
             }
             catch
             {
                 return TrustLevel.Unknown;
+            }
+        }
+
+        /// <summary>
+        /// 校验文件数字签名，仅当签名完整且发布者可信时视为可信应用
+        /// </summary>
+        private bool IsSignedAndTrusted(string path)
+        {
+            try
+            {
+                var verifier = new SignatureVerifier();
+                var signature = verifier.VerifySignature(path);
+                return signature.IsSigned && signature.IsValid && signature.IsTrusted;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -974,7 +994,7 @@ namespace FireAntivirus.Services
             {
                 ExecuteCommand("netsh", $"advfirewall firewall delete rule name=\"{rule.Name}\"");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "FirewallManager.cs 捕获异常", ex.Message); }
         }
 
         private string BuildRuleCommand(FirewallRule rule)

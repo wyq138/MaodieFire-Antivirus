@@ -1,4 +1,4 @@
-// 抖音用户 耙耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -7,16 +7,17 @@ using System.Windows.Media;
 using FireAntivirus.Services;
 using FireAntivirus.Data;
 using FireAntivirus.Common.Localization;
+using FireAntivirus.PasswordManager;
 
 namespace FireAntivirus.Host.WPF.Pages
 {
     public partial class PasswordManagerPage : Page, IThemed
     {
         private Theme currentTheme = Theme.Light;
-        private PasswordManager passwordManager;
+        private FireAntivirus.PasswordManager.PasswordManager passwordManager;
         private DataManager dataManager;
         private LanguageManager _languageManager = LanguageManager.Instance;
-        private List<StoredPassword> passwords = new List<StoredPassword>();
+        private List<FireAntivirus.PasswordManager.StoredPassword> passwords = new List<FireAntivirus.PasswordManager.StoredPassword>();
 
         public PasswordManagerPage()
         {
@@ -31,12 +32,12 @@ namespace FireAntivirus.Host.WPF.Pages
             try
             {
                 dataManager = new DataManager();
-                passwordManager = new PasswordManager(dataManager);
+                passwordManager = new FireAntivirus.PasswordManager.PasswordManager(dataManager);
                 
                 // 加载密码列表
-                passwords = passwordManager?.GetPasswords() ?? new List<StoredPassword>();
+                passwords = passwordManager?.GetPasswords() ?? new List<FireAntivirus.PasswordManager.StoredPassword>();
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PasswordManagerPage.xaml.cs 捕获异常", ex.Message); }
         }
 
         public void ApplyTheme(Theme theme)
@@ -51,7 +52,7 @@ namespace FireAntivirus.Host.WPF.Pages
         private void UpdateLanguage()
         {
             try { TitleText.Text = _languageManager.GetString("PasswordManager", "密码管理"); }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PasswordManagerPage.xaml.cs 捕获异常", ex.Message); }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -56,10 +56,10 @@ namespace FireAntivirus.Engine
                         result.IsValidSignature = DateTime.Now >= cert.NotBefore && DateTime.Now <= cert.NotAfter;
                         result.Certificate = cert;
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "Analyzers.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "Analyzers.cs 捕获异常", ex.Message); }
 
             return result;
         }
@@ -192,7 +192,7 @@ namespace FireAntivirus.Engine
                     result.DetectionMethod = "Heuristic";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "Analyzers.cs 捕获异常", ex.Message); }
 
             return result;
         }

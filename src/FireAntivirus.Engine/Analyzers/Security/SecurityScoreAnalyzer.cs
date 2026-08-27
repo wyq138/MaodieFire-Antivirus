@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -122,7 +122,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {
@@ -181,7 +181,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {
@@ -236,7 +236,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     details.Add("更新服务正常");
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {
@@ -289,7 +289,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {
@@ -329,7 +329,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {
@@ -387,7 +387,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     result.Recommendations.Add("建议启用BitLocker磁盘加密");
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {
@@ -427,10 +427,10 @@ namespace FireAntivirus.Engine.Analyzers.Security
                             result.Warnings.Add($"{svc.Value}正在运行，可能存在安全风险");
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {
@@ -468,7 +468,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     details.Add("特殊账户配置已设置");
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {
@@ -512,7 +512,7 @@ namespace FireAntivirus.Engine.Analyzers.Security
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityScoreAnalyzer.cs 捕获异常", ex.Message); }
 
             result.Factors.Add(new SecurityFactorResult
             {

@@ -1,5 +1,5 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -411,7 +411,7 @@ namespace FireAntivirus.Host
                             {
                                 homePage.UpdateVirusDatabaseStatus(version, isUpToDate);
                             }
-                            catch { }
+                            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
                         }));
                         return;
                     }
@@ -424,11 +424,11 @@ namespace FireAntivirus.Host
                         {
                             currentHome.UpdateVirusDatabaseStatus(version, isUpToDate);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
                     }));
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
         }
         
         private void CheckAndStartBackgroundProtection()
@@ -629,7 +629,7 @@ namespace FireAntivirus.Host
                         {
                             protectionPage.UpdateProtectionStatus(status);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
                     }
 
                     if (currentPage is HomePage homePage)
@@ -638,7 +638,7 @@ namespace FireAntivirus.Host
                         {
                             homePage.UpdateProtectionStatus(serviceRunning && allProtectionsEnabled);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
                     }
                 }));
 
@@ -651,7 +651,7 @@ namespace FireAntivirus.Host
                             {
                                 cachedHome.UpdateProtectionStatus(serviceRunning && allProtectionsEnabled);
                             }
-                            catch { }
+                            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
                         }));
                     }
                 }
@@ -690,7 +690,7 @@ namespace FireAntivirus.Host
                     SaveThemeToConfig();
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
         }
 
         private void SaveThemeToConfig()
@@ -707,7 +707,7 @@ namespace FireAntivirus.Host
                 string configContent = $"{{\"theme\":\"{currentTheme}\"}}";
                 System.IO.File.WriteAllText(configPath, configContent);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
         }
 
         private async void PreloadCommonPages()
@@ -1229,7 +1229,7 @@ namespace FireAntivirus.Host
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
         }
 
         private UserControl CreatePageInstance(string pageName)
@@ -1925,7 +1925,7 @@ namespace FireAntivirus.Host
                     SetLightScrollBarColor();
                 }
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
         }
 
         // P/Invoke 声明
@@ -1947,7 +1947,7 @@ namespace FireAntivirus.Host
                 int[] colors = { System.Drawing.Color.FromArgb(50, 50, 50).ToArgb() };
                 SetSysColors(1, elements, colors);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
         }
 
         private void SetLightScrollBarColor()
@@ -1960,7 +1960,7 @@ namespace FireAntivirus.Host
                 int[] colors = { System.Drawing.Color.FromArgb(240, 240, 240).ToArgb() };
                 SetSysColors(1, elements, colors);
             }
-            catch { }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
         }
 
         // 缓存主题颜色，避免频繁计算
@@ -2525,7 +2525,7 @@ namespace FireAntivirus.Host
                         {
                             homePage.UpdateProtectionStatus(isRunning);
                         }
-                        catch { }
+                        catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MainForm.cs exception", ex.Message);  }
                     }
                 }));
             }

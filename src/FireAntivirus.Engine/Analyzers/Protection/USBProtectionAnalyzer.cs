@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -118,7 +118,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                     break;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBProtectionAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private bool IsSuspiciousDevice(USBDeviceInfo device)
@@ -189,7 +189,7 @@ namespace FireAntivirus.Engine.Analyzers.Protection
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "USBProtectionAnalyzer.cs 捕获异常", ex.Message); }
         }
 
         private bool IsSuspiciousFileName(string fileName)

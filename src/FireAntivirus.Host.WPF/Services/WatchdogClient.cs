@@ -222,7 +222,7 @@ namespace FireAntivirus.Host.Services
                     }).Wait(3000);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WatchdogClient.cs 捕获异常", ex.Message); }
             
             // 关闭连接
             _pipeClient?.Dispose();
@@ -266,7 +266,7 @@ namespace FireAntivirus.Host.Services
                     File.Delete(_exitFlagFile);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "WatchdogClient.cs 捕获异常", ex.Message); }
         }
         
         public void Dispose()

@@ -653,11 +653,11 @@ namespace FireAntivirus.Services
                                 .Take(10);
                             recentFiles.AddRange(files);
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
             return recentFiles;
         }
 
@@ -686,7 +686,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
             return packets;
         }
 
@@ -704,10 +704,10 @@ namespace FireAntivirus.Services
                             $"SELECT * FROM Win32_Process");
                         // 简化处理，返回当前活动进程
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
             return "Unknown";
         }
 
@@ -780,7 +780,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
             return jobs;
         }
 
@@ -825,11 +825,11 @@ namespace FireAntivirus.Services
                                 });
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
             return uploads;
         }
 

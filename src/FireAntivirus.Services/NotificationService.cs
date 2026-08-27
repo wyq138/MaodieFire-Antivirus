@@ -99,7 +99,7 @@ namespace FireAntivirus.Services
                     {
                         System.Windows.Forms.MessageBox.Show(message, title, System.Windows.Forms.MessageBoxButtons.OK, type == NotificationType.Warning ? System.Windows.Forms.MessageBoxIcon.Warning : System.Windows.Forms.MessageBoxIcon.Error);
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
                 }
 
                 _dataManager.AddLog(new LogEntry
@@ -181,7 +181,7 @@ namespace FireAntivirus.Services
                     // _dataManager.SaveLogs(allLogs);
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
         }
 
         private bool IsRealThreat(string logType)
@@ -366,7 +366,7 @@ private void InitializeNotifyIcon()
             {
                 iconBox.Image = CreateNotificationIcon(NotificationType.Info);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
             
             titlePanel.Controls.Add(iconBox);
             iconBox.BringToFront();
@@ -440,7 +440,7 @@ private void InitializeNotifyIcon()
                         Process.Start(mainExePath, "-logs");
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
             };
 
             buttonPanel.Controls.Add(detailsButton);
@@ -636,7 +636,7 @@ private void InitializeNotifyIcon()
                     _notificationForm.Dispose();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
         }
     }
 

@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -87,7 +87,7 @@ namespace FireAntivirus.Engine.Analyzers.Performance
                 info.UsedMB = (long)(totalMem - info.AvailableMB);
                 info.UsagePercent = info.TotalMB > 0 ? (float)info.UsedMB / info.TotalMB * 100 : 0;
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PerformanceAnalyzer.cs 捕获异常", ex.Message); }
 
             return info;
         }
@@ -113,7 +113,7 @@ namespace FireAntivirus.Engine.Analyzers.Performance
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PerformanceAnalyzer.cs 捕获异常", ex.Message); }
 
             return disks;
         }
@@ -154,10 +154,10 @@ namespace FireAntivirus.Engine.Analyzers.Performance
                             });
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PerformanceAnalyzer.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PerformanceAnalyzer.cs 捕获异常", ex.Message); }
 
             return processes.OrderByDescending(p => p.CpuUsage).Take(10).ToList();
         }
@@ -184,10 +184,10 @@ namespace FireAntivirus.Engine.Analyzers.Performance
                             });
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PerformanceAnalyzer.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PerformanceAnalyzer.cs 捕获异常", ex.Message); }
 
             return processes.OrderByDescending(p => p.MemoryMB).Take(10).ToList();
         }
@@ -198,18 +198,13 @@ namespace FireAntivirus.Engine.Analyzers.Performance
             
             try
             {
-                var suspiciousNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                // 可疑进程名从外部 JSON 加载（ThreatData/suspicious_processes.json），不内嵌于 DLL
+                ExternalThreatData.EnsureLoaded();
+                var suspiciousNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var entry in ExternalThreatData.SuspiciousProcesses)
                 {
-                    { "mimikatz", "凭证窃取工具" },
-                    { "procdump", "进程转储工具" },
-                    { "lazagne", "密码提取工具" },
-                    { "pwdump", "密码转储工具" },
-                    { "nc", "NetCat后门" },
-                    { "ncat", "NetCat后门" },
-                    { "meterpreter", "Metasploit载荷" },
-                    { "cobaltstrike", "渗透测试框架" },
-                    { "msfvenom", "Metasploit生成器" },
-                };
+                    suspiciousNames[entry.Name] = entry.Threat;
+                }
 
                 foreach (var proc in Process.GetProcesses())
                 {
@@ -225,10 +220,10 @@ namespace FireAntivirus.Engine.Analyzers.Performance
                             });
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PerformanceAnalyzer.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "PerformanceAnalyzer.cs 捕获异常", ex.Message); }
 
             return suspicious;
         }

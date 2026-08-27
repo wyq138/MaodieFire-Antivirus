@@ -172,7 +172,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "KernelMonitor.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -274,7 +274,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "KernelMonitor.cs 捕获异常", ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -413,7 +413,7 @@ namespace FireAntivirus.Services
                             writer.WriteLine($"State: {state}");
                             writer.WriteLine();
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "KernelMonitor.cs 捕获异常", ex.Message); }
                     }
                 }
             }
@@ -549,7 +549,7 @@ namespace FireAntivirus.Services
             {
                 NotificationService.Instance.ShowNotification(title, message, type);
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "KernelMonitor.cs 捕获异常", ex.Message); }
         }
     }
 }

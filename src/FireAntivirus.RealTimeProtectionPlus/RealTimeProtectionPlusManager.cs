@@ -30,12 +30,10 @@ namespace FireAntivirus.RealTimeProtectionPlus
         private Thread _behaviorMonitorThread;
         private bool _isMonitoring;
         
-        // 可疑进程名称
-        private static readonly HashSet<string> SuspiciousProcessNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "mimikatz", "procdump", "lazagne", "wce", "fgdump", "pwdump", 
-            "cachedump", "lsadump", "samdump", "ntdsutil", "vssadmin"
-        };
+        // 可疑进程名称（从外部 JSON 加载：ThreatData/malicious_indicators.json 的 suspiciousProcessNames，
+        // 不内嵌于 DLL，避免杀软误报，也便于更新）
+        private readonly HashSet<string> _suspiciousProcessNames;
+        public HashSet<string> SuspiciousProcessNames => _suspiciousProcessNames;
         
         // 可疑网络端口
         private static readonly HashSet<int> SuspiciousPorts = new HashSet<int>
@@ -47,6 +45,8 @@ namespace FireAntivirus.RealTimeProtectionPlus
 
         public RealTimeProtectionPlusManager(DataManager dataManager, AntivirusEngine antivirusEngine)
         {
+            FireAntivirus.Engine.ExternalThreatData.EnsureLoaded();
+            _suspiciousProcessNames = new HashSet<string>(FireAntivirus.Engine.ExternalThreatData.SuspiciousProcessNames, StringComparer.OrdinalIgnoreCase);
             _dataManager = dataManager;
             _antivirusEngine = antivirusEngine;
             _protectionModules = new List<ProtectionModule>();
@@ -195,6 +195,12 @@ namespace FireAntivirus.RealTimeProtectionPlus
             return _protectionModules;
         }
 
+        /// <summary>运行无杀伤力功能自检（引擎查杀/特征库解析/实时防护/不误删），供 UI "立即自检" 调用。</summary>
+        public async Task<List<SelfTestItem>> RunSelfTestAsync()
+        {
+            return await FeatureSelfTest.RunAllAsync(_dataManager, _antivirusEngine, this);
+        }
+
         private void StartModule(ProtectionModule module)
         {
             switch (module.Type)
@@ -281,7 +287,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
                     _processWatcher = null;
                 }
             }
-            catch { }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "停止进程监控失败", ex.Message); }
         }
 
         private void OnProcessCreated(object sender, EventArrivedEventArgs e)
@@ -314,10 +320,10 @@ namespace FireAntivirus.RealTimeProtectionPlus
                             process.Kill();
                         }
                     }
-                    catch { }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RealTimeProtectionPlusManager.cs 捕获异常", ex.Message); }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RealTimeProtectionPlusManager.cs 捕获异常", ex.Message); }
         }
 
         private void StartFileProtection()
@@ -381,7 +387,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
                     watcher.EnableRaisingEvents = false;
                     watcher.Dispose();
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RealTimeProtectionPlusManager.cs 捕获异常", ex.Message); }
             }
             _fileWatchers.Clear();
         }
@@ -401,7 +407,43 @@ namespace FireAntivirus.RealTimeProtectionPlus
             var result = AnalyzeFileEvent(protectionEvent);
             if (result.Action == ProtectionAction.Block)
             {
-                try { File.Delete(e.FullPath); } catch { }
+                // 多引擎确认威胁: 可逆隔离(move到隔离区), 绝不永久删除, 避免误杀后无法找回
+                try
+                {
+                    _dataManager.QuarantineFile(e.FullPath, result.Message ?? "RealTime-Threat",
+                        "RealTimeProtection", "RealTimeProtectionPlus", 0.8);
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "RealTimeFileQuarantined",
+                        Message = $"实时防护已隔离可逆处置文件: {e.FullPath}",
+                        Details = result.Message
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "RealTimeQuarantineError",
+                        Message = $"文件隔离失败(已停止自动处置,避免误杀): {e.FullPath}",
+                        Details = ex.Message
+                    });
+                }
+            }
+            else if (result.Action == ProtectionAction.Alert)
+            {
+                // 弱信号仅告警, 不做任何处置
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "RealTimeFileAlert",
+                    Message = $"实时防护提示(未处置,待确认): {e.FullPath}",
+                    Details = result.Message
+                });
             }
         }
 
@@ -471,7 +513,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
                     _registryWatcher = null;
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RealTimeProtectionPlusManager.cs 捕获异常", ex.Message); }
         }
 
         private void OnRegistryChanged(object sender, EventArrivedEventArgs e)
@@ -551,7 +593,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "网络事件监控失败", ex.Message); }
                 
                 Thread.Sleep(5000);
             }
@@ -621,10 +663,10 @@ namespace FireAntivirus.RealTimeProtectionPlus
                                 }
                             }
                         }
-                        catch { }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RealTimeProtectionPlusManager.cs 捕获异常", ex.Message); }
                     }
                 }
-                catch { }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RealTimeProtectionPlusManager.cs 捕获异常", ex.Message); }
                 
                 Thread.Sleep(10000);
             }
@@ -641,7 +683,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
                     return obj["CommandLine"]?.ToString() ?? "";
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RealTimeProtectionPlusManager.cs 捕获异常", ex.Message); }
             return "";
         }
 
@@ -723,6 +765,28 @@ namespace FireAntivirus.RealTimeProtectionPlus
             return result;
         }
 
+        // 由进程名解析其真实可执行文件路径(用于对进程做真正的文件查杀)
+        private string ResolveProcessExecutablePath(string processName)
+        {
+            try
+            {
+                var pname = Path.GetFileNameWithoutExtension(processName);
+                foreach (var p in Process.GetProcessesByName(pname))
+                {
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(p.MainModule?.FileName))
+                        {
+                            return p.MainModule.FileName;
+                        }
+                    }
+                    catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "获取进程路径失败", ex.Message); }
+                }
+            }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "查找进程失败", ex.Message); }
+            return null;
+        }
+
         private ProtectionEventResult AnalyzeProcessEvent(ProtectionEvent protectionEvent)
         {
             var result = new ProtectionEventResult
@@ -743,15 +807,28 @@ namespace FireAntivirus.RealTimeProtectionPlus
                     return result;
                 }
                 
-                // 使用杀毒引擎扫描
+                // 使用杀毒引擎扫描进程真实可执行文件(修复:先前误把进程名当文件路径,属假功能)
                 if (!string.IsNullOrEmpty(processName))
                 {
-                    var scanResult = _antivirusEngine.ScanFile(processName);
-                    if (scanResult != null && scanResult.IsMalicious)
+                    var exePath = ResolveProcessExecutablePath(processName);
+                    if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
                     {
-                        result.Action = ProtectionAction.Block;
-                        result.Message = $"进程被识别为恶意软件: {processName}";
-                        return result;
+                        var scanResult = _antivirusEngine.ScanFile(exePath);
+                        // 多引擎确认(置信度>=0.8)才阻断, 弱信号仅告警, 杜绝误杀正常进程
+                        if (scanResult != null && scanResult.IsInfected)
+                        {
+                            if (scanResult.Confidence >= 0.8)
+                            {
+                                result.Action = ProtectionAction.Block;
+                                result.Message = $"多引擎确认恶意进程: {exePath} ({scanResult.ThreatName})";
+                            }
+                            else
+                            {
+                                result.Action = ProtectionAction.Alert;
+                                result.Message = $"进程可疑(待确认,避免误杀): {exePath} ({scanResult.ThreatName})";
+                            }
+                            return result;
+                        }
                     }
                 }
                 
@@ -787,18 +864,19 @@ namespace FireAntivirus.RealTimeProtectionPlus
                     
                     if (dangerousExtensions.Contains(ext))
                     {
-                        // 使用杀毒引擎扫描
+                        // 使用杀毒引擎扫描(多引擎共识:置信度>=0.8才算确认威胁)
                         var scanResult = _antivirusEngine.ScanFile(filePath);
-                        if (scanResult != null && scanResult.IsMalicious)
+                        if (scanResult != null && scanResult.IsInfected && scanResult.Confidence >= 0.8)
                         {
                             result.Action = ProtectionAction.Block;
-                            result.Message = $"文件被识别为恶意软件: {filePath}";
+                            result.Message = $"多引擎确认威胁: {filePath} ({scanResult.ThreatName})";
                             return result;
                         }
-                        else if (scanResult != null && scanResult.Confidence > 0.7)
+                        else if (scanResult != null && scanResult.IsInfected)
                         {
+                            // 单一/弱信号: 仅告警, 不处置, 杜绝误杀正常文件
                             result.Action = ProtectionAction.Alert;
-                            result.Message = $"文件可疑: {filePath}";
+                            result.Message = $"文件可疑(待人工确认,避免误报): {filePath} ({scanResult.ThreatName})";
                             return result;
                         }
                     }
@@ -877,26 +955,45 @@ namespace FireAntivirus.RealTimeProtectionPlus
 
             try
             {
-                // 从Details解析端口
+                // 网页/网络拦截：优先使用自动更新的恶意特征库(URLhaus 恶意 URL + Feodo C2 IP)。
+                // 这是核心真实能力，硬编码 IP 段只是离线兜底。
                 var details = protectionEvent.Details ?? "";
                 var remoteEndpoint = protectionEvent.NetworkAddress ?? "";
-                
-                // 检查可疑IP地址
+
+                // 1) 恶意 URL 拦截：从 Details 中提取 URL，命中 URLhaus 特征库即阻断网页访问
+                var url = ExtractUrl(details);
+                if (!string.IsNullOrEmpty(url) && FireAntivirus.Engine.SignatureDatabaseUpdater.IsMaliciousUrl(url))
+                {
+                    result.Action = ProtectionAction.Block;
+                    result.Message = $"已拦截恶意网址: {url}";
+                    return result;
+                }
+
+                // 2) 恶意 C2 IP 拦截：命中 Feodo/IP 特征库即阻断连接
+                var ip = ExtractIp(remoteEndpoint.Length > 0 ? remoteEndpoint : details);
+                if (!string.IsNullOrEmpty(ip) && FireAntivirus.Engine.SignatureDatabaseUpdater.IsMaliciousIp(ip))
+                {
+                    result.Action = ProtectionAction.Block;
+                    result.Message = $"已拦截恶意C2连接: {ip}";
+                    return result;
+                }
+
+                // 3) 内置已知恶意 IP 段兜底(离线、不依赖特征库)
                 var knownMaliciousIPs = new[]
                 {
                     "185.220.101.", "23.129.64.", "23.129.128." // 已知恶意IP段
                 };
-                
+
                 foreach (var maliciousIP in knownMaliciousIPs)
                 {
                     if (remoteEndpoint.StartsWith(maliciousIP))
                     {
-                        result.Action = ProtectionAction.Alert;
+                        result.Action = ProtectionAction.Block;
                         result.Message = $"检测到可疑IP连接: {remoteEndpoint}";
                         return result;
                     }
                 }
-                
+
                 result.Action = ProtectionAction.Allow;
                 result.Message = "网络连接安全";
             }
@@ -907,6 +1004,22 @@ namespace FireAntivirus.RealTimeProtectionPlus
             }
 
             return result;
+        }
+
+        /// <summary>从文本中提取首个 http(s) URL（用于网页拦截特征比对）。</summary>
+        private static string ExtractUrl(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            var m = System.Text.RegularExpressions.Regex.Match(text, @"https?://[^\s""',;]+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return m.Success ? m.Value : null;
+        }
+
+        /// <summary>从文本中提取首个 IPv4 地址（用于 C2/IP 拦截特征比对）。</summary>
+        private static string ExtractIp(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            var m = System.Text.RegularExpressions.Regex.Match(text, @"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b");
+            return m.Success ? m.Value : null;
         }
 
         private ProtectionEventResult AnalyzeBehaviorEvent(ProtectionEvent protectionEvent)

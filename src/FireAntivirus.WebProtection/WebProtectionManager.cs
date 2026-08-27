@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
+using FireAntivirus.Engine;
 
 namespace FireAntivirus.WebProtection
 {
@@ -26,6 +27,11 @@ namespace FireAntivirus.WebProtection
             InitializeWebProtection();
         }
 
+        public WebProtectionManager(DataManager dataManager, AntivirusEngine antivirusEngine)
+            : this(dataManager)
+        {
+        }
+
         private void InitializeWebProtection()
         {
             // 加载恶意URL和域名列表
@@ -36,26 +42,19 @@ namespace FireAntivirus.WebProtection
 
         private void LoadBlockedUrls()
         {
-            // 模拟加载阻止的URL列表
-            _blockedUrls.Add("http://malicious-site.com");
-            _blockedUrls.Add("http://phishing-site.com");
-            _blockedUrls.Add("http://malware-download.com");
+            // 阻止的URL列表初始为空，用户可通过 AddBlockedUrl 手动添加
+            // 实时检查由 CheckUrlRealTime 使用 SignatureDatabaseUpdater.IsMaliciousUrl 完成
         }
 
         private void LoadPhishingUrls()
         {
-            // 模拟加载钓鱼网站URL列表
-            _phishingUrls.Add("http://fake-bank.com");
-            _phishingUrls.Add("http://login-fake.com");
-            _phishingUrls.Add("http://secure-login.com");
+            // 钓鱼网站URL列表由用户手动添加，初始为空
         }
 
         private void LoadMaliciousDomains()
         {
-            // 模拟加载恶意域名列表
-            _maliciousDomains.Add("malicious-domain.com");
-            _maliciousDomains.Add("phishing-domain.com");
-            _maliciousDomains.Add("malware-domain.com");
+            // 恶意域名列表由用户手动添加，初始为空
+            // 实时检查已委托给 CheckUrlRealTime 使用 SignatureDatabaseUpdater.IsMaliciousUrl
         }
 
         public async Task<WebProtectionResult> CheckUrl(string url)
@@ -163,9 +162,9 @@ namespace FireAntivirus.WebProtection
 
         private async Task<bool> CheckUrlRealTime(string url)
         {
-            // 模拟实时检查
+            // 实时检查URL是否在签名数据库中
             await Task.Delay(100);
-            return true; // 默认安全
+            return !SignatureDatabaseUpdater.IsMaliciousUrl(url);
         }
 
         public void AddBlockedUrl(string url)
@@ -207,6 +206,37 @@ namespace FireAntivirus.WebProtection
         public List<string> GetMaliciousDomains()
         {
             return _maliciousDomains.ToList();
+        }
+
+        // === 兼容 WPF 页面调用的方法 ===
+
+        public List<string> GetBlockedWebsites() => GetBlockedUrls();
+
+        public List<string> GetAllowedWebsites() => new List<string>();
+
+        public void BlockWebsite(string url) => AddBlockedUrl(url);
+
+        public void UnblockWebsite(string url) => RemoveBlockedUrl(url);
+
+        private HashSet<string> _allowedWebsites = new HashSet<string>();
+
+        public void AddAllowedWebsite(string url)
+        {
+            _allowedWebsites.Add(url);
+        }
+
+        public void RemoveAllowedWebsite(string url)
+        {
+            _allowedWebsites.Remove(url);
+        }
+
+        public void UpdateSettings(bool blockPhishing, bool blockMalware, bool blockAds,
+            List<string> blacklist, List<string> whitelist, List<string> allowedSites)
+        {
+            _blockedUrls = new HashSet<string>(blacklist);
+            _allowedWebsites = new HashSet<string>(allowedSites);
+            foreach (var site in whitelist)
+                _allowedWebsites.Add(site);
         }
     }
 }

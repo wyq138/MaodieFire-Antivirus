@@ -9,6 +9,13 @@ using FireAntivirus.Data;
 
 namespace FireAntivirus.ParentalControl
 {
+    public class ParentalControlSettings
+    {
+        public bool EnableTimeLimit { get; set; }
+        public int DailyTimeLimitMinutes { get; set; }
+        public bool EnableContentFilter { get; set; }
+    }
+
     public class ParentalControlManager
     {
         private DataManager _dataManager;
@@ -682,6 +689,28 @@ namespace FireAntivirus.ParentalControl
             string filtersFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "ParentalControl", "content_filters.json");
             Directory.CreateDirectory(Path.GetDirectoryName(filtersFile));
             // 实际实现中应该序列化内容过滤器到文件
+        }
+
+        public ParentalControlSettings GetSettings()
+        {
+            return new ParentalControlSettings
+            {
+                EnableTimeLimit = _timeRestrictions.Any(r => r.Enabled),
+                DailyTimeLimitMinutes = 0,
+                EnableContentFilter = _contentFilters.Any(f => f.Enabled)
+            };
+        }
+
+        public void UpdateSettings(ParentalControlSettings settings)
+        {
+            _dataManager.AddLog(new LogEntry
+            {
+                Id = Guid.NewGuid().ToString(),
+                Time = DateTime.Now,
+                Type = "ParentalControlSettingsUpdated",
+                Message = "家长控制设置已更新",
+                Details = $"时间限制: {settings.EnableTimeLimit}, 内容过滤: {settings.EnableContentFilter}"
+            });
         }
     }
 }

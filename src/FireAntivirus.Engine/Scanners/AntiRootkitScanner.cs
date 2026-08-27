@@ -1,4 +1,4 @@
-// 抖音用户 耄耋杀毒软件 开发，严禁非法反编译
+﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -145,7 +145,7 @@ namespace FireAntivirus.Engine.Scanners
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiRootkitScanner.cs 捕获异常", ex.Message); }
         }
 
         private List<int> GetProcessesFromSnapshot()
@@ -184,7 +184,7 @@ namespace FireAntivirus.Engine.Scanners
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiRootkitScanner.cs 捕获异常", ex.Message); }
 
             return pids;
         }
@@ -215,7 +215,7 @@ namespace FireAntivirus.Engine.Scanners
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiRootkitScanner.cs 捕获异常", ex.Message); }
         }
 
         private List<string> GetFilesFromAPI(string directory)
@@ -246,7 +246,7 @@ namespace FireAntivirus.Engine.Scanners
                         .ToList();
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiRootkitScanner.cs 捕获异常", ex.Message); }
 
             return files;
         }
@@ -301,7 +301,7 @@ namespace FireAntivirus.Engine.Scanners
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiRootkitScanner.cs 捕获异常", ex.Message); }
         }
 
         private bool IsSuspiciousStartupEntry(string name, string value)
@@ -368,7 +368,7 @@ namespace FireAntivirus.Engine.Scanners
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiRootkitScanner.cs 捕获异常", ex.Message); }
         }
 
         private bool IsSuspiciousDriverName(string name)
@@ -420,7 +420,7 @@ namespace FireAntivirus.Engine.Scanners
                     }
                 }
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiRootkitScanner.cs 捕获异常", ex.Message); }
         }
 
         private void CheckKnownRootkits(AntiRootkitScanResult result)
@@ -490,7 +490,7 @@ namespace FireAntivirus.Engine.Scanners
                 // 使用gmer或其他工具的概念
                 result.Warnings.Add("系统调用钩子检测需要内核访问权限");
             }
-            catch { }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntiRootkitScanner.cs 捕获异常", ex.Message); }
         }
     }
 

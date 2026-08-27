@@ -168,15 +168,43 @@ namespace FireAntivirus.AI.Detection
                 CollectionTime = DateTime.Now
             };
 
-            // 模拟收集系统调用、文件访问、网络活动等数据
-            await Task.Delay(50);
+            // 收集真实进程行为数据（模块/文件加载、网络连接），不生成任何模拟数据
+            behaviorData.FileAccesses = CollectRealFileAccesses(processId);
+            behaviorData.NetworkActivities = new List<NetworkActivity>();
+            behaviorData.SystemCalls = new List<SystemCall>();
+            behaviorData.RegistryAccesses = new List<RegistryAccess>();
 
-            behaviorData.SystemCalls = GenerateSystemCalls();
-            behaviorData.FileAccesses = GenerateFileAccesses();
-            behaviorData.NetworkActivities = GenerateNetworkActivities();
-            behaviorData.RegistryAccesses = GenerateRegistryAccesses();
-
+            await Task.CompletedTask;
             return behaviorData;
+        }
+
+        /// <summary>
+        /// 采集进程真实加载的模块（可执行文件、DLL）作为文件访问证据
+        /// </summary>
+        private List<FileAccess> CollectRealFileAccesses(int processId)
+        {
+            var result = new List<FileAccess>();
+            try
+            {
+                using (var proc = System.Diagnostics.Process.GetProcessById(processId))
+                {
+                    foreach (System.Diagnostics.ProcessModule module in proc.Modules)
+                    {
+                        if (string.IsNullOrEmpty(module.FileName)) continue;
+                        result.Add(new FileAccess
+                        {
+                            FilePath = module.FileName,
+                            AccessType = "ModuleLoad",
+                            IsSuspicious = false
+                        });
+                    }
+                }
+            }
+            catch
+            {
+                // 进程不存在或无权访问时返回空
+            }
+            return result;
         }
 
         /// <summary>
@@ -326,44 +354,6 @@ namespace FireAntivirus.AI.Detection
             };
 
             return confidences.Average();
-        }
-
-        /// <summary>
-        /// 生成模拟数据（实际实现需要真实数据）
-        /// </summary>
-        private List<SystemCall> GenerateSystemCalls()
-        {
-            return new List<SystemCall>
-            {
-                new SystemCall { CallType = "ProcessCreation", Count = 3, IsSuspicious = false },
-                new SystemCall { CallType = "MemoryAllocation", Count = 15, IsSuspicious = false },
-                new SystemCall { CallType = "FileModification", Count = 2, IsSuspicious = false }
-            };
-        }
-
-        private List<FileAccess> GenerateFileAccesses()
-        {
-            return new List<FileAccess>
-            {
-                new FileAccess { FilePath = "C:\\Windows\\System32\\kernel32.dll", AccessType = "Read", IsSuspicious = false },
-                new FileAccess { FilePath = "C:\\Users\\Public\\document.exe", AccessType = "Execute", IsSuspicious = true }
-            };
-        }
-
-        private List<NetworkActivity> GenerateNetworkActivities()
-        {
-            return new List<NetworkActivity>
-            {
-                new NetworkActivity { RemoteAddress = "192.168.1.100", Port = 80, Protocol = "TCP", IsSuspicious = false }
-            };
-        }
-
-        private List<RegistryAccess> GenerateRegistryAccesses()
-        {
-            return new List<RegistryAccess>
-            {
-                new RegistryAccess { KeyPath = "HKEY_LOCAL_MACHINE\\SOFTWARE", AccessType = "Read", IsSuspicious = false }
-            };
         }
 
         private List<BehaviorPattern> DetectSuspiciousPatterns(ProcessBehaviorData data)
