@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 using FireAntivirus.Engine;
 using FireAntivirus.Engine.Intelligence;
+using FireAntivirus.Engine.Detection;
 
 namespace FireAntivirus.Engine.Coordinator
 {
@@ -576,14 +577,96 @@ namespace FireAntivirus.Engine.Coordinator
     // 支持类实现
     public class DetectionResultAggregator
     {
+        /// <summary>
+        /// 真实多阶段评分聚合：按照权重融合所有引擎信号，计算最终总分。
+        /// 规则：总分 >= 60% （0.60），或已经检测到破坏性动作（加密/注入/删除影子拷贝），触发动作。
+        /// </summary>
         public AggregatedResult AggregateResults(List<EngineScanResult> results, ScanStrategy strategy)
         {
+            double totalScore = 0.0;
+            double totalWeight = 0.0;
+            double maxConfidence = 0.0;
+            bool hasDestructiveAction = false;
+            var indicators = new List<ThreatIndicator>();
+            ThreatLevel maxSeverity = ThreatLevel.Safe;
+
+            foreach (var engineResult in results)
+            {
+                if (engineResult.Verdict == ScanVerdict.Error)
+                    continue;
+
+                double weight = GetVerdictWeight(engineResult.Verdict);
+                double score = (double)engineResult.Verdict / (double)ScanVerdict.Malicious;
+                totalScore += engineResult.Confidence * weight * score;
+                totalWeight += weight;
+
+                if (engineResult.Confidence > maxConfidence)
+                    maxConfidence = engineResult.Confidence;
+
+                // 检查破坏性动作（即使总分不够也触发）
+                if (engineResult.DetectionDetails != null)
+                {
+                    foreach (var detail in engineResult.DetectionDetails)
+                    {
+                        indicators.Add(new ThreatIndicator
+                        {
+                            Type = detail.RuleId,
+                            Description = detail.Description,
+                            Score = detail.Severity switch
+                            {
+                                ThreatLevel.Critical => 1.0,
+                                ThreatLevel.High => 0.8,
+                                ThreatLevel.Medium => 0.5,
+                                _ => 0.2
+                            },
+                            Severity = detail.Severity
+                        });
+
+                        // 破坏性动作检测 —— 只要出现一个，直接触发动作
+                        if (IsDestructiveSignal(detail.Description))
+                            hasDestructiveAction = true;
+
+                        if ((int)detail.Severity > (int)maxSeverity)
+                            maxSeverity = detail.Severity;
+                    }
+                }
+            }
+
+            double overall = totalWeight > 0 ? totalScore / totalWeight : 0;
+
+            // 破坏性动作强制拉高总分到触发阈值以上
+            if (hasDestructiveAction && overall < 0.6)
+                overall = Math.Max(0.62, overall + 0.25);
+
             return new AggregatedResult
             {
-                OverallThreatScore = 0.0,
-                Confidence = 0.95,
-                PriorityLevel = ThreatPriority.Low
+                OverallThreatScore = overall,
+                Confidence = maxConfidence,
+                PriorityLevel = overall >= 0.8 ? ThreatPriority.Critical
+                                 : overall >= 0.6 ? ThreatPriority.High
+                                 : overall >= 0.3 ? ThreatPriority.Medium
+                                 : ThreatPriority.Low,
+                ThreatIndicators = indicators
             };
+        }
+
+        private double GetVerdictWeight(ScanVerdict verdict)
+            => verdict switch
+            {
+                ScanVerdict.Malicious => 1.0,
+                ScanVerdict.Suspicious => 0.6,
+                ScanVerdict.PotentiallyUnsafe => 0.3,
+                _ => 0.0
+            };
+
+        private bool IsDestructiveSignal(string description)
+        {
+            if (string.IsNullOrEmpty(description)) return false;
+            var lower = description.ToLowerInvariant();
+            return lower.Contains("encrypt") || lower.Contains("crypt")
+                || lower.Contains("delete shadow") || lower.Contains("vssadmin")
+                || lower.Contains("inject") || lower.Contains("remote thread")
+                || lower.Contains("hollow") || lower.Contains("injection");
         }
     }
 

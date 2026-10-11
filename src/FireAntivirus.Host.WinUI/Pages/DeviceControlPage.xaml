@@ -1,0 +1,31 @@
+<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
+<Page
+    x:Class="FireAntivirus.Host.WinUI.Pages.DeviceControlPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="24,16,24,24">
+        <StackPanel Spacing="14" MaxWidth="920">
+
+            <TextBlock Text="设备控制" Style="{StaticResource PageTitle}"/>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="外设接入控制" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="StatusText" Text="正在检测外设..." Opacity="0.75"/>
+                    <Button Content="重新检测" Click="Detect_Click" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="接入策略" FontSize="16" FontWeight="SemiBold"/>
+                    <ToggleSwitch Header="允许 USB 存储设备" IsOn="True"/>
+                    <ToggleSwitch Header="允许 USB 鼠标键盘" IsOn="True"/>
+                    <ToggleSwitch Header="允许外接显示器/音频" IsOn="True"/>
+                    <TextBlock Opacity="0.6" Text="USB 阻断会阻止陌生设备接入，防止恶意固件与数据外泄。"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

@@ -109,9 +109,9 @@ namespace FireAntivirus.Services
 
         private int _maxBackupSizeMB = 500;
         private int _maxThreatHistory = 100;
-        private int _massModificationThreshold = 15;
-        private double _entropyThreshold = 7.5;
-        private int _behaviorScoreThreshold = 80;
+        private int _massModificationThreshold = 200;
+        private double _entropyThreshold = 7.9;
+        private int _behaviorScoreThreshold = 130;
 
         private PerformanceCounter _diskWriteCounter;
         private PerformanceCounter _diskReadCounter;
@@ -618,6 +618,11 @@ namespace FireAntivirus.Services
                 {
                     try
                     {
+                        if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                        {
+                            FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "RansomwareProtectionService", $"进程受保护，已跳过查杀: {processName} PID: {process.Id}");
+                            continue;
+                        }
                         process.Kill();
 
                         ProcessBlocked?.Invoke(this, new ProcessBlockedEventArgs

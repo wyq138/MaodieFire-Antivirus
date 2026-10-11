@@ -1,0 +1,24 @@
+<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
+<Page
+    x:Class="FireAntivirus.Host.WinUI.Pages.ReportPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Padding="24,16,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <TextBlock Text="安全报告" Style="{StaticResource PageTitle}"/>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
+            <Button x:Name="GenBtn" Content="生成最新报告" Style="{StaticResource AccentButtonStyle}" Click="Generate_Click"/>
+            <TextBlock x:Name="StatusText" Opacity="0.6" VerticalAlignment="Center"/>
+        </StackPanel>
+        <Border Grid.Row="2" Style="{StaticResource ModernCard}">
+            <ScrollViewer>
+                <TextBlock x:Name="ReportBody" Text="点击“生成最新报告”查看扫描统计与安全建议。" TextWrapping="Wrap" LineHeight="24"/>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Page>

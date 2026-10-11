@@ -1,4 +1,4 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -153,7 +153,7 @@ namespace FireAntivirus.Engine
         public bool IsInitialized { get; private set; } = true;
         
         // 分析器
-        private HeuristicEngine heuristicEngine;
+        private FireAntivirus.Engine.Analyzers.HeuristicEngine heuristicEngine;
         private BehaviorAnalyzer behaviorAnalyzer;
         private StaticAnalyzer staticAnalyzer;
         private MemoryScanner memoryScanner;
@@ -163,6 +163,12 @@ namespace FireAntivirus.Engine
         private ProcessAnalyzer processAnalyzer;
         private FileAnalyzer fileAnalyzer;
         private ScriptAnalyzer scriptAnalyzer;
+        private Analyzers.FileNameSpoofAnalyzer _fileNameSpoofAnalyzer = new Analyzers.FileNameSpoofAnalyzer();
+        private Analyzers.PEStructureAnalyzer _peStructureAnalyzer = new Analyzers.PEStructureAnalyzer();
+        private Analyzers.MacroDocumentAnalyzer _macroDocumentAnalyzer = new Analyzers.MacroDocumentAnalyzer();
+        private Analyzers.ArchiveNestedScanner _archiveNestedScanner;
+        private Analyzers.PatternRuleEngine _patternRuleEngine = new Analyzers.PatternRuleEngine();
+        private Analyzers.MultiDimFileEvaluator _multiDimFileEvaluator = new Analyzers.MultiDimFileEvaluator();
         private NetworkAnalyzer networkAnalyzer;
         private SystemAnalyzer systemAnalyzer;
         
@@ -223,7 +229,7 @@ namespace FireAntivirus.Engine
         {
             try
             {
-                heuristicEngine = new HeuristicEngine();
+                heuristicEngine = new FireAntivirus.Engine.Analyzers.HeuristicEngine();
                 behaviorAnalyzer = new BehaviorAnalyzer();
                 staticAnalyzer = new StaticAnalyzer();
                 memoryScanner = new MemoryScanner();
@@ -232,6 +238,9 @@ namespace FireAntivirus.Engine
                 networkScanner = new NetworkScanner();
                 processAnalyzer = new ProcessAnalyzer();
                 fileAnalyzer = new FileAnalyzer();
+                _archiveNestedScanner = new Analyzers.ArchiveNestedScanner(
+                    path => (object)ScanFile(path),
+                    obj => obj is ScanResult sr && sr.IsInfected);
                 scriptAnalyzer = new ScriptAnalyzer();
                 networkAnalyzer = new NetworkAnalyzer();
                 systemAnalyzer = new SystemAnalyzer();
@@ -358,8 +367,8 @@ namespace FireAntivirus.Engine
 
                 if (heuristicEngine != null)
                 {
-                    var heuristicResult = heuristicEngine.Scan(filePath);
-                    if (heuristicResult.IsInfected) localHits.Add(heuristicResult);
+                    var heuristicHit = heuristicEngine.AnalyzeFile(filePath).FirstOrDefault() ?? new ScanResult { FilePath = filePath };
+                    if (heuristicHit.IsInfected) localHits.Add(heuristicHit);
                 }
 
                 if (staticAnalyzer != null)
@@ -370,6 +379,26 @@ namespace FireAntivirus.Engine
 
                 var threatResult = ScanWithThreatDetectors(filePath);
                 if (threatResult.IsInfected) localHits.Add(threatResult);
+
+                // ===== 扩容扫描方法(独立投票方, 参与共识表决) =====
+                foreach (var expandedHit in RunExpandedScanners(filePath))
+                {
+                    if (expandedHit != null && expandedHit.IsInfected)
+                    {
+                        localHits.Add(new ScanResult
+                        {
+                            FilePath = filePath,
+                            IsInfected = true,
+                            ThreatName = expandedHit.ThreatName,
+                            ThreatType = expandedHit.ThreatType,
+                            Severity = expandedHit.Severity,
+                            Confidence = expandedHit.Confidence,
+                            DetectionMethod = expandedHit.DetectionMethod,
+                            DetectionTime = DateTime.Now,
+                            AdditionalInfo = string.Join("; ", expandedHit.Evidence)
+                        });
+                    }
+                }
 
                 int localVotes = localHits.Count;
 
@@ -418,6 +447,82 @@ namespace FireAntivirus.Engine
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 运行扩容扫描方法: 文件名伪装 / PE结构 / 宏文档 / 压缩包嵌套 / 嵌入式模式规则。
+        /// 各扫描器相互独立, 单个命中仅为一票, 由多引擎共识管线统一裁决, 不单独定罪。
+        /// </summary>
+        private List<Analyzers.ExpandedScanHit> RunExpandedScanners(string filePath)
+        {
+            var hits = new List<Analyzers.ExpandedScanHit>();
+            try
+            {
+                // 1. 文件名伪装检测(双重扩展名/RTLO/魔数不符)
+                var spoof = _fileNameSpoofAnalyzer.Analyze(filePath);
+                if (spoof != null && spoof.IsInfected) hits.Add(spoof);
+
+                string ext = Path.GetExtension(filePath).ToLowerInvariant();
+
+                // 2. PE 结构解析(仅 PE 文件)
+                if (ext == ".exe" || ext == ".dll" || ext == ".scr" || ext == ".sys" || ext == ".cpl")
+                {
+                    var pe = _peStructureAnalyzer.Analyze(filePath);
+                    if (pe != null && pe.IsInfected) hits.Add(pe);
+                }
+
+                // 3. 宏文档检测(OOXML 容器)
+                if (ext == ".docx" || ext == ".xlsx" || ext == ".pptx" || ext == ".docm" ||
+                    ext == ".xlsm" || ext == ".pptm")
+                {
+                    var macro = _macroDocumentAnalyzer.Analyze(filePath);
+                    if (macro != null && macro.IsInfected) hits.Add(macro);
+                }
+
+                // 4. 压缩包嵌套扫描(zip/OOXML 容器)
+                if (ext == ".zip")
+                {
+                    var archive = _archiveNestedScanner.Analyze(filePath);
+                    if (archive != null && archive.IsInfected) hits.Add(archive);
+                }
+
+                // 5. 嵌入式模式规则引擎(仅脚本/文本类小文件)
+                if (ext == ".js" || ext == ".jse" || ext == ".vbs" || ext == ".vbe" || ext == ".wsf" ||
+                    ext == ".ps1" || ext == ".bat" || ext == ".cmd" || ext == ".hta" || ext == ".html" ||
+                    ext == ".htm" || ext == ".txt" || ext == ".ini" || ext == ".cfg" || ext == ".json")
+                {
+                    try
+                    {
+                        var fi = new FileInfo(filePath);
+                        if (fi.Exists && fi.Length > 0 && fi.Length <= 4 * 1024 * 1024)
+                        {
+                            var content = File.ReadAllBytes(filePath);
+                            var pattern = _patternRuleEngine.AnalyzeContent(filePath, content);
+                            if (pattern != null && pattern.IsInfected) hits.Add(pattern);
+                        }
+                    }
+                    catch { }
+                }
+
+                // 6. 多维度文件评估器(MD5/SHA256 + 深度PE结构 + Authenticode签名链 + 节熵 + 导入行为)
+                //    独立投票方，命中即计一票，由共识管线统一裁决。
+                var multiDim = _multiDimFileEvaluator.Evaluate(filePath);
+                if (multiDim.IsMalicious)
+                {
+                    hits.Add(new ExpandedScanHit
+                    {
+                        FilePath = filePath,
+                        IsInfected = true,
+                        ThreatName = "MultiDim.HighRisk",
+                        ThreatType = "Suspicious",
+                        Severity = "Medium",
+                        Confidence = Math.Min(0.6, multiDim.Score / 150.0),
+                        DetectionMethod = "MultiDim",
+                    });
+                }
+            }
+            catch { }
+            return hits;
         }
 
         /// <summary>
@@ -555,7 +660,8 @@ namespace FireAntivirus.Engine
                         try
                         {
                             var detectorResult = detector.Detect(filePath, fileContent);
-                            if (detectorResult != null && detectorResult.IsDetected)
+                            // 置信度门槛：只有足够可信的组合命中才计为证据，弱信号不计票，避免正常程序被乱报
+                            if (detectorResult != null && detectorResult.IsDetected && detectorResult.Confidence >= 0.6)
                             {
                                 return new ScanResult
                                 {

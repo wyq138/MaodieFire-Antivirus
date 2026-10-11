@@ -40,21 +40,135 @@ namespace FireAntivirus.SecureBrowser
 
         private void LoadBlockedUrls()
         {
-            // 从签名数据库加载阻止的URL列表（实时检查由SignatureDatabaseUpdater完成）
-            // 用户也可通过 AddBlockedUrl 手动添加
+            // 加载内置恶意URL列表
+            var blockedUrls = new[]
+            {
+                // 恶意软件分发
+                "malware-download.com",
+                "virus-distribution.net",
+                "free-virus-scan.org",
+                "crack-software.com",
+                "keygen-free.net",
+                "serial-keys.org",
+                // 钓鱼网站
+                "fake-paypal-login.com",
+                "secure-bank-account.net",
+                "microsoft-verify.com",
+                "google-account-verify.org",
+                // 挖矿脚本
+                "coinhive.com",
+                "cryptominer.net",
+                "web-miner.org",
+                // 恶意广告
+                "malicious-ads.com",
+                "popup-virus.net"
+            };
+            
+            foreach (var url in blockedUrls)
+            {
+                _blockedUrls.Add(url);
+            }
+
+            // 加载已知钓鱼域名
+            var phishingDomains = new[]
+            {
+                "secure-paypal-login.com",
+                "paypal-verify-account.net",
+                "bank-of-america-login.org",
+                "chase-secure-login.com",
+                "wellsfargo-verify.net",
+                "gmail-verify-login.com",
+                "microsoft-account-verify.org",
+                "outlook-security-verify.com",
+                "facebook-security-verify.net",
+                "instagram-verify-account.org"
+            };
+            
+            foreach (var domain in phishingDomains)
+            {
+                _blockedUrls.Add(domain);
+            }
+
+            Console.WriteLine("[SecureBrowser] 已加载 " + _blockedUrls.Count + " 个阻止URL");
         }
 
         private void LoadSafeUrls()
         {
-            // 安全URL列表由用户手动添加，初始为空
+            // 加载白名单URL
+            var safeUrls = new[]
+            {
+                "google.com",
+                "microsoft.com",
+                "apple.com",
+                "github.com",
+                "stackoverflow.com",
+                "wikipedia.org"
+            };
+            
+            foreach (var url in safeUrls)
+            {
+                _safeUrls.Add(url);
+            }
         }
 
         private void LoadTrackingDomains()
         {
-            // 模拟加载跟踪域名列表
-            _trackingDomains.Add("google-analytics.com");
-            _trackingDomains.Add("doubleclick.net");
-            _trackingDomains.Add("facebook.com");
+            // 加载完整的跟踪域名列表
+            var trackingDomains = new[]
+            {
+                // Google跟踪
+                "google-analytics.com",
+                "googletagmanager.com",
+                "googlesyndication.com",
+                "googleadservices.com",
+                "doubleclick.net",
+                "adservice.google.com",
+                
+                // Facebook跟踪
+                "facebook.com",
+                "facebook.net",
+                "connect.facebook.net",
+                "pixel.facebook.com",
+                
+                // 广告网络
+                "adnxs.com",
+                "adsrvr.org",
+                "advertising.com",
+                "adform.net",
+                "criteo.com",
+                "rubiconproject.com",
+                "pubmatic.com",
+                "openx.net",
+                "taboola.com",
+                "outbrain.com",
+                
+                // 分析服务
+                "amplitude.com",
+                "mixpanel.com",
+                "segment.io",
+                "hotjar.com",
+                "mouseflow.com",
+                
+                // 社交媒体跟踪
+                "twitter.com",
+                "linkedin.com",
+                "instagram.com",
+                "tiktok.com",
+                "pinterest.com",
+                
+                // 其他跟踪
+                "scorecardresearch.com",
+                "quantserve.com",
+                "newrelic.com",
+                "bugsnag.com"
+            };
+
+            foreach (var domain in trackingDomains)
+            {
+                _trackingDomains.Add(domain);
+            }
+
+            Console.WriteLine("[SecureBrowser] 已加载 " + _trackingDomains.Count + " 个跟踪域名");
         }
 
         public void Enable()

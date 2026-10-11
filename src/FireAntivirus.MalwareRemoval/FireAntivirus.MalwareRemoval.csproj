@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -23,4 +23,7 @@
     <ProjectReference Include="..\FireAntivirus.Engine\FireAntivirus.Engine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="KnowledgeBase\*.json" />
+  </ItemGroup>
 </Project>

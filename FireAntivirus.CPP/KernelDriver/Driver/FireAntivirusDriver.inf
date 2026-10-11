@@ -1,0 +1,32 @@
+; FireAntivirus 内核驱动 INF 文件
+; 自签名测试模式安装用
+
+[Version]
+Signature="$WINDOWS NT$"
+Class="FireAntivirus"
+ClassGuid={D7CFF26F-F58F-4A21-8058-80A0644C6666}
+Provider=%ProviderName%
+DriverVer=09/10/2026,1.0.0.0
+CatalogFile=FireAntivirusDriver.cat
+PnpLockdown=1
+
+[Provider.NTamd64]
+DriverFiles=DriverFiles_NTamd64
+AddReg=Registry_NTamd64
+
+[Install.NT]
+CopyFiles=DriverFiles_NTamd64
+
+[DriverFiles_NTamd64]
+FireAntivirusDriver.sys,,,0x00004000
+
+[Registry_NTamd64]
+HKLM,"System\CurrentControlSet\Services\FireAntivirusKernel",,"DisplayName",%DisplayName%
+HKLM,"System\CurrentControlSet\Services\FireAntivirusKernel","Start",0x00010001,3
+HKLM,"System\CurrentControlSet\Services\FireAntivirusKernel","Type",0x00010001,1
+HKLM,"System\CurrentControlSet\Services\FireAntivirusKernel","ErrorControl",0x00010001,1
+HKLM,"System\CurrentControlSet\Services\FireAntivirusKernel","ImagePath",,"\SystemRoot\System32\drivers\FireAntivirusDriver.sys"
+
+[Strings]
+ProviderName="耄耋安全软件工作室"
+DisplayName="FireAntivirus Kernel Driver"

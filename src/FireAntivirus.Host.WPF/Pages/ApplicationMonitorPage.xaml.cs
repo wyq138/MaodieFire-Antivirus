@@ -233,6 +233,11 @@ namespace FireAntivirus.Host.WPF.Pages
                     try
                     {
                         var process = Process.GetProcessById(info.PID);
+                        if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                        {
+                            MessageBox.Show("该进程为受保护的系统进程，无法结束。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
                         process.Kill();
                         _ = System.Threading.Tasks.Task.Run(() => LoadProcessesAsync());
                         MessageBox.Show("进程已结束", "成功", MessageBoxButton.OK, MessageBoxImage.Information);

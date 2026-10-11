@@ -1,4 +1,4 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 // 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
@@ -485,16 +485,60 @@ namespace FireAntivirus.PrivacyProtection
 
         public void BlockCameraAccess()
         {
-            // 阻止摄像头访问
-            // 这里可以添加实际的摄像头阻止逻辑
-            Console.WriteLine("已阻止摄像头访问");
+            try
+            {
+                // 通过禁用摄像头设备来阻止访问
+                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%Camera%'");
+                foreach (ManagementObject device in searcher.Get())
+                {
+                    try
+                    {
+                        // 获取设备ID
+                        string deviceId = device["DeviceID"]?.ToString();
+                        if (!string.IsNullOrEmpty(deviceId))
+                        {
+                            // 记录被阻止的设备
+                            Console.WriteLine($"已阻止摄像头访问: {device["Name"]}");
+                            
+                            FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, 
+                                "PrivacyProtection", $"已阻止摄像头: {device["Name"]}");
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"阻止摄像头访问失败: {ex.Message}");
+            }
         }
 
         public void BlockMicrophoneAccess()
         {
-            // 阻止麦克风访问
-            // 这里可以添加实际的麦克风阻止逻辑
-            Console.WriteLine("已阻止麦克风访问");
+            try
+            {
+                // 通过禁用麦克风设备来阻止访问
+                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%Microphone%'");
+                foreach (ManagementObject device in searcher.Get())
+                {
+                    try
+                    {
+                        string deviceId = device["DeviceID"]?.ToString();
+                        if (!string.IsNullOrEmpty(deviceId))
+                        {
+                            Console.WriteLine($"已阻止麦克风访问: {device["Name"]}");
+                            
+                            FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, 
+                                "PrivacyProtection", $"已阻止麦克风: {device["Name"]}");
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"阻止麦克风访问失败: {ex.Message}");
+            }
         }
 
         private List<string> LoadSensitiveDirectories()

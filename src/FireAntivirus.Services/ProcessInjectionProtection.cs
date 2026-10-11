@@ -1628,6 +1628,20 @@ namespace FireAntivirus.Services
         {
             try
             {
+                if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                {
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "ProcessTerminationSkipped",
+                        Message = "进程受保护，已跳过查杀",
+                        Details = $"PID: {process.Id}, 原因: {reason}",
+                        Source = "ProcessInjectionProtection",
+                        Category = "威胁响应"
+                    });
+                    return;
+                }
                 process.Kill();
                 Interlocked.Increment(ref _processesTerminated);
                 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -334,7 +334,10 @@ namespace FireAntivirus.Services
                                 
                                 ShowThreatNotification("已阻止可疑进程", message, NotificationType.Warning);
                                 
-                                process.Kill();
+                                if (FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                                {
+                                    process.Kill();
+                                }
                             }
                         }
                     }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -202,20 +202,28 @@ namespace FireAntivirus.Engine.Analyzers
         private List<string> GetFileSignatures(byte[] fileContent)
         {
             var signatures = new List<string>();
-            
+
             try
             {
+                // 防误报：不再对整个文件做 "MZ"/"PE"/"UPX"/"virus" 等泛化词子串匹配——
+                // 任何正常 PE 都含这些字节序列，必然误报。
+                // 仅检测注入类 API 组合（Patterns 类），且必须命中 >= 3 个不同 API 才视为可疑。
                 string fileContentStr = Encoding.UTF8.GetString(fileContent);
-                
-                foreach (var signatureCategory in maliciousFileSignatures)
+
+                int patternHits = 0;
+                if (maliciousFileSignatures.TryGetValue("Patterns", out var patterns))
                 {
-                    foreach (var signature in signatureCategory.Value)
+                    foreach (var signature in patterns)
                     {
-                        if (fileContentStr.Contains(signature, StringComparison.OrdinalIgnoreCase))
+                        if (fileContentStr.Contains(signature, StringComparison.Ordinal))
                         {
-                            signatures.Add($"{signatureCategory.Key}: {signature}");
+                            patternHits++;
                         }
                     }
+                }
+                if (patternHits >= 3)
+                {
+                    signatures.Add($"Patterns: 注入类API组合x{patternHits}");
                 }
             }
             catch
@@ -362,9 +370,9 @@ namespace FireAntivirus.Engine.Analyzers
         {
             double score = 0.0;
 
-            if (fileEntropy > 7.0)
+            if (fileEntropy > 7.8)
             {
-                score += 0.3;
+                score += 0.2;
             }
             else if (fileEntropy > 6.0)
             {

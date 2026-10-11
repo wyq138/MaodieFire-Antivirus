@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>FireAntivirus.NativeIntegration</RootNamespace>
+    <AssemblyName>FireAntivirus.NativeIntegration</AssemblyName>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FireAntivirus.Common\FireAntivirus.Common.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Data\FireAntivirus.Data.csproj" />
+  </ItemGroup>
+
+</Project>

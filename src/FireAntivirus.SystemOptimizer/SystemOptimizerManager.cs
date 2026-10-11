@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Win32;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
 
@@ -114,8 +115,33 @@ namespace FireAntivirus.SystemOptimizer
         {
             try
             {
-                // 清理系统日志
-                // 实际实现中应该使用EventLog类来清理系统日志
+                // 清理Windows事件日志
+                var logNames = new[] { "Application", "System", "Security" };
+                foreach (var logName in logNames)
+                {
+                    try
+                    {
+                        if (System.Diagnostics.EventLog.Exists(logName))
+                        {
+                            using (var log = new System.Diagnostics.EventLog(logName))
+                            {
+                                // 保留最近100条日志 - 只读取，不删除
+                                var entries = log.Entries;
+                                int countToKeep = 100;
+                                int totalEntries = entries.Count;
+
+                                if (totalEntries > countToKeep)
+                                {
+                                    // 日志删除需要管理员权限，这里只做统计
+                                    var toRemove = totalEntries - countToKeep;
+                                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                                        "SystemOptimizerManager", $"日志 {logName} 可清理 {toRemove} 条记录");
+                                }
+                            }
+                        }
+                    }
+                    catch { /* 忽略权限不足的错误 */ }
+                }
                 return true;
             }
             catch
@@ -128,8 +154,40 @@ namespace FireAntivirus.SystemOptimizer
         {
             try
             {
-                // 清理浏览器缓存
-                // 实际实现中应该清理不同浏览器的缓存目录
+                long totalCleaned = 0;
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+                // Chrome缓存
+                var chromeCachePath = Path.Combine(localAppData, "Google", "Chrome", "User Data", "Default", "Cache");
+                if (Directory.Exists(chromeCachePath))
+                {
+                    totalCleaned += CleanDirectory(chromeCachePath);
+                }
+
+                // Edge缓存
+                var edgeCachePath = Path.Combine(localAppData, "Microsoft", "Edge", "User Data", "Default", "Cache");
+                if (Directory.Exists(edgeCachePath))
+                {
+                    totalCleaned += CleanDirectory(edgeCachePath);
+                }
+
+                // Firefox缓存
+                var firefoxPath = Path.Combine(appData, "Mozilla", "Firefox", "Profiles");
+                if (Directory.Exists(firefoxPath))
+                {
+                    foreach (var profile in Directory.GetDirectories(firefoxPath))
+                    {
+                        var cachePath = Path.Combine(profile, "cache2");
+                        if (Directory.Exists(cachePath))
+                        {
+                            totalCleaned += CleanDirectory(cachePath);
+                        }
+                    }
+                }
+
+                // 记录清理大小
+                Console.WriteLine($"[SystemOptimizer] 浏览器缓存清理: {totalCleaned / 1024 / 1024}MB");
                 return true;
             }
             catch
@@ -138,12 +196,64 @@ namespace FireAntivirus.SystemOptimizer
             }
         }
 
+        private long CleanDirectory(string path)
+        {
+            long totalSize = 0;
+            try
+            {
+                var dirInfo = new DirectoryInfo(path);
+                foreach (var file in dirInfo.GetFiles("*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        totalSize += file.Length;
+                        file.Delete();
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return totalSize;
+        }
+
         private bool OptimizeStartupItems()
         {
             try
             {
-                // 优化启动项
-                // 实际实现中应该检查和管理系统启动项
+                // 读取注册表中的启动项
+                var startupKeys = new[]
+                {
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+                    @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run"
+                };
+
+                var startupItems = new List<string>();
+                
+                foreach (var keyPath in startupKeys)
+                {
+                    using (var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(keyPath))
+                    {
+                        if (key != null)
+                        {
+                            foreach (var valueName in key.GetValueNames())
+                            {
+                                var value = key.GetValue(valueName)?.ToString();
+                                if (!string.IsNullOrEmpty(value))
+                                {
+                                    startupItems.Add($"{valueName}: {value}");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 记录启动项信息
+                foreach (var item in startupItems)
+                {
+                    Console.WriteLine($"[SystemOptimizer] 启动项: {item}");
+                }
+
                 return true;
             }
             catch
@@ -156,8 +266,32 @@ namespace FireAntivirus.SystemOptimizer
         {
             try
             {
-                // 优化系统服务
-                // 实际实现中应该检查和管理系统服务
+                // 获取系统服务信息（只读，不修改）
+                var serviceController = new System.ServiceProcess.ServiceController[] { };
+                try
+                {
+                    serviceController = System.ServiceProcess.ServiceController.GetServices();
+                }
+                catch { }
+
+                var criticalServices = new[] 
+                { 
+                    "wuauserv", "WinDefend", "SecurityHealthService", 
+                    "EventLog", "PlugPlay", "DcomLaunch" 
+                };
+
+                foreach (var service in serviceController)
+                {
+                    try
+                    {
+                        if (criticalServices.Any(s => service.ServiceName.Equals(s, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            Console.WriteLine($"[SystemOptimizer] 关键服务: {service.ServiceName} - {service.Status}");
+                        }
+                    }
+                    catch { }
+                }
+
                 return true;
             }
             catch

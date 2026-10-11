@@ -1,4 +1,4 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,6 +10,7 @@ using System.Management;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using FireAntivirus.Common;
+using FireAntivirus.Engine.Strings;
 
 namespace FireAntivirus.Engine
 {
@@ -335,7 +336,7 @@ namespace FireAntivirus.Engine
                 if (score > 0.7)
                 {
                     result.IsDetected = true;
-                    result.ThreatName = hasRansomName ? "已知勒索软件" : "疑似勒索软件";
+                    result.ThreatName = hasRansomName ? "Known Ransomware" : "Suspected Ransomware";
                     result.Confidence = Math.Min(1.0, score);
                     result.Details = $"扩展名匹配: {hasRansomExt}, 勒索信: {isRansomNote}, 加密特征分数: {encryptionScore}";
                 }
@@ -633,10 +634,10 @@ namespace FireAntivirus.Engine
 
         private string DetermineTrojanType(int behaviorScore, int networkScore, int injectionScore)
         {
-            if (behaviorScore > 70) return "木马程序 - 远程控制型";
-            if (injectionScore > 50) return "木马程序 - 进程注入型";
-            if (networkScore > 50) return "木马程序 - 网络后门型";
-            return "木马程序";
+            if (behaviorScore > 70) return LocalizedStrings.Trojan + " - Remote Control";
+            if (injectionScore > 50) return LocalizedStrings.Trojan + " - Process Injection";
+            if (networkScore > 50) return LocalizedStrings.Trojan + " - Network Backdoor";
+            return LocalizedStrings.Trojan;
         }
     }
 
@@ -683,7 +684,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"键盘记录: {keyloggerScore}, 屏幕监控: {screenMonitorScore}, 数据窃取: {dataTheftScore}";
                 }
             }
-            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "间谍软件检测失败", ex.Message); }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "Spyware detection failed", ex.Message); }
 
             return result;
         }
@@ -779,10 +780,10 @@ namespace FireAntivirus.Engine
 
         private string DetermineSpywareType(int keyloggerScore, int screenMonitorScore, int dataTheftScore)
         {
-            if (keyloggerScore > 50) return "间谍软件 - 键盘记录器";
-            if (screenMonitorScore > 40) return "间谍软件 - 屏幕监控器";
-            if (dataTheftScore > 40) return "间谍软件 - 信息窃取器";
-            return "间谍软件";
+            if (keyloggerScore > 50) return LocalizedStrings.Spyware + " - Keylogger";
+            if (screenMonitorScore > 40) return LocalizedStrings.Spyware + " - Screen Monitor";
+            if (dataTheftScore > 40) return LocalizedStrings.Spyware + " - Data Stealer";
+            return LocalizedStrings.Spyware;
         }
     }
 
@@ -825,7 +826,7 @@ namespace FireAntivirus.Engine
                 if (score > 0.6)
                 {
                     result.IsDetected = true;
-                    result.ThreatName = "广告软件";
+                    result.ThreatName = LocalizedStrings.Adware;
                     result.Confidence = Math.Min(1.0, score);
                     result.Details = $"弹窗: {popupScore}, 劫持: {hijackScore}, 注入: {injectScore}";
                 }
@@ -1016,7 +1017,7 @@ namespace FireAntivirus.Engine
                     result.Details = $"反向连接: {reverseConnectScore}, 监听: {listeningScore}, 命令执行: {cmdExecScore}";
                 }
             }
-            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "后门检测失败", ex.Message); }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "Backdoor detection failed", ex.Message); }
 
             return result;
         }
@@ -1091,10 +1092,10 @@ namespace FireAntivirus.Engine
 
         private string DetermineBackdoorType(int reverseScore, int listeningScore, int cmdScore)
         {
-            if (reverseScore > 50) return "后门 - 反向连接型";
-            if (listeningScore > 40) return "后门 - 端口监听型";
-            if (cmdScore > 50) return "后门 - 远程命令执行型";
-            return "后门程序";
+            if (reverseScore > 50) return LocalizedStrings.Backdoor + " - Reverse Connection";
+            if (listeningScore > 40) return LocalizedStrings.Backdoor + " - Port Listener";
+            if (cmdScore > 50) return LocalizedStrings.Backdoor + " - Remote Command";
+            return LocalizedStrings.Backdoor;
         }
     }
 
@@ -1136,12 +1137,12 @@ namespace FireAntivirus.Engine
                 if (score > 0.65)
                 {
                     result.IsDetected = true;
-                    result.ThreatName = "蠕虫程序";
+                    result.ThreatName = LocalizedStrings.Worm;
                     result.Confidence = Math.Min(1.0, score);
                     result.Details = $"复制: {replicationScore}, 传播: {propagationScore}, 漏洞: {exploitScore}";
                 }
             }
-            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "蠕虫检测失败", ex.Message); }
+            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "Worm detection failed", ex.Message); }
 
             return result;
         }
@@ -1169,7 +1170,10 @@ namespace FireAntivirus.Engine
 
             // 网络扫描
             if (content.Contains("NetScheduleJobAdd")) score += 25;
-            if (content.Contains("psexec")) score += 30;
+            // 远程执行/传播工具（特征外置）
+            if (FireAntivirus.Engine.Data.EmbeddedThreatDatabase.NetworkPropagationSignals
+                .Any(s => content.Contains(s, StringComparison.OrdinalIgnoreCase)))
+                score += 30;
 
             // 批量连接
             var ipPattern = new Regex(@"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}");
@@ -1249,7 +1253,7 @@ namespace FireAntivirus.Engine
                 if (score > 0.6)
                 {
                     result.IsDetected = true;
-                    result.ThreatName = "病毒程序";
+                    result.ThreatName = LocalizedStrings.Virus;
                     result.Confidence = Math.Min(1.0, score);
                     result.Details = $"感染: {infectionScore}, 多态: {polymorphicScore}, 加壳: {packingScore}";
                 }
@@ -1368,7 +1372,7 @@ namespace FireAntivirus.Engine
                 if (score > 0.6)
                 {
                     result.IsDetected = true;
-                    result.ThreatName = "挖矿软件";
+                    result.ThreatName = LocalizedStrings.Miner;
                     result.Confidence = Math.Min(1.0, score);
                     result.Details = $"矿池: {poolScore}, 程序: {binaryScore}, 钱包: {walletScore}";
                 }
@@ -1423,11 +1427,8 @@ namespace FireAntivirus.Engine
         {
             int score = 0;
 
-            // 加密货币算法
-            string[] algorithms = { "cryptonight", "randomx", "ethash", "progpow",
-                                   "kawpow", "octopus", "etchash", "autolykos" };
-
-            foreach (var algo in algorithms)
+            // 加密货币算法（特征外置）
+            foreach (var algo in FireAntivirus.Engine.Data.EmbeddedThreatDatabase.MinerAlgorithms)
             {
                 if (content.IndexOf(algo, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
@@ -1600,9 +1601,9 @@ namespace FireAntivirus.Engine
 
         private string DeterminePUPType(int optimizerScore, int misleadingScore)
         {
-            if (optimizerScore > 40) return "潜在不受欢迎程序 - 伪优化工具";
-            if (misleadingScore > 40) return "潜在不受欢迎程序 - 误导性软件";
-        return "潜在不受欢迎程序";
+            if (optimizerScore > 40) return LocalizedStrings.Riskware + " - Fake Optimizer";
+            if (misleadingScore > 40) return LocalizedStrings.Riskware + " - Misleading Software";
+            return LocalizedStrings.Riskware;
     }
 }
 }

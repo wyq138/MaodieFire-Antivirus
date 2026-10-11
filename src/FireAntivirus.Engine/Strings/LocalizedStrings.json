@@ -1,0 +1,109 @@
+{
+  "ThreatTypes": {
+    "Trojan": "Trojan",
+    "Backdoor": "Backdoor",
+    "Worm": "Worm",
+    "Virus": "Virus",
+    "Miner": "Miner",
+    "Spyware": "Spyware",
+    "Adware": "Adware",
+    "Ransomware": "Ransomware",
+    "Suspicious": "Suspicious",
+    "Riskware": "Riskware",
+    "RemoteControlTrojan": "Remote Control Trojan",
+    "TrojanVirus": "Trojan Virus",
+    "ComputerVirus": "Computer Virus"
+  },
+  "ScanResults": {
+    "ThreatDetected": "Threat detected",
+    "NoThreat": "No threat found",
+    "ScanComplete": "Scan complete",
+    "ScanFailed": "Scan failed",
+    "FileNotFound": "File not found",
+    "AccessDenied": "Access denied",
+    "SuspiciousFile": "Suspicious file",
+    "MaliciousProcess": "Malicious process detected",
+    "SuspiciousProcess": "Suspicious process detected"
+  },
+  "ErrorMessages": {
+    "ScanFailed": "Scan failed",
+    "NetworkScanFailed": "Network scan failed",
+    "MemoryScanFailed": "Memory scan failed",
+    "StartupScanFailed": "Startup scan failed",
+    "RegistryScanFailed": "Registry scan failed",
+    "UpdateFailed": "Update failed",
+    "UpdateSuccess": "Update successful",
+    "SignatureInitFailed": "Signature database initialization failed",
+    "AnalyzeProcessFailed": "Failed to analyze process"
+  },
+  "RiskLevels": {
+    "Critical": "Critical",
+    "High": "High",
+    "Medium": "Medium",
+    "Low": "Low",
+    "Info": "Info"
+  },
+  "DetectionReasons": {
+    "HiddenProcess": "Process is hidden",
+    "UnsignedDriver": "Unsigned driver",
+    "SuspiciousStartup": "Suspicious startup item",
+    "SuspiciousService": "Suspicious service",
+    "SuspiciousFile": "Suspicious file name",
+    "ProcessInjection": "Process injection detected",
+    "RegistryHook": "Registry hook detected",
+    "FileHidden": "File may be hidden"
+  },
+  "AdvancedProtection": {
+    "HeuristicDetected": "Heuristic analysis detected malicious file",
+    "HeuristicDetectedSuspicious": "Heuristic analysis detected suspicious file",
+    "BehaviorDetected": "Behavior analysis detected malicious file",
+    "BehaviorDetectedSuspicious": "Behavior analysis detected suspicious file",
+    "UnknownThreat": "Unknown threat",
+    "UnknownType": "Unknown type",
+    "HeuristicThreat": "Heuristic detection threat",
+    "Malware": "Malware",
+    "BehaviorThreat": "Behavior analysis detected threat",
+    "UnknownNetworkThreat": "Unknown network threat",
+    "SuspiciousNetworkConnection": "Suspicious network connection",
+    "NetworkThreat": "Network threat",
+    "SuspiciousNetworkTraffic": "Suspicious network traffic",
+    "SuspiciousDomain": "Suspicious domain"
+  },
+  "StatusMessages": {
+    "Safe": "Safe",
+    "Secure": "Secure",
+    "Good": "Good",
+    "Fair": "Fair",
+    "Risk": "Risk",
+    "Danger": "Danger",
+    "None": "None",
+    "Low": "Low"
+  },
+  "Recommendations": {
+    "UpdateSignatureDb": "Update virus definition database",
+    "CheckStartupItems": "Check and remove suspicious startup items",
+    "CheckSharePermissions": "Check network share permissions",
+    "CheckAdminAccounts": "Check if all admin accounts are necessary"
+  },
+  "ResponseActions": {
+    "MalwareDetected": "Malware detected",
+    "QuarantineFile": "Quarantine malicious file",
+    "MalwareQuarantined": "Malicious file has been quarantined",
+    "SuspiciousConnection": "Suspicious network connection",
+    "BlockConnection": "Block network connection",
+    "ConnectionBlocked": "Suspicious network connection has been blocked",
+    "SystemAnomaly": "System anomaly",
+    "SystemScan": "System scan",
+    "AnomalyProcessed": "System anomaly processed",
+    "LogEvent": "Log event",
+    "EventLogged": "Security event has been logged",
+    "EventProcessingFailed": "Failed to process security event",
+    "MalwareRemovalFailed": "Failed to remove malware",
+    "DeleteFile": "Delete file",
+    "MalwareDeleted": "Malware has been deleted"
+  },
+  "AnalyzerNotes": {
+    "MultiAntiDebug": "Multi-layer anti-analysis protection",
+    "PartialAntiDebug": "Partial anti-analysis features"
+  }
+}

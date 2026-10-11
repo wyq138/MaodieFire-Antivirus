@@ -1358,6 +1358,20 @@ namespace FireAntivirus.Services
             try
             {
                 var process = Process.GetProcessById(profile.ProcessId);
+                if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                {
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "ProcessBlockSkipped",
+                        Message = "进程受保护，已跳过查杀",
+                        Details = $"PID: {profile.ProcessId}, 路径: {profile.FilePath}",
+                        Source = "BehaviorAnalysisService",
+                        Category = "威胁响应"
+                    });
+                    return;
+                }
                 process.Kill();
                 
                 Interlocked.Increment(ref _processesBlocked);

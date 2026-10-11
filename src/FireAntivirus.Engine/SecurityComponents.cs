@@ -1,4 +1,4 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
+// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -291,8 +291,15 @@ namespace FireAntivirus.Engine
                         var proc = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(threat.Path)).FirstOrDefault();
                         if (proc != null)
                         {
-                            proc.Kill();
-                            result.Actions.Add($"终止进程: {proc.ProcessName}");
+                            if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(proc))
+                            {
+                                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "SecurityComponents.cs IncidentResponder", $"进程受保护，已跳过查杀: {proc.ProcessName} PID: {proc.Id}");
+                            }
+                            else
+                            {
+                                proc.Kill();
+                                result.Actions.Add($"终止进程: {proc.ProcessName}");
+                            }
                         }
                         break;
                         
@@ -445,6 +452,11 @@ namespace FireAntivirus.Engine
                 {
                     try
                     {
+                        if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(proc))
+                        {
+                            FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "SecurityComponents.cs MalwareRemover", $"进程受保护，已跳过查杀: {proc.ProcessName} PID: {proc.Id}");
+                            continue;
+                        }
                         proc.Kill();
                         result.Actions.Add($"终止进程: {proc.ProcessName}");
                     }
@@ -1007,13 +1019,12 @@ namespace FireAntivirus.Engine
         {
             // 矿池地址/stratum 协议等挖矿特征从外部 JSON 加载（ThreatData/malicious_indicators.json），不内嵌于 DLL
             ExternalThreatData.EnsureLoaded();
+            FireAntivirus.Engine.Data.EmbeddedThreatDatabase.EnsureLoaded();
             _miningPools = new List<string>(ExternalThreatData.MiningPools);
-            _cryptoPatterns = new List<string>
-            {
-                "minerd", "xmrig", "cpuminer", "ccminer",
-                "wallet", "bitcoin", "ethereum", "monero", "litecoin",
-                "hashrate", "mining"
-            };
+            var minerNames = new List<string>(FireAntivirus.Engine.Data.EmbeddedThreatDatabase.MinerProcessNames);
+            // 通用加密货币关键词（非恶意特征字符串）
+            minerNames.AddRange(new[] { "wallet", "bitcoin", "ethereum", "monero", "litecoin", "hashrate", "mining" });
+            _cryptoPatterns = minerNames;
         }
         
         public CryptoAnalysisResult Analyze(string filePath)

@@ -178,7 +178,12 @@ namespace FireAntivirus.Services
                 // 记录阻止事件
                 RaiseApplicationControlEvent(new ApplicationControlEventArgs(ApplicationControlEventType.Block, $"Blocked process: {process.ProcessName} ({process.MainModule.FileName}) based on rule: {rule.Description}"));
 
-                // 终止进程
+                // 终止进程（受保护进程跳过）
+                if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                {
+                    RaiseApplicationControlEvent(new ApplicationControlEventArgs(ApplicationControlEventType.Info, $"Process is protected, skipped termination: {process.ProcessName}"));
+                    return;
+                }
                 process.Kill();
                 process.WaitForExit();
 

@@ -6,6 +6,7 @@ using System.Text;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using FireAntivirus.Data;
+using FireAntivirus.Engine.Strings;
 
 namespace FireAntivirus.Engine
 {
@@ -179,20 +180,20 @@ namespace FireAntivirus.Engine
                 if (entropy > 7.5)
                 {
                     result.Confidence += 0.3;
-                    result.AdditionalInfo = "高熵值(可能加壳)";
+                    result.AdditionalInfo = "High entropy (possibly packed)";
                 }
 
-                // 阈值提高到0.9，减少误报
+                // Threshold increased to 0.9 to reduce false positives
                 if (result.Confidence > 0.9)
                 {
                     result.IsInfected = true;
-                    result.ThreatName = "可疑文件";
+                    result.ThreatName = LocalizedStrings.SuspiciousFile;
                     result.ThreatType = "Suspicious";
                     result.Severity = "Low";
                     result.DetectionMethod = "Heuristic";
                 }
             }
-            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "Analyzers.cs 捕获异常", ex.Message); }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "Analyzers.cs exception", ex.Message); }
 
             return result;
         }

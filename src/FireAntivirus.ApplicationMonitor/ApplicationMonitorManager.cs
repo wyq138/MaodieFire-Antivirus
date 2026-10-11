@@ -239,6 +239,18 @@ namespace FireAntivirus.ApplicationMonitor
             try
             {
                 var process = Process.GetProcessById(processId);
+                if (!TrustedProcessGuard.CanTerminate(process))
+                {
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "ProcessTerminationSkipped",
+                        Message = "进程受保护，已跳过查杀",
+                        Details = $"PID: {processId}, 进程名: {process.ProcessName}"
+                    });
+                    return;
+                }
                 process.Kill();
                 _dataManager.AddLog(new LogEntry
                 {

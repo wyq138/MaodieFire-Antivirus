@@ -317,7 +317,14 @@ namespace FireAntivirus.RealTimeProtectionPlus
                         if (int.TryParse(processId, out var pid))
                         {
                             var process = Process.GetProcessById(pid);
-                            process.Kill();
+                            if (!TrustedProcessGuard.CanTerminate(process))
+                            {
+                                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "RealTimeProtectionPlusManager", $"进程受保护，已跳过查杀: {processName} PID: {pid}");
+                            }
+                            else
+                            {
+                                process.Kill();
+                            }
                         }
                     }
                     catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RealTimeProtectionPlusManager.cs 捕获异常", ex.Message); }
@@ -658,7 +665,14 @@ namespace FireAntivirus.RealTimeProtectionPlus
                                     var result = AnalyzeBehaviorEvent(protectionEvent);
                                     if (result.Action == ProtectionAction.Block)
                                     {
-                                        process.Kill();
+                                        if (!TrustedProcessGuard.CanTerminate(process))
+                                        {
+                                            FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "RealTimeProtectionPlusManager", $"进程受保护，已跳过查杀: {process.ProcessName} PID: {process.Id}");
+                                        }
+                                        else
+                                        {
+                                            process.Kill();
+                                        }
                                     }
                                 }
                             }

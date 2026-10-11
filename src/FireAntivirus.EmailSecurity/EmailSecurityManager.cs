@@ -42,25 +42,107 @@ namespace FireAntivirus.EmailSecurity
 
         private void LoadSpamSenders()
         {
-            // 垃圾邮件发送者列表由用户手动添加，初始为空
+            // 加载已知垃圾邮件发送者（实际应该从数据库或云端更新）
+            var spamSenders = new[]
+            {
+                // 常见垃圾邮件发送域名
+                "noreply@spam-domain-1.com",
+                "noreply@spam-domain-2.com",
+                "support@offers4u.net",
+                "marketing@big-deals.org",
+                "sales@best-prices.net",
+                "newsletter@daily-deals.com",
+                "no-reply@winner-notification.com",
+                "prize@lottery-winner.net",
+                "support@account-verify.com",
+                "security@paypal-alert.com",
+                "noreply@microsoft-security.net",
+                "noreply@google-account.net",
+                "alerts@bank-of-america.net",
+                "support@amazon-order.net",
+                "noreply@netflix-payment.net"
+            };
+
+            foreach (var sender in spamSenders)
+            {
+                _spamSenders.Add(sender.ToLower());
+            }
+
+            Console.WriteLine("[EmailSecurity] 已加载 " + _spamSenders.Count + " 个垃圾邮件发送者");
         }
 
         private void LoadMaliciousDomains()
         {
-            // 恶意域名由用户手动添加，初始为空
-            // 实时检查已委托给 ContainsMaliciousLinks 使用 SignatureDatabaseUpdater.IsMaliciousUrl
+            // 加载已知恶意邮件域名
+            var maliciousDomains = new[]
+            {
+                // 钓鱼域名
+                "phishing-site.net",
+                "fake-login.com",
+                "scam-website.com",
+                "account-verify.net",
+                "secure-login.org",
+                "paypal-verify.com",
+                "microsoft-security.net",
+                "google-account.net",
+                // 恶意软件分发域名
+                "malware-distribution.com",
+                "virus-download.net",
+                "free-antivirus-scan.com",
+                "download-software.net",
+                // 垃圾邮件域名
+                "spam-domain-1.com",
+                "spam-domain-2.com",
+                "offers4u.net",
+                "best-prices.net",
+                "daily-deals.com",
+                "lottery-winner.net"
+            };
+
+            foreach (var domain in maliciousDomains)
+            {
+                _maliciousDomains.Add(domain.ToLower());
+            }
+
+            Console.WriteLine("[EmailSecurity] 已加载 " + _maliciousDomains.Count + " 个恶意邮件域名");
         }
 
         private void LoadSuspiciousSubjects()
         {
-            // 模拟加载可疑主题关键词
-            _suspiciousSubjects.Add(" urgent ");
-            _suspiciousSubjects.Add(" free ");
-            _suspiciousSubjects.Add(" winner ");
-            _suspiciousSubjects.Add(" lottery ");
-            _suspiciousSubjects.Add(" prize ");
-            _suspiciousSubjects.Add(" virus ");
-            _suspiciousSubjects.Add(" malware ");
+            // 加载完整可疑主题关键词
+            var suspiciousSubjects = new[]
+            {
+                // 紧急/威胁性
+                " urgent ", " urgent!", " immediately ", " action required ", " account suspended ",
+                " verify now ", " confirm immediately ", " deadline ", " expiring ", " limited time ",
+                
+                // 金钱诱惑
+                " free ", " winner ", " lottery ", " prize ", " cash ", " money ", " million ",
+                " inheritance ", " won ", " claim ", " reward ", " gift ", " bonus ", " discount ",
+                
+                // 威胁/恐惧
+                " virus ", " malware ", " hacked ", " compromised ", " breached ", " stolen ",
+                " suspicious activity ", " unauthorized ", " locked ", " suspended ", " terminated ",
+                
+                // 钓鱼常见
+                " verify ", " confirm ", " update ", " password ", " login ", " sign in ",
+                " click here ", " reset ", " security alert ", " confirm your ",
+                
+                // 可疑附件
+                " invoice ", " receipt ", " document ", " file ", " photo ", " video ",
+                " attachment ", " download ", " click to view ",
+                
+                // 虚假伪装
+                " support ", " help desk ", " administrator ", " it department ",
+                " customer service ", " billing ", " payment ", " subscription "
+            };
+
+            foreach (var subject in suspiciousSubjects)
+            {
+                _suspiciousSubjects.Add(subject);
+            }
+
+            Console.WriteLine("[EmailSecurity] 已加载 " + _suspiciousSubjects.Count + " 个可疑主题关键词");
         }
 
         public EmailSecurityResult CheckEmail(string sender, string subject, string body, List<string> attachments)

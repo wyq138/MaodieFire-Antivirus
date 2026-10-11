@@ -376,29 +376,32 @@ namespace FireAntivirus.Common
             return Process.GetProcesses();
         }
 
-        public static void KillProcess(int processId)
+        public static bool KillProcess(int processId)
         {
             try
             {
+                // 中央防误杀守护：系统进程/受信任签名进程禁止终止
+                if (!TrustedProcessGuard.CanTerminate(processId)) return false;
                 var process = Process.GetProcessById(processId);
                 process.Kill();
+                return true;
             }
             catch
             {
+                return false;
             }
         }
 
-        public static void KillProcess(string processName)
+        public static int KillProcess(string processName)
         {
             try
             {
-                foreach (var process in Process.GetProcessesByName(processName))
-                {
-                    process.Kill();
-                }
+                // 中央防误杀守护：按名终止时跳过所有受保护进程
+                return TrustedProcessGuard.SafeTerminateByName(processName);
             }
             catch
             {
+                return 0;
             }
         }
 

@@ -32,28 +32,58 @@ namespace FireAntivirus.Backup
 
         private void LoadBackups()
         {
-            // 模拟加载备份条目
-            _backupEntries.Add(new BackupEntry
+            // 从备份目录加载真实的备份文件
+            if (!Directory.Exists(_backupRoot))
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = "系统备份 2024-01-01",
-                Description = "完整系统备份",
-                Path = Path.Combine(_backupRoot, "system_backup_20240101.zip"),
-                Size = 1024 * 1024 * 1024, // 1GB
-                CreatedAt = DateTime.Now.AddDays(-30),
-                Type = BackupType.Full
-            });
+                Directory.CreateDirectory(_backupRoot);
+                return;
+            }
 
-            _backupEntries.Add(new BackupEntry
+            try
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = "文档备份 2024-01-15",
-                Description = "文档文件夹备份",
-                Path = Path.Combine(_backupRoot, "documents_backup_20240115.zip"),
-                Size = 512 * 1024 * 1024, // 512MB
-                CreatedAt = DateTime.Now.AddDays(-15),
-                Type = BackupType.Custom
-            });
+                var backupFiles = Directory.GetFiles(_backupRoot, "*.zip");
+                foreach (var file in backupFiles)
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(file);
+                        _backupEntries.Add(new BackupEntry
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Name = Path.GetFileNameWithoutExtension(file),
+                            Description = "用户备份",
+                            Path = file,
+                            Size = fileInfo.Length,
+                            CreatedAt = fileInfo.CreationTime,
+                            Type = BackupType.Custom
+                        });
+                    }
+                    catch { /* 忽略读取错误的文件 */ }
+                }
+
+                // 同时从备份索引文件加载
+                string indexFile = Path.Combine(_backupRoot, "backup_index.json");
+                if (File.Exists(indexFile))
+                {
+                    try
+                    {
+                        var json = File.ReadAllText(indexFile);
+                        var entries = Newtonsoft.Json.JsonConvert.DeserializeObject<List<BackupEntry>>(json);
+                        if (entries != null)
+                        {
+                            foreach (var entry in entries)
+                            {
+                                if (!_backupEntries.Any(e => e.Path == entry.Path))
+                                {
+                                    _backupEntries.Add(entry);
+                                }
+                            }
+                        }
+                    }
+                    catch { /* 忽略索引文件解析错误 */ }
+                }
+            }
+            catch { /* 忽略目录读取错误 */ }
         }
 
         public BackupResult CreateBackup(string name, string description, List<string> includePaths, BackupType type)

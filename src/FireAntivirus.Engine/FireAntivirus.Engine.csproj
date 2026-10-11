@@ -28,5 +28,7 @@
 
   <ItemGroup>
     <None Update="ThreatData\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="KnowledgeBase\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Strings\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

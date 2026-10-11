@@ -1,0 +1,9 @@
+<!-- 耄耋软件工作室 开发，严禁非法反编译
+     右下角威胁处理浮层：每条威胁一张卡片，含 隔离/删除/信任/忽略 四个操作 -->
+<UserControl
+    x:Class="FireAntivirus.Host.WinUI.ThreatOverlayHost"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <StackPanel x:Name="ThreatStack" Spacing="10" MaxWidth="420"/>
+</UserControl>

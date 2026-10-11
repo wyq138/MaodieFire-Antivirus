@@ -1,0 +1,73 @@
+<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
+<Page
+    x:Class="FireAntivirus.Host.WinUI.Pages.SystemInfoPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="24,16,24,24">
+        <StackPanel Spacing="14" MaxWidth="920">
+
+            <TextBlock Text="系统信息" Style="{StaticResource PageTitle}"/>
+            <Button Content="刷新信息" Click="Refresh_Click" HorizontalAlignment="Left"/>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="操作系统" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="OSNameLabel" Text="--"/>
+                    <TextBlock x:Name="OSVersionLabel" Text="--"/>
+                    <TextBlock x:Name="OSArchLabel" Text="--"/>
+                    <TextBlock x:Name="OSInstallDateLabel" Text="--"/>
+                    <TextBlock x:Name="OSSystemDirLabel" Text="--"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="处理器" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="CPUNameLabel" Text="--"/>
+                    <TextBlock x:Name="CPUManufacturerLabel" Text="--"/>
+                    <TextBlock x:Name="CPUCoresLabel" Text="--"/>
+                    <TextBlock x:Name="CPULogicalLabel" Text="--"/>
+                    <TextBlock x:Name="CPUSpeedLabel" Text="--"/>
+                </StackPanel>
+            </Border>
+
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource ModernCard}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="内存" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="MemoryTotalLabel" Text="--"/>
+                        <TextBlock x:Name="MemoryAvailableLabel" Text="--"/>
+                        <TextBlock x:Name="MemoryUsageLabel" Text="--"/>
+                        <TextBlock x:Name="MemoryVisibleLabel" Text="--"/>
+                        <TextBlock x:Name="MemoryFreeLabel" Text="--"/>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource ModernCard}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="整机" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="SystemManufacturerLabel" Text="--"/>
+                        <TextBlock x:Name="SystemModelLabel" Text="--"/>
+                        <TextBlock x:Name="SystemMemoryLabel" Text="--"/>
+                        <TextBlock x:Name="SystemBootTimeLabel" Text="--"/>
+                        <TextBlock x:Name="SystemComputerNameLabel" Text="--"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="磁盘" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="Disk1Label" Text="--"/>
+                    <TextBlock x:Name="Disk2Label" Text="--"/>
+                    <TextBlock x:Name="Disk3Label" Text="--"/>
+                    <TextBlock x:Name="Disk4Label" Text="--"/>
+                    <TextBlock x:Name="Disk5Label" Text="--"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

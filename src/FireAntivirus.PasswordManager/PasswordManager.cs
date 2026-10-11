@@ -44,30 +44,24 @@ namespace FireAntivirus.PasswordManager
 
         private void LoadPasswords()
         {
-            // 模拟加载密码条目
-            _passwordEntries.Add(new PasswordEntry
-            {
-                Id = Guid.NewGuid().ToString(),
-                Title = "Gmail",
-                Username = "user@gmail.com",
-                Password = "********", // 实际存储时应该加密
-                Url = "https://mail.google.com",
-                Notes = "个人邮箱",
-                CreatedAt = DateTime.Now.AddDays(-30),
-                UpdatedAt = DateTime.Now.AddDays(-10)
-            });
+            // 从加密文件加载密码
+            LoadPasswordsFromFile();
 
-            _passwordEntries.Add(new PasswordEntry
+            // 如果没有保存的密码，才添加默认示例
+            if (_passwordEntries.Count == 0)
             {
-                Id = Guid.NewGuid().ToString(),
-                Title = "GitHub",
-                Username = "username",
-                Password = "********",
-                Url = "https://github.com",
-                Notes = "代码仓库",
-                CreatedAt = DateTime.Now.AddDays(-45),
-                UpdatedAt = DateTime.Now.AddDays(-5)
-            });
+                _passwordEntries.Add(new PasswordEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = "示例: Gmail",
+                    Username = "user@gmail.com",
+                    Password = "", // 不存储实际密码
+                    Url = "https://mail.google.com",
+                    Notes = "这是示例条目，请添加您自己的密码",
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                });
+            }
         }
 
         public void AddPassword(PasswordEntry entry)
@@ -219,9 +213,90 @@ namespace FireAntivirus.PasswordManager
 
         private void SavePasswords()
         {
-            // 模拟保存密码到文件
-            string passwordFile = Path.Combine(_passwordStorePath, "passwords.json");
-            // 实际实现中应该加密存储
+            try
+            {
+                string passwordFile = Path.Combine(_passwordStorePath, "passwords.dat");
+
+                // 使用DPAPI加密存储
+                var entries = _passwordEntries.Select(e => new PasswordEntryDto
+                {
+                    Id = e.Id,
+                    Title = e.Title,
+                    Username = e.Username,
+                    EncryptedPassword = ProtectedData.Protect(
+                        Encoding.UTF8.GetBytes(e.Password),
+                        null,
+                        DataProtectionScope.CurrentUser),
+                    Url = e.Url,
+                    Notes = e.Notes,
+                    CreatedAt = e.CreatedAt,
+                    UpdatedAt = e.UpdatedAt
+                }).ToList();
+
+                var json = System.Text.Json.JsonSerializer.Serialize(entries);
+                var encryptedData = ProtectedData.Protect(
+                    Encoding.UTF8.GetBytes(json),
+                    null,
+                    DataProtectionScope.CurrentUser);
+
+                File.WriteAllBytes(passwordFile, encryptedData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[PasswordManager] 保存密码失败: " + ex.Message);
+            }
         }
+
+        private void LoadPasswordsFromFile()
+        {
+            try
+            {
+                string passwordFile = Path.Combine(_passwordStorePath, "passwords.dat");
+                if (!File.Exists(passwordFile))
+                    return;
+
+                var encryptedData = File.ReadAllBytes(passwordFile);
+                var json = Encoding.UTF8.GetString(ProtectedData.Unprotect(
+                    encryptedData,
+                    null,
+                    DataProtectionScope.CurrentUser));
+
+                var entries = System.Text.Json.JsonSerializer.Deserialize<List<PasswordEntryDto>>(json);
+                if (entries == null)
+                    return;
+
+                _passwordEntries = entries.Select(e => new PasswordEntry
+                {
+                    Id = e.Id,
+                    Title = e.Title,
+                    Username = e.Username,
+                    Password = Encoding.UTF8.GetString(ProtectedData.Unprotect(
+                        e.EncryptedPassword,
+                        null,
+                        DataProtectionScope.CurrentUser)),
+                    Url = e.Url,
+                    Notes = e.Notes,
+                    CreatedAt = e.CreatedAt,
+                    UpdatedAt = e.UpdatedAt
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[PasswordManager] 加载密码失败: " + ex.Message);
+            }
+        }
+    }
+
+    // 数据传输对象
+    internal class PasswordEntryDto
+    {
+        public string Id { get; set; }
+        public string Title { get; set; }
+        public string Username { get; set; }
+        public byte[] EncryptedPassword { get; set; }
+        public string Url { get; set; }
+        public string Notes { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 }

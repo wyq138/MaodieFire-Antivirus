@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Management;
@@ -249,13 +249,15 @@ private bool IsSuspiciousBehavior(ProcessBehavior behavior)
         {
             // 行为异常检测：使用熵值和模式识别
             // 正常程序行为有规律，恶意程序行为突变
-            return behavior.FileOperations > 200 || behavior.NetworkConnections > 100 || behavior.RegistryOperations > 50;
+            return behavior.FileOperations > 600 || behavior.NetworkConnections > 300 || behavior.RegistryOperations > 200;
         }
 
         private bool IsRansomwareBehavior(ProcessBehavior behavior)
         {
             // 勒索软件特征：大量文件操作 + 网络连接 + 快速连续操作
-            return behavior.FileOperations > 500 && behavior.NetworkConnections > 50;
+            // 防误报：勒索行为需要海量文件操作 + 持续网络外传同时成立，且阈值大幅提高；
+            // 编译、备份、解压等正常高 I/O 活动通常只有文件操作，不会同时满足。
+            return behavior.FileOperations > 3000 && behavior.NetworkConnections > 200;
 }
         
         // 智能威胁检测算法
@@ -282,16 +284,22 @@ private bool IsSuspiciousBehavior(ProcessBehavior behavior)
                         return false; // 可信路径，跳过
                 }
                 
-                // 3. 检查进程名称的熵值（高熵表示可能是随机命名）
+                // 3. 检查进程名称的熵值（高熵表示可能是随机命名）。
+                // 防误报：进程名熵值单独不构成威胁（正常缩写名熵也可能偏高），
+                // 必须同时伴随明显异常的行为量才作为信号。
                 double entropy = CalculateStringEntropy(process.ProcessName);
-                if (entropy > 3.5) // 随机字符串通常熵值较高
+                if (entropy > 3.8 &&
+                    behavior.FileOperations > 800 &&
+                    behavior.NetworkConnections > 150)
                     return true;
-                
-                // 4. 检查可疑组合：大量文件操作 + 网络连接 + 非系统路径
-                if (behavior.FileOperations > 100 && behavior.NetworkConnections > 20 && !string.IsNullOrEmpty(processPath))
+
+                // 4. 检查可疑组合：海量文件操作 + 大量网络连接 + 临时目录。
+                // 防误报：AppData 下运行是 VSCode/Chrome/Steam 等正常软件的常态，
+                // 只有在行为量同时显著超常时才报警；C:\Users 整体不再作为可疑路径。
+                if (behavior.FileOperations > 800 && behavior.NetworkConnections > 150 && !string.IsNullOrEmpty(processPath))
                 {
                     // 检查是否在临时目录
-                    if (processPath.Contains("Temp") || processPath.Contains("AppData") || processPath.Contains("Users"))
+                    if (processPath.Contains("Temp", StringComparison.OrdinalIgnoreCase))
                         return true;
                 }
                 
@@ -328,8 +336,21 @@ private bool IsSuspiciousBehavior(ProcessBehavior behavior)
         {
             try
             {
+                if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                {
+                    dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "ProcessKillSkipped",
+                        Message = "进程受保护，已跳过查杀",
+                        Details = $"进程: {process.ProcessName}, PID: {process.Id}"
+                    });
+                    return;
+                }
+
                 process.Kill();
-                
+
                 dataManager.AddLog(new LogEntry
                 {
                     Id = Guid.NewGuid().ToString(),

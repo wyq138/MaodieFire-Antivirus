@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -320,7 +320,10 @@ namespace FireAntivirus.Services
                         p.CloseMainWindow();
                         if (!p.WaitForExit(3000))
                         {
-                            p.Kill();
+                            if (FireAntivirus.Common.TrustedProcessGuard.CanTerminate(p))
+                            {
+                                p.Kill();
+                            }
                         }
                     }
                 }
@@ -428,7 +431,10 @@ namespace FireAntivirus.Services
 
             try
             {
-                process.Kill();
+                if (FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                {
+                    process.Kill();
+                }
             }
             catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
         }
@@ -445,7 +451,10 @@ namespace FireAntivirus.Services
                         p.CloseMainWindow();
                         if (!p.WaitForExit(2000))
                         {
-                            p.Kill();
+                            if (FireAntivirus.Common.TrustedProcessGuard.CanTerminate(p))
+                            {
+                                p.Kill();
+                            }
                         }
                     }
                 }
@@ -550,7 +559,10 @@ namespace FireAntivirus.Services
 
             try
             {
-                process.Kill();
+                if (FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                {
+                    process.Kill();
+                }
             }
             catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "ParentalControl.cs 捕获异常", ex.Message); }
         }

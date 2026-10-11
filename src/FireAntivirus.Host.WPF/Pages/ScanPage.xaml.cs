@@ -130,6 +130,40 @@ namespace FireAntivirus.Host.WPF.Pages
                     Dispatcher.BeginInvoke(new Action(() =>
                     {
                         AddThreat(threat.Threat);
+
+                        // 右下角风险处理弹窗（带 隔离/删除/信任/忽略 处理选项，而不是屏幕中央的默认弹窗）
+                        var threatCopy = threat.Threat;
+                        var payload = new FireAntivirus.Common.Notification.RiskNotificationPayload
+                        {
+                            FilePath = threatCopy?.FilePath,
+                            ThreatName = threatCopy?.ThreatName ?? "未知威胁",
+                            Severity = threatCopy?.Severity ?? "High",
+                            SuggestedAction = "建议先隔离",
+                            Actions = new System.Collections.Generic.List<FireAntivirus.Common.Notification.RiskAction>
+                            {
+                                new FireAntivirus.Common.Notification.RiskAction
+                                {
+                                    Text = "隔离",
+                                    Handler = path => { if (!string.IsNullOrEmpty(path)) QuarantineFileByPath(path); }
+                                },
+                                new FireAntivirus.Common.Notification.RiskAction
+                                {
+                                    Text = "删除",
+                                    Handler = path => { if (!string.IsNullOrEmpty(path)) DeleteFileByPath(path); }
+                                },
+                                new FireAntivirus.Common.Notification.RiskAction
+                                {
+                                    Text = "信任",
+                                    Handler = path => { if (!string.IsNullOrEmpty(path)) TrustFileByPath(path); }
+                                },
+                                new FireAntivirus.Common.Notification.RiskAction
+                                {
+                                    Text = "忽略",
+                                    Handler = _ => { /* 仅关闭弹窗 */ }
+                                }
+                            }
+                        };
+                        FireAntivirus.Common.Notification.NotificationService.Instance.ShowRisk(payload);
                     }));
                 };
                 
@@ -807,6 +841,56 @@ namespace FireAntivirus.Host.WPF.Pages
                         MessageBox.Show($"添加失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
+            }
+        }
+
+        // ---- 右下角风险弹窗处理动作（隔离/删除/信任/忽略）----
+        private void QuarantineFileByPath(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return;
+            try
+            {
+                var quarantineDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus", "Quarantine");
+                if (!Directory.Exists(quarantineDir)) Directory.CreateDirectory(quarantineDir);
+
+                var destFile = Path.Combine(quarantineDir,
+                    $"{DateTime.Now:yyyyMMdd_HHmmss}_{Path.GetFileName(filePath)}.quar");
+                File.Move(filePath, destFile);
+                System.Diagnostics.Debug.WriteLine($"已隔离: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"隔离失败: {ex.Message}");
+            }
+        }
+
+        private void DeleteFileByPath(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return;
+            try
+            {
+                File.Delete(filePath);
+                System.Diagnostics.Debug.WriteLine($"已删除: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"删除失败: {ex.Message}");
+            }
+        }
+
+        private void TrustFileByPath(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath)) return;
+            try
+            {
+                _dataManager?.AddToWhitelist(filePath);
+                System.Diagnostics.Debug.WriteLine($"已加入信任: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加入信任失败: {ex.Message}");
             }
         }
 

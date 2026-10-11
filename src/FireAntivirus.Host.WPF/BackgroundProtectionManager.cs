@@ -158,22 +158,8 @@ namespace FireAntivirus.Host
         {
             try
             {
-                Process[] processes = Process.GetProcessesByName("FireAntivirus.Service");
-                foreach (Process process in processes)
-                {
-                    try
-                    {
-                        process.Kill();
-                        process.WaitForExit(5000);
-                    }
-                    catch
-                    {
-                    }
-                    finally
-                    {
-                        process.Dispose();
-                    }
-                }
+                // 自家服务，走守护的安全终止入口
+                FireAntivirus.Common.TrustedProcessGuard.SafeTerminateByName("FireAntivirus.Service");
             }
             catch
             {

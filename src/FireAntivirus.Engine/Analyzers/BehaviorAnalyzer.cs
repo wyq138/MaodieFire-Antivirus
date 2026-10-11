@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
+using FireAntivirus.Engine.Strings;
 
 namespace FireAntivirus.Engine.Analyzers
 {
@@ -143,12 +144,12 @@ namespace FireAntivirus.Engine.Analyzers
 
                 if (result.IsInfected)
                 {
-                    dataManager.LogThreat($"行为分析检测到恶意进程: {process.ProcessName} (PID: {processId})", $"评分: {behaviorScore:P}", "BehaviorAnalyzer");
+                    dataManager.LogThreat($"Behavior analysis detected malicious process: {process.ProcessName} (PID: {processId})", $"Score: {behaviorScore:P}", "BehaviorAnalyzer");
                 }
             }
             catch (Exception ex)
             {
-                dataManager.LogError($"行为分析失败: PID {processId}", ex.Message, "BehaviorAnalyzer");
+                dataManager.LogError($"Behavior analysis failed: PID {processId}", ex.Message, "BehaviorAnalyzer");
             }
 
             return results;
@@ -180,7 +181,7 @@ namespace FireAntivirus.Engine.Analyzers
             }
             catch (Exception ex)
             {
-                dataManager.LogError("分析所有进程失败", ex.Message, "BehaviorAnalyzer");
+                dataManager.LogError("Failed to analyze all processes", ex.Message, "BehaviorAnalyzer");
             }
 
             return results;
@@ -880,13 +881,13 @@ namespace FireAntivirus.Engine.Analyzers
             {
                 if (score > 0.95)
                 {
-                    result.ThreatName = "行为分析检测到的恶意进程";
+                    result.ThreatName = LocalizedStrings.MaliciousProcess;
                     result.ThreatType = "Malware";
                     result.Severity = "High";
                 }
                 else
                 {
-                    result.ThreatName = "行为分析检测到的可疑进程";
+                    result.ThreatName = LocalizedStrings.SuspiciousProcess;
                     result.ThreatType = "Suspicious";
                     result.Severity = "Medium";
                 }

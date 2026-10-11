@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>耄耋安全软件 | MaodieFire Antivirus</title>
+    <meta name="description" content="耄耋安全软件 — 以猫之名，守护安全。基于 .NET 10 / WPF 的国产综合性安全防护软件，集病毒扫描、实时防护、网络防火墙、行为分析等多种安全功能于一体。">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0a0e17;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2436;
+            --accent: #ff6b35;
+            --accent-glow: rgba(255, 107, 53, 0.4);
+            --accent2: #00d4ff;
+            --accent2-glow: rgba(0, 212, 255, 0.3);
+            --text-primary: #f0f4f8;
+            --text-secondary: #8892a6;
+            --text-muted: #5a6478;
+            --border: #1e293b;
+            --gradient: linear-gradient(135deg, #ff6b35 0%, #ff3d00 100%);
+            --gradient2: linear-gradient(135deg, #00d4ff 0%, #0088ff 100%);
+            --radius: 16px;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ===== Navbar ===== */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            background: rgba(10, 14, 23, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+        nav .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 64px;
+        }
+        nav .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+        nav .logo .cat { font-size: 28px; }
+        nav .logo span { color: var(--accent); }
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 32px;
+        }
+        nav ul a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 15px;
+            transition: color 0.2s;
+        }
+        nav ul a:hover { color: var(--accent); }
+        nav .github-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 20px;
+            background: var(--gradient);
+            border-radius: 8px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        nav .github-btn:hover {
+            box-shadow: 0 0 24px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        /* ===== Hero ===== */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 30% 40%, var(--accent-glow) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 60%, var(--accent2-glow) 0%, transparent 50%);
+            animation: pulse 8s ease-in-out infinite alternate;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .hero .content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            padding: 0 24px;
+        }
+        .hero .cat-icon {
+            font-size: 80px;
+            margin-bottom: 24px;
+            display: inline-block;
+            animation: float 4s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-16px); }
+        }
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 0%, #8892a6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero .tagline {
+            font-size: 22px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .hero .desc {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+        .hero .badges {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+        .hero .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .hero .badge .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+        }
+        .hero .cta-group {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 36px;
+            background: var(--gradient);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 8px 32px var(--accent-glow);
+            transform: translateY(-3px);
+        }
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 36px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent2);
+        }
+
+        /* ===== Section ===== */
+        section { padding: 100px 24px; }
+        section .container { max-width: 1200px; margin: 0 auto; }
+        .section-title {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .section-title h2 {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .section-title p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ===== Features ===== */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            transition: all 0.3s;
+        }
+        .feature-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .feature-card .icon {
+            font-size: 40px;
+            margin-bottom: 16px;
+        }
+        .feature-card h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* ===== Architecture ===== */
+        .arch-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+        .arch-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+        }
+        .arch-card h3 {
+            font-size: 22px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .arch-card .proc-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--bg-card-hover);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--accent);
+            font-family: 'Cascadia Code', 'Consolas', monospace;
+            margin-bottom: 12px;
+        }
+        .arch-card .proc-badge.alt {
+            border-color: var(--accent2);
+            color: var(--accent2);
+        }
+        .arch-card p {
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        /* ===== Stats ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 24px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .stat-card:hover {
+            border-color: var(--accent2);
+            box-shadow: 0 0 24px var(--accent2-glow);
+        }
+        .stat-card .number {
+            font-size: 42px;
+            font-weight: 800;
+            background: var(--gradient2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-card .label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 8px;
+        }
+
+        /* ===== Tech Stack ===== */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .tech-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+        }
+        .tech-item:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent2);
+        }
+        .tech-item .tech-name {
+            font-weight: 600;
+        }
+        .tech-item .tech-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* ===== Download ===== */
+        .download-section {
+            background: linear-gradient(135deg, #111827 0%, #0a0e17 100%);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 60px 48px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .download-section::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: var(--gradient);
+        }
+        .download-section h2 {
+            font-size: 36px;
+            margin-bottom: 16px;
+        }
+        .download-section p {
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-size: 18px;
+        }
+        .download-options {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .download-card {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            min-width: 260px;
+            text-decoration: none;
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+        .download-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px var(--accent-glow);
+        }
+        .download-card .dl-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .download-card h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        .download-card p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+        .download-card .arrow {
+            color: var(--accent);
+            margin-top: 16px;
+            font-size: 18px;
+        }
+
+        /* ===== License ===== */
+        .license-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .license-box h3 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .license-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .license-grid ul {
+            list-style: none;
+        }
+        .license-grid li {
+            padding: 8px 0;
+            font-size: 15px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .license-grid .yes { color: #4ade80; }
+        .license-grid .no { color: #f87171; }
+
+        /* ===== Footer ===== */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 48px 24px;
+            text-align: center;
+        }
+        footer .container { max-width: 1200px; margin: 0 auto; }
+        footer .cat { font-size: 36px; margin-bottom: 16px; }
+        footer p {
+            color: var(--text-muted);
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+        footer .slogan {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        footer .links {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+        }
+        footer .links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        footer .links a:hover { color: var(--accent); }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            nav ul { display: none; }
+            .hero h1 { font-size: 36px; }
+            .hero .tagline { font-size: 18px; }
+            .hero .desc { font-size: 16px; }
+            .section-title h2 { font-size: 28px; }
+            .arch-grid { grid-template-columns: 1fr; }
+            .license-grid { grid-template-columns: 1fr; }
+            .download-options { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== Navbar ===== -->
+<nav>
+    <div class="container">
+        <a href="#" class="logo">
+            <span class="cat">🐱</span>
+            耄耋<span>火</span>安全
+        </a>
+        <ul>
+            <li><a href="#features">功能特性</a></li>
+            <li><a href="#architecture">架构设计</a></li>
+            <li><a href="#stats">代码统计</a></li>
+            <li><a href="#tech">技术栈</a></li>
+            <li><a href="#download">下载</a></li>
+        </ul>
+        <a href="https://github.com/wyq138/MaodieFire-Antivirus" target="_blank" class="github-btn">
+            ⭐ GitHub
+        </a>
+    </div>
+</nav>
+
+<!-- ===== Hero ===== -->
+<section class="hero" id="home">
+    <div class="content">
+        <div class="cat-icon">🐱</div>
+        <h1>耄耋安全软件</h1>
+        <div class="tagline">以猫之名，守护安全</div>
+        <p class="desc">
+            基于 .NET 10 / WPF 的国产综合性安全防护软件<br>
+            集病毒扫描、实时防护、网络防火墙、行为分析等多种安全功能于一体
+        </p>
+        <div class="badges">
+            <span class="badge"><span class="dot" style="background:#ff6b35"></span> CC BY-NC-SA 4.0</span>
+            <span class="badge"><span class="dot" style="background:#00d4ff"></span> Windows 平台</span>
+            <span class="badge"><span class="dot" style="background:#a78bfa"></span> .NET 10</span>
+            <span class="badge"><span class="dot" style="background:#4ade80"></span> 160,647 行代码</span>
+            <span class="badge"><span class="dot" style="background:#fbbf24"></span> 38 个功能模块</span>
+        </div>
+        <div class="cta-group">
+            <a href="https://github.com/wyq138/MaodieFire-Antivirus" target="_blank" class="btn-primary">
+                📥 源码下载 (GitHub)
+            </a>
+            <a href="#features" class="btn-secondary">
+                了解更多 ↓
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Features ===== -->
+<section id="features">
+    <div class="container">
+        <div class="section-title">
+            <h2>核心功能</h2>
+            <p>覆盖病毒检测、实时防护、网络安全、隐私保护等多个安全领域的全方位防护体系</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="icon">🛡️</div>
+                <h3>双进程架构</h3>
+                <p>主程序 + 后台防护服务，主程序关闭后防护服务持续运行，提供不间断安全保护</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🔬</div>
+                <h3>ClamAV 引擎集成</h3>
+                <p>基于开源 ClamAV 引擎进行病毒扫描，支持本地特征库更新和实时检测</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">📁</div>
+                <h3>实时文件监控</h3>
+                <p>监控文件系统变化，实时检测恶意文件，第一时间拦截威胁</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🧠</div>
+                <h3>行为分析引擎</h3>
+                <p>通过行为特征分析和机器学习识别未知威胁，防御零日攻击</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🔥</div>
+                <h3>网络防火墙</h3>
+                <p>控制网络流量，阻止恶意连接，保护系统网络安全</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🔐</div>
+                <h3>勒索软件防护</h3>
+                <p>监控关键文件变化，防止勒索软件加密，保护重要数据安全</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">👨‍👩‍👧</div>
+                <h3>家长控制</h3>
+                <p>限制儿童访问不当内容，管理上网时间，保护未成年人网络安全</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🔑</div>
+                <h3>密码管理器</h3>
+                <p>安全存储和管理密码，采用加密算法保护用户凭据</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🧹</div>
+                <h3>隐私保护</h3>
+                <p>清理浏览痕迹，保护个人隐私，防止信息泄露</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">⚡</div>
+                <h3>系统优化</h3>
+                <p>优化系统性能，清理无用文件，提升电脑运行速度</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🐛</div>
+                <h3>漏洞扫描</h3>
+                <p>检测系统安全漏洞，提供修复建议，消除安全隐患</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">📊</div>
+                <h3>安全评分</h3>
+                <p>综合评估系统安全状况，直观展示安全等级和改进建议</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Architecture ===== -->
+<section id="architecture" style="background: #0d121e;">
+    <div class="container">
+        <div class="section-title">
+            <h2>架构设计</h2>
+            <p>模块化双进程架构，各功能独立开发，通过项目引用集成到主程序</p>
+        </div>
+        <div class="arch-grid">
+            <div class="arch-card">
+                <h3>🖥️ 主程序进程</h3>
+                <div class="proc-badge">FireAntivirus.exe</div>
+                <p><strong>类型：</strong>WinExe (WPF)</p>
+                <p><strong>职责：</strong>WPF 界面程序，用户交互入口</p>
+                <p><strong>功能：</strong>提供完整图形界面，包括病毒扫描界面、实时防护面板、防火墙配置、安全报告查看等所有用户可操作功能</p>
+            </div>
+            <div class="arch-card">
+                <h3>🛡️ 后台防护进程</h3>
+                <div class="proc-badge alt">FireAntivirus.ServiceHost.exe</div>
+                <p><strong>类型：</strong>Exe (后台守护)</p>
+                <p><strong>职责：</strong>后台守护进程，提供持续安全防护</p>
+                <p><strong>模式：</strong>支持 Windows 服务模式、控制台模式（调试）、独立运行模式</p>
+                <p><strong>特性：</strong>主程序关闭后继续运行，提供持续防护和进程守护（自动重启主程序）</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Stats ===== -->
+<section id="stats">
+    <div class="container">
+        <div class="section-title">
+            <h2>代码规模</h2>
+            <p>38 个功能模块，超过 16 万行源代码，功能全面的开源安全软件</p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number" data-target="352">352</div>
+                <div class="label">C# 源文件</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" data-target="37">37</div>
+                <div class="label">XAML 界面文件</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" data-target="38">38</div>
+                <div class="label">项目模块 (.csproj)</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">154,879</div>
+                <div class="label">C# 代码行数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">5,768</div>
+                <div class="label">XAML 代码行数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">160,647</div>
+                <div class="label">总代码行数</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Tech Stack ===== -->
+<section id="tech" style="background: #0d121e;">
+    <div class="container">
+        <div class="section-title">
+            <h2>技术栈</h2>
+            <p>基于现代化 .NET 生态系统构建</p>
+        </div>
+        <div class="tech-grid">
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">.NET 10</div>
+                    <div class="tech-desc">运行时框架</div>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">WPF</div>
+                    <div class="tech-desc">主界面框架</div>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">C# / XAML</div>
+                    <div class="tech-desc">开发语言</div>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">ClamAV</div>
+                    <div class="tech-desc">病毒扫描引擎</div>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">Newtonsoft.Json</div>
+                    <div class="tech-desc">JSON 处理</div>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">EntityFramework</div>
+                    <div class="tech-desc">数据持久化</div>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">System.ServiceProcess</div>
+                    <div class="tech-desc">Windows 服务支持</div>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">Named Pipes</div>
+                    <div class="tech-desc">进程间通信</div>
+                </div>
+            </div>
+            <div class="tech-item">
+                <div>
+                    <div class="tech-name">BouncyCastle</div>
+                    <div class="tech-desc">加密算法</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Download ===== -->
+<section id="download">
+    <div class="container">
+        <div class="download-section">
+            <h2>📥 获取耄耋安全软件源码</h2>
+            <p>项目完全开源，欢迎学习、研究和使用</p>
+            <div class="download-options">
+                <a href="https://github.com/wyq138/MaodieFire-Antivirus" target="_blank" class="download-card">
+                    <div class="dl-icon">🐙</div>
+                    <h3>GitHub 仓库</h3>
+                    <p>查看完整源代码、提交历史、问题跟踪</p>
+                    <div class="arrow">→</div>
+                </a>
+                <a href="https://github.com/wyq138/MaodieFire-Antivirus/archive/refs/heads/main.zip" target="_blank" class="download-card">
+                    <div class="dl-icon">📦</div>
+                    <h3>下载 ZIP</h3>
+                    <p>下载完整源代码压缩包（ZIP 格式）</p>
+                    <div class="arrow">↓</div>
+                </a>
+                <a href="https://github.com/wyq138/MaodieFire-Antivirus.git" target="_blank" class="download-card">
+                    <div class="dl-icon">🔀</div>
+                    <h3>Git Clone</h3>
+                    <p>git clone 克隆到本地开发</p>
+                    <div class="arrow">→</div>
+                </a>
+            </div>
+            <div style="margin-top:32px; padding:20px; background:var(--bg-card-hover); border-radius:12px; display:inline-block;">
+                <p style="margin:0; font-size:14px; color:var(--text-muted);">
+                    <strong style="color:var(--accent2)">构建要求：</strong>
+                    .NET 10 SDK · Visual Studio 2022+ · Windows 10/11
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== License ===== -->
+<section id="license" style="background: #0d121e;">
+    <div class="container">
+        <div class="section-title">
+            <h2>许可证</h2>
+            <p>采用 CC BY-NC-SA 4.0 禁止商用协议</p>
+        </div>
+        <div class="license-box">
+            <h3>📝 CC BY-NC-SA 4.0</h3>
+            <p style="text-align:center; color:var(--text-secondary); margin-bottom:24px;">
+                知识共享 署名-非商业性使用-相同方式共享 4.0 国际
+            </p>
+            <div class="license-grid">
+                <ul>
+                    <li><span class="yes">✅</span> 个人学习、研究使用</li>
+                    <li><span class="yes">✅</span> 修改和分发源代码</li>
+                    <li><span class="yes">✅</span> 需署名并保持相同许可证</li>
+                </ul>
+                <ul>
+                    <li><span class="no">❌</span> 任何形式的商业使用</li>
+                    <li><span class="no">❌</span> 销售、商业集成、付费服务</li>
+                    <li><span class="no">❌</span> 未经授权的商业授权</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== Footer ===== -->
+<footer>
+    <div class="container">
+        <div class="cat">🐱</div>
+        <p class="slogan">耄耋安全软件 — 以猫之名，守护安全</p>
+        <p>MaodieFire Antivirus &copy; 2025 · 开源安全防护软件</p>
+        <div class="links">
+            <a href="https://github.com/wyq138/MaodieFire-Antivirus" target="_blank">GitHub 仓库</a>
+            <a href="https://github.com/wyq138/MaodieFire-Antivirus/blob/main/LICENSE" target="_blank">LICENSE</a>
+            <a href="https://github.com/wyq138/MaodieFire-Antivirus/issues" target="_blank">问题反馈</a>
+            <a href="https://github.com/wyq138/MaodieFire-Antivirus/fork" target="_blank">Fork 项目</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                window.scrollTo({ top: target.offsetTop - 60, behavior: 'smooth' });
+            }
+        });
+    });
+
+    // Navbar scroll effect
+    window.addEventListener('scroll', () => {
+        const nav = document.querySelector('nav');
+        if (window.scrollY > 20) {
+            nav.style.background = 'rgba(10, 14, 23, 0.95)';
+            nav.style.boxShadow = '0 4px 24px rgba(0,0,0,0.3)';
+        } else {
+            nav.style.background = 'rgba(10, 14, 23, 0.85)';
+            nav.style.boxShadow = 'none';
+        }
+    });
+
+    // Number count-up animation
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const el = entry.target;
+                const target = parseInt(el.dataset.target);
+                if (target && !el.dataset.animated) {
+                    el.dataset.animated = 'true';
+                    let current = 0;
+                    const step = Math.ceil(target / 40);
+                    const timer = setInterval(() => {
+                        current += step;
+                        if (current >= target) {
+                            current = target;
+                            clearInterval(timer);
+                        }
+                        el.textContent = current.toLocaleString();
+                    }, 30);
+                }
+            }
+        });
+    }, { threshold: 0.5 });
+
+    document.querySelectorAll('.stat-card .number[data-target]').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

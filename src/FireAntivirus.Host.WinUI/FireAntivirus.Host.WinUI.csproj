@@ -1,0 +1,83 @@
+<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>FireAntivirus.Host.WinUI</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+    <DefaultLanguage>zh-CN</DefaultLanguage>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250228001" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+  </ItemGroup>
+
+  <!-- 直接复用现有引擎与公共层：与WPF主机同源，保证检测能力一致 -->
+  <ItemGroup>
+    <ProjectReference Include="..\FireAntivirus.Engine\FireAntivirus.Engine.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Common\FireAntivirus.Common.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Data\FireAntivirus.Data.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Services\FireAntivirus.Services.csproj" />
+    <ProjectReference Include="..\FireAntivirus.ClamAV\FireAntivirus.ClamAV.csproj" />
+    <!-- 引用后台防护项目 -->
+    <ProjectReference Include="..\FireAntivirus.ServiceHost\FireAntivirus.ServiceHost.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <OutputItemType>Content</OutputItemType>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </ProjectReference>
+    <!-- 所有周边安全模块 -->
+    <ProjectReference Include="..\FireAntivirus.ApplicationMonitor\FireAntivirus.ApplicationMonitor.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Backup\FireAntivirus.Backup.csproj" />
+    <ProjectReference Include="..\FireAntivirus.BehaviorAnalysis\FireAntivirus.BehaviorAnalysis.csproj" />
+    <ProjectReference Include="..\FireAntivirus.CloudScanner\FireAntivirus.CloudScanner.csproj" />
+    <ProjectReference Include="..\FireAntivirus.DeviceControl\FireAntivirus.DeviceControl.csproj" />
+    <ProjectReference Include="..\FireAntivirus.EmailSecurity\FireAntivirus.EmailSecurity.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Encryption\FireAntivirus.Encryption.csproj" />
+    <ProjectReference Include="..\FireAntivirus.MachineLearning\FireAntivirus.MachineLearning.csproj" />
+    <ProjectReference Include="..\FireAntivirus.MalwareRemoval\FireAntivirus.MalwareRemoval.csproj" />
+    <ProjectReference Include="..\FireAntivirus.MobileSecurity\FireAntivirus.MobileSecurity.csproj" />
+    <ProjectReference Include="..\FireAntivirus.NetworkFirewall\FireAntivirus.NetworkFirewall.csproj" />
+    <ProjectReference Include="..\FireAntivirus.NetworkSecurity\FireAntivirus.NetworkSecurity.csproj" />
+    <ProjectReference Include="..\FireAntivirus.NetworkTrafficAnalyzer\FireAntivirus.NetworkTrafficAnalyzer.csproj" />
+    <ProjectReference Include="..\FireAntivirus.ParentalControl\FireAntivirus.ParentalControl.csproj" />
+    <ProjectReference Include="..\FireAntivirus.PasswordManager\FireAntivirus.PasswordManager.csproj" />
+    <ProjectReference Include="..\FireAntivirus.PrivacyProtection\FireAntivirus.PrivacyProtection.csproj" />
+    <ProjectReference Include="..\FireAntivirus.RansomwareProtection\FireAntivirus.RansomwareProtection.csproj" />
+    <ProjectReference Include="..\FireAntivirus.RealTimeProtectionPlus\FireAntivirus.RealTimeProtectionPlus.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Sandbox\FireAntivirus.Sandbox.csproj" />
+    <ProjectReference Include="..\FireAntivirus.SecureBrowser\FireAntivirus.SecureBrowser.csproj" />
+    <ProjectReference Include="..\FireAntivirus.SecurityReport\FireAntivirus.SecurityReport.csproj" />
+    <ProjectReference Include="..\FireAntivirus.SecurityScore\FireAntivirus.SecurityScore.csproj" />
+    <ProjectReference Include="..\FireAntivirus.StartupManager\FireAntivirus.StartupManager.csproj" />
+    <ProjectReference Include="..\FireAntivirus.SystemOptimizer\FireAntivirus.SystemOptimizer.csproj" />
+    <ProjectReference Include="..\FireAntivirus.ThreatIntelligence\FireAntivirus.ThreatIntelligence.csproj" />
+    <ProjectReference Include="..\FireAntivirus.VulnerabilityScanner\FireAntivirus.VulnerabilityScanner.csproj" />
+    <ProjectReference Include="..\FireAntivirus.WebProtection\FireAntivirus.WebProtection.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NuGet包引用 -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Management" Version="7.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 保留内置图片资源 -->
+    <Content Include="Resources\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -77,7 +77,7 @@ private NotificationService()
         {
             try
             {
-                if (_notifyIcon == null) return;
+                if (_notifyIcon == null && type != NotificationType.Risk) return;
 
                 // 确保在正确的线程执行UI操作
                 if (_notificationForm != null && !_notificationForm.IsDisposed)
@@ -94,6 +94,151 @@ private NotificationService()
             catch (Exception ex)
             {
                 FireAntivirus.Common.LogHelper.Error("显示通知失败", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 显示右下角风险处理弹窗（带隔离/删除/信任/忽略等处理选项）。
+        /// 需要宿主注入处理回调。
+        /// </summary>
+        public void ShowRisk(RiskNotificationPayload payload, string title = "检测到安全威胁")
+        {
+            try
+            {
+                if (_notificationForm != null && !_notificationForm.IsDisposed)
+                {
+                    if (_notificationForm.InvokeRequired)
+                    {
+                        _notificationForm.Invoke(new Action(() => ShowRiskInternal(payload, title)));
+                        return;
+                    }
+                }
+                ShowRiskInternal(payload, title);
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Error("显示风险通知失败", ex.Message);
+            }
+        }
+
+        private void ShowRiskInternal(RiskNotificationPayload payload, string title)
+        {
+            try
+            {
+                if (_notificationForm == null || _notificationForm.IsDisposed) return;
+
+                // 先捕获引用（移除控件后索引会移位，避免二次查找出错）
+                Label messageLabel = _notificationForm.Controls[2] is Label ml ? ml : null;
+                Panel titlePanel = _notificationForm.Controls[0] as Panel;
+                Label titleLabel = titlePanel?.Controls[0] as Label;
+
+                UpdateNotificationPosition();
+                _notificationForm.Size = new Size(420, 220);
+                _notificationForm.BackColor = Color.FromArgb(90, 30, 35);
+                _notificationForm.Opacity = 0.97;
+
+                // 标题
+                if (titleLabel != null)
+                {
+                    titleLabel.Text = title;
+                    titleLabel.Size = new Size(300, 20);
+                    titlePanel.BackColor = Color.FromArgb(70, 20, 25);
+                }
+
+                // 消息正文
+                if (messageLabel != null)
+                {
+                    string file = payload.FilePath ?? "未知文件";
+                    messageLabel.Text = $"威胁: {payload.ThreatName}\n级别: {payload.Severity}\n文件: {file}";
+                    messageLabel.Size = new Size(400, 95);
+                }
+
+                // 移除旧的 logo 与按钮面板，避免叠加
+                foreach (Control c in _notificationForm.Controls.Cast<Control>().ToList())
+                {
+                    if (c is Panel p && (p != titlePanel && c != messageLabel))
+                        _notificationForm.Controls.Remove(p);
+                }
+
+                // 重建处理按钮面板
+                var buttonPanel = new Panel
+                {
+                    Size = new Size(420, 74),
+                    Location = new Point(0, 140),
+                    BackColor = Color.FromArgb(60, 20, 25)
+                };
+
+                int x = 10;
+                var payloadCopy = payload;
+                foreach (var action in payloadCopy.Actions)
+                {
+                    var path = payloadCopy.FilePath;
+                    var b = new Button
+                    {
+                        Text = action.Text,
+                        Size = new Size(72, 28),
+                        Location = new Point(x, 5),
+                        BackColor = Color.FromArgb(150, 45, 50),
+                        ForeColor = Color.White,
+                        FlatStyle = FlatStyle.Flat
+                    };
+                    b.FlatAppearance.BorderColor = Color.FromArgb(170, 70, 75);
+                    b.Click += (s, e) =>
+                    {
+                        _notificationForm.Hide();
+                        try { action.Handler?.Invoke(path); }
+                        catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
+                    };
+                    buttonPanel.Controls.Add(b);
+                    x += 78;
+                }
+
+                // 查看详情
+                var details = new Button
+                {
+                    Text = "查看",
+                    Size = new Size(62, 28),
+                    Location = new Point(x, 5),
+                    BackColor = Color.FromArgb(150, 45, 50),
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat
+                };
+                details.FlatAppearance.BorderColor = Color.FromArgb(170, 70, 75);
+                details.Click += (s, e) =>
+                {
+                    _notificationForm.Hide();
+                    try
+                    {
+                        string mainExePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FireAntivirus.Host.exe");
+                        if (File.Exists(mainExePath)) Process.Start(mainExePath, "-logs");
+                    }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "NotificationService.cs 捕获异常", ex.Message); }
+                };
+                buttonPanel.Controls.Add(details);
+                x += 68;
+
+                // 关闭
+                var close = new Button
+                {
+                    Text = "关闭",
+                    Size = new Size(62, 28),
+                    Location = new Point(x, 5),
+                    BackColor = Color.FromArgb(150, 45, 50),
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat
+                };
+                close.FlatAppearance.BorderColor = Color.FromArgb(170, 70, 75);
+                close.Click += (s, e) => _notificationForm.Hide();
+                buttonPanel.Controls.Add(close);
+
+                _notificationForm.Controls.Add(buttonPanel);
+
+                _notificationForm.Show();
+                _notificationForm.BringToFront();
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Error("显示风险窗口失败", ex.Message);
             }
         }
 
@@ -640,6 +785,25 @@ private NotificationService()
     {
         Info,
         Warning,
-        Error
+        Error,
+        Risk
+    }
+
+    /// <summary>
+    /// 风险处理动作选项。宿主可注入真实处理回调（隔离/删除/信任/忽略/打开目录）。
+    /// </summary>
+    public class RiskAction
+    {
+        public string Text { get; set; }
+        public Action<string> Handler { get; set; }
+    }
+
+    public class RiskNotificationPayload
+    {
+        public string FilePath { get; set; }
+        public string ThreatName { get; set; }
+        public string Severity { get; set; }
+        public string SuggestedAction { get; set; }
+        public List<RiskAction> Actions { get; set; } = new List<RiskAction>();
     }
 }

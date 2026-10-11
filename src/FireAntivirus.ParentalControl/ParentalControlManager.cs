@@ -39,9 +39,35 @@ namespace FireAntivirus.ParentalControl
             LoadContentFilters();
         }
 
+        private string GetConfigDirectory()
+        {
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), 
+                "FireAntivirus", "ParentalControl");
+        }
+
         private void LoadUsers()
         {
-            // 模拟加载用户列表
+            // 从文件加载用户列表
+            try
+            {
+                string configDir = GetConfigDirectory();
+                Directory.CreateDirectory(configDir);
+                string usersFile = Path.Combine(configDir, "users.json");
+
+                if (File.Exists(usersFile))
+                {
+                    var json = File.ReadAllText(usersFile);
+                    var loaded = Newtonsoft.Json.JsonConvert.DeserializeObject<List<User>>(json);
+                    if (loaded != null && loaded.Count > 0)
+                    {
+                        _users = loaded;
+                        return;
+                    }
+                }
+            }
+            catch { }
+
+            // 文件不存在或加载失败时，添加默认用户
             _users.Add(new User
             {
                 Id = Guid.NewGuid().ToString(),
@@ -61,31 +87,61 @@ namespace FireAntivirus.ParentalControl
 
         private void LoadTimeRestrictions()
         {
-            // 模拟加载时间限制
-            _timeRestrictions.Add(new TimeRestriction
+            try
             {
-                Id = Guid.NewGuid().ToString(),
-                UserId = _users.First(u => u.Type == UserType.Child).Id,
-                DayOfWeek = DayOfWeek.Monday,
-                StartTime = new TimeSpan(8, 0, 0),
-                EndTime = new TimeSpan(18, 0, 0),
-                Enabled = true
-            });
+                string configDir = GetConfigDirectory();
+                string restrictionsFile = Path.Combine(configDir, "time_restrictions.json");
 
-            _timeRestrictions.Add(new TimeRestriction
+                if (File.Exists(restrictionsFile))
+                {
+                    var json = File.ReadAllText(restrictionsFile);
+                    var loaded = Newtonsoft.Json.JsonConvert.DeserializeObject<List<TimeRestriction>>(json);
+                    if (loaded != null && loaded.Count > 0)
+                    {
+                        _timeRestrictions = loaded;
+                        return;
+                    }
+                }
+            }
+            catch { }
+
+            // 添加默认时间限制
+            var childUser = _users.FirstOrDefault(u => u.Type == UserType.Child);
+            if (childUser != null)
             {
-                Id = Guid.NewGuid().ToString(),
-                UserId = _users.First(u => u.Type == UserType.Child).Id,
-                DayOfWeek = DayOfWeek.Saturday,
-                StartTime = new TimeSpan(10, 0, 0),
-                EndTime = new TimeSpan(20, 0, 0),
-                Enabled = true
-            });
+                _timeRestrictions.Add(new TimeRestriction
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    UserId = childUser.Id,
+                    DayOfWeek = DayOfWeek.Monday,
+                    StartTime = new TimeSpan(8, 0, 0),
+                    EndTime = new TimeSpan(18, 0, 0),
+                    Enabled = true
+                });
+            }
         }
 
         private void LoadContentFilters()
         {
-            // 模拟加载内容过滤器
+            try
+            {
+                string configDir = GetConfigDirectory();
+                string filtersFile = Path.Combine(configDir, "content_filters.json");
+
+                if (File.Exists(filtersFile))
+                {
+                    var json = File.ReadAllText(filtersFile);
+                    var loaded = Newtonsoft.Json.JsonConvert.DeserializeObject<List<ContentFilter>>(json);
+                    if (loaded != null && loaded.Count > 0)
+                    {
+                        _contentFilters = loaded;
+                        return;
+                    }
+                }
+            }
+            catch { }
+
+            // 添加默认内容过滤器
             _contentFilters.Add(new ContentFilter
             {
                 Id = Guid.NewGuid().ToString(),
@@ -669,26 +725,50 @@ namespace FireAntivirus.ParentalControl
 
         private void SaveUsers()
         {
-            // 模拟保存用户到文件
-            string usersFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "ParentalControl", "users.json");
-            Directory.CreateDirectory(Path.GetDirectoryName(usersFile));
-            // 实际实现中应该序列化用户到文件
+            try
+            {
+                string configDir = GetConfigDirectory();
+                Directory.CreateDirectory(configDir);
+                string usersFile = Path.Combine(configDir, "users.json");
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(_users, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(usersFile, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"保存用户失败: {ex.Message}");
+            }
         }
 
         private void SaveTimeRestrictions()
         {
-            // 模拟保存时间限制到文件
-            string restrictionsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "ParentalControl", "time_restrictions.json");
-            Directory.CreateDirectory(Path.GetDirectoryName(restrictionsFile));
-            // 实际实现中应该序列化时间限制到文件
+            try
+            {
+                string configDir = GetConfigDirectory();
+                Directory.CreateDirectory(configDir);
+                string restrictionsFile = Path.Combine(configDir, "time_restrictions.json");
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(_timeRestrictions, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(restrictionsFile, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"保存时间限制失败: {ex.Message}");
+            }
         }
 
         private void SaveContentFilters()
         {
-            // 模拟保存内容过滤器到文件
-            string filtersFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus", "ParentalControl", "content_filters.json");
-            Directory.CreateDirectory(Path.GetDirectoryName(filtersFile));
-            // 实际实现中应该序列化内容过滤器到文件
+            try
+            {
+                string configDir = GetConfigDirectory();
+                Directory.CreateDirectory(configDir);
+                string filtersFile = Path.Combine(configDir, "content_filters.json");
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(_contentFilters, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(filtersFile, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"保存内容过滤器失败: {ex.Message}");
+            }
         }
 
         public ParentalControlSettings GetSettings()

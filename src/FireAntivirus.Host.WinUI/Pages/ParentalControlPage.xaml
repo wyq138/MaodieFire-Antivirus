@@ -1,0 +1,46 @@
+<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
+<Page
+    x:Class="FireAntivirus.Host.WinUI.Pages.ParentalControlPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="24,16,24,24">
+        <StackPanel Spacing="14" MaxWidth="920">
+
+            <TextBlock Text="家长控制" Style="{StaticResource PageTitle}"/>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock x:Name="StatusText" Text="已禁用" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}"/>
+                        <ToggleSwitch x:Name="EnableToggle" IsOn="False" Toggled="EnableToggle_Toggled"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="上网时间限制" FontSize="16" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox x:Name="StartTime" PlaceholderText="开始 例如 08:00" Width="120"/>
+                        <TextBox x:Name="EndTime" PlaceholderText="结束 例如 21:00" Width="120"/>
+                        <Button Content="应用时段" Click="ApplyTime_Click"/>
+                    </StackPanel>
+                    <TextBlock x:Name="TimeStatus" Opacity="0.6"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="限制应用" FontSize="16" FontWeight="SemiBold"/>
+                    <ListView x:Name="BlockedApps" MaxHeight="200"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox x:Name="AppInput" Width="220" PlaceholderText="输入要限制的应用名"/>
+                        <Button Content="添加限制" Click="AddApp_Click"/>
+                        <Button Content="移除选中" Click="RemoveApp_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

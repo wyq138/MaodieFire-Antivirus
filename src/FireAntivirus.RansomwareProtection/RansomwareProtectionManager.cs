@@ -346,6 +346,11 @@ namespace FireAntivirus.RansomwareProtection
                 {
                     try
                     {
+                        if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                        {
+                            FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "RansomwareProtectionManager", $"进程受保护，已跳过查杀: {processName} PID: {process.Id}");
+                            continue;
+                        }
                         process.Kill();
                         terminated = true;
                     }

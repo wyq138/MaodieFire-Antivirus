@@ -551,6 +551,19 @@ namespace FireAntivirus.Services
         {
             try
             {
+                if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                {
+                    dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "ProcessKillSkipped",
+                        Message = "进程受保护，已跳过查杀",
+                        Details = $"进程: {process.ProcessName}, PID: {process.Id}"
+                    });
+                    return;
+                }
+
                 process.Kill();
                 dataManager.AddLog(new LogEntry
                 {

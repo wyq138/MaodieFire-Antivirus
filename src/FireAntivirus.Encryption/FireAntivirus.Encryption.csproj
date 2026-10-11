@@ -10,4 +10,12 @@
 
 
 
+  <ItemGroup>
+    <ProjectReference Include="..\FireAntivirus.Common\FireAntivirus.Common.csproj" />
+    <ProjectReference Include="..\FireAntivirus.Data\FireAntivirus.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="KnowledgeBase\*.json" />
+  </ItemGroup>
 </Project>

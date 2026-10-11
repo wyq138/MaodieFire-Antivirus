@@ -526,6 +526,11 @@ namespace FireAntivirus.Services
             try
             {
                 var process = System.Diagnostics.Process.GetProcessById(processInfo.ProcessId);
+                if (!FireAntivirus.Common.TrustedProcessGuard.CanTerminate(process))
+                {
+                    LogError($"进程受保护，已跳过查杀: {processInfo.ProcessName}", null);
+                    return;
+                }
                 process.Kill();
                 
                 LogBlockAction(processInfo);

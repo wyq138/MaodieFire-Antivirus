@@ -8,6 +8,7 @@ using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Win32;
+using FireAntivirus.Engine.Strings;
 
 namespace FireAntivirus.Engine
 {
@@ -95,12 +96,12 @@ namespace FireAntivirus.Engine
                 if (result.Confidence > 0.95)
                 {
                     result.IsMalicious = true;
-                    result.Details.Add("高级启发式分析检测到恶意文件");
+                    result.Details.Add(LocalizedStrings.Adv_HeuristicDetected);
                 }
                 else if (result.Confidence > 0.85)
                 {
                     result.IsMalicious = true;
-                    result.Details.Add("高级启发式分析检测到可疑文件");
+                    result.Details.Add(LocalizedStrings.Adv_HeuristicDetectedSuspicious);
                 }
             }
             catch
@@ -492,12 +493,12 @@ namespace FireAntivirus.Engine
                 if (result.Confidence > 0.9)
                 {
                     result.IsMalicious = true;
-                    result.Details.Add("高级行为分析检测到恶意文件");
+                    result.Details.Add(LocalizedStrings.Adv_BehaviorDetected);
                 }
                 else if (result.Confidence > 0.8)
                 {
                     result.IsMalicious = true;
-                    result.Details.Add("高级行为分析检测到可疑文件");
+                    result.Details.Add(LocalizedStrings.Adv_BehaviorDetectedSuspicious);
                 }
             }
             catch
@@ -1451,10 +1452,10 @@ namespace FireAntivirus.Engine
                     {
                         result.IsMalicious = true;
                         result.Confidence += 0.2;
-                        result.ThreatName = "勒索软件";
+                        result.ThreatName = LocalizedStrings.Ransomware;
                         result.ThreatType = "ransomware";
-                        result.Severity = "高";
-                        result.Details.Add("包含勒索软件特征: " + pattern);
+                        result.Severity = "High";
+                        result.Details.Add("Contains ransomware pattern: " + pattern);
                     }
                 }
 
@@ -1470,10 +1471,10 @@ namespace FireAntivirus.Engine
                     {
                         result.IsMalicious = true;
                         result.Confidence += 0.15;
-                        result.ThreatName = "远程控制木马";
+                        result.ThreatName = LocalizedStrings.RemoteControlTrojan;
                         result.ThreatType = "trojan";
                         result.Severity = "高";
-                        result.Details.Add("包含远程控制特征: " + pattern);
+                        result.Details.Add("Contains remote control pattern: " + pattern);
                     }
                 }
 
@@ -1488,10 +1489,10 @@ namespace FireAntivirus.Engine
                     {
                         result.IsMalicious = true;
                         result.Confidence += 0.1;
-                        result.ThreatName = "木马病毒";
+                        result.ThreatName = LocalizedStrings.TrojanVirus;
                         result.ThreatType = "trojan";
                         result.Severity = "高";
-                        result.Details.Add("包含木马特征: " + pattern);
+                        result.Details.Add("Contains trojan pattern: " + pattern);
                     }
                 }
 
@@ -1506,10 +1507,10 @@ namespace FireAntivirus.Engine
                     {
                         result.IsMalicious = true;
                         result.Confidence += 0.1;
-                        result.ThreatName = "蠕虫病毒";
+                        result.ThreatName = "Worm";
                         result.ThreatType = "worm";
                         result.Severity = "中";
-                        result.Details.Add("包含蠕虫特征: " + pattern);
+                        result.Details.Add("Contains worm pattern: " + pattern);
                     }
                 }
 
@@ -1524,10 +1525,10 @@ namespace FireAntivirus.Engine
                     {
                         result.IsMalicious = true;
                         result.Confidence += 0.08;
-                        result.ThreatName = "计算机病毒";
+                        result.ThreatName = LocalizedStrings.ComputerVirus;
                         result.ThreatType = "virus";
                         result.Severity = "中";
-                        result.Details.Add("包含病毒特征: " + pattern);
+                        result.Details.Add("Contains virus pattern: " + pattern);
                     }
                 }
 
@@ -1542,10 +1543,10 @@ namespace FireAntivirus.Engine
                     {
                         result.IsMalicious = true;
                         result.Confidence += 0.05;
-                        result.ThreatName = "广告软件";
+                        result.ThreatName = LocalizedStrings.Adware;
                         result.ThreatType = "adware";
                         result.Severity = "低";
-                        result.Details.Add("包含广告软件特征: " + pattern);
+                        result.Details.Add("Contains adware pattern: " + pattern);
                     }
                 }
 
@@ -1560,10 +1561,10 @@ namespace FireAntivirus.Engine
                     {
                         result.IsMalicious = true;
                         result.Confidence += 0.12;
-                        result.ThreatName = "间谍软件";
+                        result.ThreatName = LocalizedStrings.Spyware;
                         result.ThreatType = "spyware";
                         result.Severity = "中";
-                        result.Details.Add("包含间谍软件特征: " + pattern);
+                        result.Details.Add("Contains spyware pattern: " + pattern);
                     }
                 }
 

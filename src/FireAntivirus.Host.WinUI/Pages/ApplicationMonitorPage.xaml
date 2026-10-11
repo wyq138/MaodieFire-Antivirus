@@ -1,0 +1,74 @@
+<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
+<Page
+    x:Class="FireAntivirus.Host.WinUI.Pages.ApplicationMonitorPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="24,16,24,24">
+        <StackPanel Spacing="14" MaxWidth="960">
+
+            <TextBlock Text="应用监控" Style="{StaticResource PageTitle}"/>
+
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource ModernCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="CPU 使用率" FontSize="13" Opacity="0.6"/>
+                            <TextBlock x:Name="CpuUsageText" Text="--%" FontSize="20" FontWeight="Bold" Foreground="{StaticResource BrandBrush}"/>
+                        </StackPanel>
+                        <ProgressBar x:Name="CpuBar" Maximum="100" MinWidth="0"/>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource ModernCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="内存使用率" FontSize="13" Opacity="0.6"/>
+                            <TextBlock x:Name="MemoryUsageText" Text="--%" FontSize="20" FontWeight="Bold" Foreground="{StaticResource SafeBrush}"/>
+                        </StackPanel>
+                        <ProgressBar x:Name="MemoryBar" Maximum="100" MinWidth="0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button Content="刷新进程" Click="Refresh_Click"/>
+                        <Button Content="结束选中进程" Click="EndProcess_Click"/>
+                    </StackPanel>
+                    <ListView x:Name="ProcessGrid" MaxHeight="360" SelectionChanged="ProcessGrid_SelectionChanged">
+                        <ListView.HeaderTemplate>
+                            <DataTemplate>
+                                <Grid ColumnSpacing="8" Padding="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="3*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="2*"/><ColumnDefinition Width="3*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="进程" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="1" Text="PID" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="2" Text="CPU" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="3" Text="内存" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="4" Text="状态" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="5" Text="路径" FontWeight="SemiBold"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.HeaderTemplate>
+                    </ListView>
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="DetailPanel" Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="进程详情" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="DetailProcessName" Text="未选择进程"/>
+                    <TextBlock x:Name="DetailProcessPath" Text="路径: --"/>
+                    <TextBlock x:Name="DetailProcessUser" Text="状态: --"/>
+                    <TextBlock x:Name="DetailProcessThreads" Text="PID: --"/>
+                    <TextBlock x:Name="DetailProcessHandles" Text="内存: --"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
