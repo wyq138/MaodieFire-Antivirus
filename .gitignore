@@ -60,3 +60,16 @@ src/_verify_out.ps1
 src/构建警告.txt
 # MSIX 打包试验产物（含 >100MB 大文件，GitHub 拒收）
 msix/
+# 签名私钥与敏感文件（绝不公开）
+*.pfx
+# 无关试验与杂物
+FireAntivirus.CPP/
+_cs_extract/
+website/
+.comate/
+/0
+构建报告.txt
+构建警告.txt
+157wm-98oc7-001.ico
+resized-*.png
+收款码.jpg
