@@ -58,3 +58,5 @@ src/setup_env.txt
 src/_diag_out.ps1
 src/_verify_out.ps1
 src/构建警告.txt
+# MSIX 打包试验产物（含 >100MB 大文件，GitHub 拒收）
+msix/
