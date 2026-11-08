@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // CloudAVManager - 多引擎云杀毒管理器
 // 真实可用的云查杀聚合: MalwareBazaar + VirusTotal + HybridAnalysis + AlienVault OTX
 // 旧版本引用了不存在的 https://api.clamav.net/v1/scan (ClamAV 无公共云 API), 已废弃

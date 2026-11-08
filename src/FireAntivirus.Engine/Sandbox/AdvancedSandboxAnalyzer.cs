@@ -219,20 +219,13 @@ namespace FireAntivirus.Engine.Sandbox
         }
 
         /// <summary>
-        /// 检查文件创建行为
+        /// 检查文件创建行为——动态沙箱监控未接入真实事件源时，不产出任何行为证据。
+        /// 此前无条件伪造"创建新的可执行文件"给每个样本制造假阳性（假沙箱），已移除。
         /// </summary>
-        private async Task CheckFileCreation(Process process, List<SandboxBehavior> behaviors)
+        private Task CheckFileCreation(Process process, List<SandboxBehavior> behaviors)
         {
-            // 实现文件创建监控逻辑
-            await Task.CompletedTask;
-            
-            // 模拟检测到可疑文件操作
-            behaviors.Add(new SandboxBehavior
-            {
-                Type = "FILE_CREATE",
-                Description = "创建新的可执行文件",
-                Score = _behaviorScores["FILE_CREATE"]
-            });
+            // 真实动态监控（ETW/内核回调）尚未接入：不臆造行为证据，静态分析结论照常输出
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -403,9 +396,24 @@ namespace FireAntivirus.Engine.Sandbox
         {
             try
             {
-                // 实现内存模式分析
-                // 检查内存注入、代码注入等可疑行为
-                return false; // 简化实现
+                // 真实内存行为启发式：基于进程可观测指标判断可疑内存模式
+                process.Refresh();
+
+                // 1. 线程数激增（注入器/加壳程序常创建大量线程）
+                if (process.Threads.Count > 60)
+                    return true;
+
+                // 2. 句柄数异常（大规模句柄操作常见于注入行为）
+                if (process.HandleCount > 5000)
+                    return true;
+
+                // 3. 私有内存与工作集比例异常（大量虚拟分配但未真正使用，符合代码注入特征）
+                long workingSet = process.WorkingSet64;
+                long privateBytes = process.PrivateMemorySize64;
+                if (privateBytes > 512L * 1024 * 1024 && workingSet < privateBytes / 8)
+                    return true;
+
+                return false;
             }
             catch
             {

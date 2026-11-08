@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 云扫描服务 - 真实可用的多引擎云查杀服务
 // 集成 MalwareBazaar + VirusTotal(70+引擎) + HybridAnalysis + OTX
 using System;

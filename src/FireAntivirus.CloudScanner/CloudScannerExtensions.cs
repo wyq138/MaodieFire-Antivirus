@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 // 云扫描扩展模块 - 包含更多真实云查杀功能
 using System;
 using System.Collections.Generic;
@@ -198,12 +197,15 @@ namespace FireAntivirus.CloudScanner
     public class MultiEngineCloudScanner
     {
         private readonly DataManager _dataManager;
+        private HttpClient _httpClient;
         private List<CloudScanEngine> _engines;
         private int _maxConcurrentScans;
 
         public MultiEngineCloudScanner(DataManager dataManager)
         {
             _dataManager = dataManager;
+            _httpClient = new HttpClient();
+            _httpClient.Timeout = TimeSpan.FromSeconds(60);
             _engines = new List<CloudScanEngine>();
             _maxConcurrentScans = 5;
             InitializeEngines();
@@ -324,20 +326,113 @@ namespace FireAntivirus.CloudScanner
 
         private async Task<EngineScanResult> ScanVirusTotal(byte[] hash, EngineScanResult result)
         {
-            // 简化实现
-            await Task.Delay(100);
-            result.Detections = 0;
-            result.TotalEngines = 70;
-            result.MalwareNames = new List<string>();
+            // 真实调用 VirusTotal v3 API（需配置环境变量 VIRUSTOTAL_API_KEY）
+            var apiKey = Environment.GetEnvironmentVariable("VIRUSTOTAL_API_KEY");
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                result.ErrorMessage = "未配置 VIRUSTOTAL_API_KEY，跳过 VirusTotal 云查杀";
+                result.Success = false;
+                return result;
+            }
+
+            var hashHex = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+
+            using (var request = new HttpRequestMessage(HttpMethod.Get,
+                $"https://www.virustotal.com/api/v3/files/{hashHex}"))
+            {
+                request.Headers.Add("x-apikey", apiKey);
+
+                using (var response = await _httpClient.SendAsync(request))
+                {
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    {
+                        // 文件未被提交分析过
+                        result.Detections = 0;
+                        result.TotalEngines = 0;
+                        return result;
+                    }
+
+                    response.EnsureSuccessStatusCode();
+
+                    var json = await response.Content.ReadAsStringAsync();
+                    using (var doc = System.Text.Json.JsonDocument.Parse(json))
+                    {
+                        var stats = doc.RootElement.GetProperty("data").GetProperty("attributes")
+                            .GetProperty("last_analysis_stats");
+
+                        result.Detections = stats.TryGetProperty("malicious", out var m) ? m.GetInt32() : 0;
+                        result.TotalEngines = stats.TryGetProperty("total", out var t) ? t.GetInt32() : 0;
+                        result.MalwareNames = new List<string>();
+
+                        if (result.Detections > 0 &&
+                            doc.RootElement.GetProperty("data").GetProperty("attributes")
+                                .TryGetProperty("popular_threat_classification", out var pcl) &&
+                            pcl.TryGetProperty("suggested_threat_label", out var label))
+                        {
+                            result.MalwareNames.Add(label.GetString());
+                        }
+                    }
+                }
+            }
+
             return result;
         }
 
         private async Task<EngineScanResult> ScanHybridAnalysis(string filePath, EngineScanResult result)
         {
-            // 简化实现
-            await Task.Delay(100);
-            result.Detections = 0;
-            result.ThreatLevel = "benign";
+            // 真实调用 Hybrid Analysis v2 API（需配置环境变量 HYBRIDANALYSIS_API_KEY）
+            var apiKey = Environment.GetEnvironmentVariable("HYBRIDANALYSIS_API_KEY");
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                result.ErrorMessage = "未配置 HYBRIDANALYSIS_API_KEY，跳过 Hybrid Analysis 云查杀";
+                result.Success = false;
+                return result;
+            }
+
+            string hashHex;
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            using (var stream = File.OpenRead(filePath))
+            {
+                hashHex = BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+            }
+
+            using (var request = new HttpRequestMessage(HttpMethod.Post,
+                "https://www.hybrid-analysis.com/api/v2/search/hash"))
+            {
+                request.Headers.Add("api-key", apiKey);
+                request.Headers.UserAgent.ParseAdd("FireAntivirus");
+                request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["hash"] = hashHex
+                });
+
+                using (var response = await _httpClient.SendAsync(request))
+                {
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    {
+                        result.ThreatLevel = "unknown";
+                        return result;
+                    }
+
+                    response.EnsureSuccessStatusCode();
+
+                    var json = await response.Content.ReadAsStringAsync();
+                    using (var doc = System.Text.Json.JsonDocument.Parse(json))
+                    {
+                        if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array &&
+                            doc.RootElement.GetArrayLength() > 0)
+                        {
+                            var first = doc.RootElement[0];
+                            result.ThreatLevel = first.TryGetProperty("verdict", out var v) ? v.GetString() : "unknown";
+                        }
+                        else
+                        {
+                            result.ThreatLevel = "unknown";
+                        }
+                    }
+                }
+            }
+
             return result;
         }
     }
@@ -386,24 +481,87 @@ namespace FireAntivirus.CloudScanner
 
         private async Task<string> SubmitToSandbox(string filePath)
         {
-            // 简化实现
-            await Task.Delay(100);
-            return Guid.NewGuid().ToString();
+            // 真实提交：通过 Hybrid Analysis v2 API 上传文件进行云端沙箱分析
+            var apiKey = Environment.GetEnvironmentVariable("HYBRIDANALYSIS_API_KEY");
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("未配置 HYBRIDANALYSIS_API_KEY，无法提交云端沙箱分析");
+
+            using (var content = new MultipartFormDataContent())
+            using (var fileStream = File.OpenRead(filePath))
+            {
+                var fileContent = new StreamContent(fileStream);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                content.Add(fileContent, "file", Path.GetFileName(filePath));
+                content.Add(new StringContent("win7_x64"), "environment_id");
+                content.Add(new StringContent("submitted by FireAntivirus"), "comment");
+
+                using (var request = new HttpRequestMessage(HttpMethod.Post,
+                    "https://www.hybrid-analysis.com/api/v2/submit/file"))
+                {
+                    request.Headers.Add("api-key", apiKey);
+                    request.Headers.UserAgent.ParseAdd("FireAntivirus");
+                    request.Content = content;
+
+                    using (var response = await _httpClient.SendAsync(request))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        var json = await response.Content.ReadAsStringAsync();
+                        using (var doc = System.Text.Json.JsonDocument.Parse(json))
+                        {
+                            if (doc.RootElement.TryGetProperty("job_id", out var jobId))
+                                return jobId.GetString();
+                            if (doc.RootElement.TryGetProperty("submission_id", out var submissionId))
+                                return submissionId.GetString();
+                            throw new InvalidOperationException("沙箱响应中缺少任务标识");
+                        }
+                    }
+                }
+            }
         }
 
         private async Task<SandboxAnalysisResult> PollAnalysisResult(string submissionId)
         {
-            // 简化实现
-            await Task.Delay(100);
-            return new SandboxAnalysisResult
+            // 真实轮询：查询 Hybrid Analysis 任务状态直至分析完成
+            var apiKey = Environment.GetEnvironmentVariable("HYBRIDANALYSIS_API_KEY");
+            var deadline = DateTime.Now.AddMinutes(5);
+
+            while (DateTime.Now < deadline)
             {
-                SubmissionId = submissionId,
-                ThreatLevel = "malicious",
-                SuspiciousScore = 85,
-                NetworkIndicators = new List<string>(),
-                FileIndicators = new List<string>(),
-                RegistryIndicators = new List<string>()
-            };
+                using (var request = new HttpRequestMessage(HttpMethod.Get,
+                    $"https://www.hybrid-analysis.com/api/v2/report/{submissionId}/state"))
+                {
+                    request.Headers.Add("api-key", apiKey);
+                    request.Headers.UserAgent.ParseAdd("FireAntivirus");
+
+                    using (var response = await _httpClient.SendAsync(request))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        var json = await response.Content.ReadAsStringAsync();
+                        using (var doc = System.Text.Json.JsonDocument.Parse(json))
+                        {
+                            var state = doc.RootElement.TryGetProperty("state", out var s) ? s.GetString() : null;
+
+                            if (string.Equals(state, "FINISHED", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return new SandboxAnalysisResult
+                                {
+                                    SubmissionId = submissionId,
+                                    ThreatLevel = doc.RootElement.TryGetProperty("verdict", out var v) ? v.GetString() : "unknown",
+                                    SuspiciousScore = doc.RootElement.TryGetProperty("score", out var sc) &&
+                                                      sc.ValueKind == System.Text.Json.JsonValueKind.Number ? sc.GetInt32() : 0,
+                                    NetworkIndicators = new List<string>(),
+                                    FileIndicators = new List<string>(),
+                                    RegistryIndicators = new List<string>()
+                                };
+                            }
+                        }
+                    }
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(15));
+            }
+
+            throw new TimeoutException("云端沙箱分析超时，请稍后查询结果");
         }
     }
 

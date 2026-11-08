@@ -989,9 +989,51 @@ namespace FireAntivirus.Services
                         if (status == 0)
                         {
                             pbi = (PROCESS_BASIC_INFORMATION)Marshal.PtrToStructure(pPbi, typeof(PROCESS_BASIC_INFORMATION));
-                            
-                            // 检查PEB中的ImagePath和CommandLine是否与进程信息匹配
-                            // 这需要读取PEB结构，此处简化处理
+
+                            // 真实检查：读取目标进程 PEB 中的 ImagePathName 并与实际可执行路径比对，
+                            // 不一致即表明 PEB 被篡改（进程镂空/PEB 欺骗的典型痕迹）。按 x64 布局解析。
+                            if (!Environment.Is64BitProcess)
+                                return;
+
+                            IntPtr pebAddress = pbi.PebBaseAddress;
+                            if (pebAddress == IntPtr.Zero)
+                                return;
+
+                            // 读取 PEB.ProcessParameters 指针（x64 PEB 偏移 0x20）
+                            var paramsPtrBytes = new byte[8];
+                            if (!ReadProcessMemory(hProcess, (IntPtr)((long)pebAddress + 0x20), paramsPtrBytes, (uint)paramsPtrBytes.Length, out _) ||
+                                BitConverter.ToInt64(paramsPtrBytes, 0) == 0)
+                                return;
+
+                            long processParameters = BitConverter.ToInt64(paramsPtrBytes, 0);
+
+                            // 读取 RTL_USER_PROCESS_PARAMETERS.ImagePathName（x64 偏移 0x60，UNICODE_STRING）
+                            var imagePathBytes = new byte[16];
+                            if (!ReadProcessMemory(hProcess, (IntPtr)(processParameters + 0x60), imagePathBytes, (uint)imagePathBytes.Length, out _))
+                                return;
+
+                            ushort pathLength = BitConverter.ToUInt16(imagePathBytes, 0);
+                            long pathBuffer = BitConverter.ToInt64(imagePathBytes, 8);
+
+                            if (pathLength > 0 && pathLength <= 2048 && pathBuffer != 0)
+                            {
+                                var pathBytes = new byte[pathLength];
+                                if (ReadProcessMemory(hProcess, (IntPtr)pathBuffer, pathBytes, (uint)pathLength, out _))
+                                {
+                                    var pebImagePath = System.Text.Encoding.Unicode.GetString(pathBytes);
+
+                                    string actualPath = null;
+                                    try { actualPath = process.MainModule?.FileName; } catch { }
+
+                                    if (!string.IsNullOrEmpty(actualPath) &&
+                                        !string.Equals(pebImagePath, actualPath, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        CreateInjectionAlert(null, "PEBManipulation",
+                                            $"检测到 PEB 镜像路径篡改: 进程 {process.ProcessName}, PID: {process.Id}\n" +
+                                            $"PEB 路径: {pebImagePath}\n实际路径: {actualPath}");
+                                    }
+                                }
+                            }
                         }
                     }
                     finally

@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -493,7 +492,7 @@ namespace FireAntivirus.WebProtection
         }
 
         /// <summary>
-        /// 添加阻止的URL
+        /// 添加阻止的URL（真实拦截：写入系统 hosts 映射到 0.0.0.0 + 内存列表）
         /// </summary>
         public void AddBlockedUrl(string url)
         {
@@ -503,11 +502,13 @@ namespace FireAntivirus.WebProtection
                 _maliciousUrlHashes.Add(ComputeHash(url));
             }
 
-            LogMessage("URL已添加到阻止列表: " + url);
+            // 真实系统行为：hosts 拦截（此前只入内存列表，浏览器实际仍可访问 = 只检测无行为）
+            ApplyHostsBlock(url, block: true);
+            LogMessage("URL已添加到阻止列表（hosts 已生效）: " + url);
         }
 
         /// <summary>
-        /// 移除阻止的URL
+        /// 移除阻止的URL（同步从 hosts 移除）
         /// </summary>
         public void RemoveBlockedUrl(string url)
         {
@@ -516,7 +517,112 @@ namespace FireAntivirus.WebProtection
                 _blockedUrls.Remove(url.ToLower());
             }
 
-            LogMessage("URL已从阻止列表移除: " + url);
+            ApplyHostsBlock(url, block: false);
+            LogMessage("URL已从阻止列表移除（hosts 已恢复）: " + url);
+        }
+
+        // ---------------- hosts 真实拦截（FireAntivirus 受管标记段，幂等、可逆，不破坏用户原有条目） ----------------
+
+        private static readonly object _hostsLock = new object();
+        private const string HostsBegin = "# >>> FireAntivirus Block >>>";
+        private const string HostsEnd = "# <<< FireAntivirus Block <<<";
+
+        private static string HostsFilePath => System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.System), "drivers", "etc", "hosts");
+
+        private static string ExtractHost(string urlOrDomain)
+        {
+            var s = (urlOrDomain ?? "").Trim().ToLowerInvariant();
+            if (s.Length == 0) return null;
+            try
+            {
+                if (s.Contains("://") || s.Contains("/"))
+                {
+                    if (Uri.TryCreate(s.Contains("://") ? s : "http://" + s, UriKind.Absolute, out var u))
+                        return u.Host;
+                }
+            }
+            catch { }
+            int slash = s.IndexOf('/');
+            if (slash > 0) s = s.Substring(0, slash);
+            int colon = s.IndexOf(':');
+            if (colon > 0) s = s.Substring(0, colon);
+            return s.Length > 0 ? s : null;
+        }
+
+        private static void ApplyHostsBlock(string url, bool block)
+        {
+            try
+            {
+                string host = ExtractHost(url);
+                if (string.IsNullOrEmpty(host)) return;
+
+                lock (_hostsLock)
+                {
+                    string path = HostsFilePath;
+                    var lines = System.IO.File.Exists(path)
+                        ? System.IO.File.ReadAllLines(path).ToList()
+                        : new List<string>();
+
+                    int begin = lines.IndexOf(HostsBegin);
+                    int end = lines.IndexOf(HostsEnd);
+                    var managed = (begin >= 0 && end > begin)
+                        ? lines.GetRange(begin + 1, end - begin - 1)
+                        : new List<string>();
+
+                    string entry = "0.0.0.0 " + host;
+                    if (block)
+                    {
+                        if (!managed.Any(l => l.Trim().Equals(entry, StringComparison.OrdinalIgnoreCase)))
+                            managed.Add(entry);
+                    }
+                    else
+                    {
+                        managed.RemoveAll(l => l.Trim().Equals(entry, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    if (begin >= 0 && end > begin) lines.RemoveRange(begin, end - begin + 1);
+                    if (managed.Count > 0)
+                    {
+                        lines.Add(HostsBegin);
+                        lines.AddRange(managed);
+                        lines.Add(HostsEnd);
+                    }
+                    else if (begin < 0)
+                    {
+                        // 无受管段且无内容：不写文件（避免无意义重写）
+                        return;
+                    }
+
+                    System.IO.File.WriteAllLines(path, lines);
+                }
+
+                FlushDnsCache();
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                    $"hosts 拦截写入失败（需管理员权限），仅内存记录生效: {ex.Message}");
+            }
+        }
+
+        private static void FlushDnsCache()
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "ipconfig",
+                    Arguments = "/flushdns",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+                using var p = System.Diagnostics.Process.Start(psi);
+                p?.WaitForExit(5000);
+            }
+            catch { }
         }
 
         /// <summary>

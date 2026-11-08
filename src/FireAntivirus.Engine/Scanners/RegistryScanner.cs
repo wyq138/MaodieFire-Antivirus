@@ -21,7 +21,7 @@ namespace FireAntivirus.Engine.Scanners
 
         public RegistryScanner()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             registryCache = new Dictionary<string, List<string>>();
             InitializeRegistryPatterns();
         }

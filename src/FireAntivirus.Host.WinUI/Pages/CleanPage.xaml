@@ -1,0 +1,38 @@
+<Page NavigationCacheMode="Required"
+    x:Class="FireAntivirus.Host.WinUI.Pages.CleanPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Padding="28,10,28,24" RowSpacing="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="垃圾清理" Style="{StaticResource PageTitle}"/>
+
+        <Border Grid.Row="1" Style="{StaticResource ModernCard}">
+            <StackPanel Spacing="10">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button x:Name="ScanBtn" Content="扫描垃圾" Style="{StaticResource AccentButtonStyle}" Click="Scan_Click"/>
+                    <Button x:Name="CleanBtn" Content="一键清理" Click="Clean_Click" IsEnabled="False"/>
+                    <TextBlock x:Name="StateText" Opacity="0.7" VerticalAlignment="Center"/>
+                </StackPanel>
+                <ProgressBar x:Name="Progress" Maximum="100" Value="0"/>
+                <TextBlock x:Name="SummaryText" Opacity="0.6"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Style="{StaticResource ModernCard}">
+            <Grid RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="可清理项" FontSize="16" FontWeight="SemiBold"/>
+                <ListView x:Name="CleanList" Grid.Row="1" SelectionMode="Single"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

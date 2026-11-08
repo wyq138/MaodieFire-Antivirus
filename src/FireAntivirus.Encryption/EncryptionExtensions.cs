@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 // 加密扩展模块 - 包含更多真实加密功能
 using System;
 using System.Collections.Generic;
@@ -42,11 +41,9 @@ namespace FireAntivirus.Encryption
                 aes.Padding = PaddingMode.PKCS7;
 
                 // 从密码派生密钥
-                using (var pbkdf2 = new Rfc2898DeriveBytes(password, Encoding.UTF8.GetBytes("FireAntivirusSalt2024"), 100000, HashAlgorithmName.SHA256))
-                {
-                    aes.Key = pbkdf2.GetBytes(32);
-                    aes.IV = pbkdf2.GetBytes(16);
-                }
+                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt2024"), 100000, HashAlgorithmName.SHA256, 48);
+                aes.Key = derived[..32];
+                aes.IV = derived[32..48];
 
                 // 加密文件
                 using (var inputStream = File.OpenRead(inputPath))
@@ -86,11 +83,9 @@ namespace FireAntivirus.Encryption
                 aes.Mode = CipherMode.CBC;
                 aes.Padding = PaddingMode.PKCS7;
 
-                using (var pbkdf2 = new Rfc2898DeriveBytes(password, Encoding.UTF8.GetBytes("FireAntivirusSalt2024"), 100000, HashAlgorithmName.SHA256))
-                {
-                    aes.Key = pbkdf2.GetBytes(32);
-                    aes.IV = pbkdf2.GetBytes(16);
-                }
+                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt2024"), 100000, HashAlgorithmName.SHA256, 48);
+                aes.Key = derived[..32];
+                aes.IV = derived[32..48];
 
                 using (var inputStream = File.OpenRead(inputPath))
                 using (var outputStream = File.Create(outputPath))

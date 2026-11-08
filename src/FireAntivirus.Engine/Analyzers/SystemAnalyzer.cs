@@ -21,7 +21,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         public SystemAnalyzer()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             systemCache = new Dictionary<string, List<string>>();
             InitializeSystemPatterns();
             InitializeSystemSignatures();

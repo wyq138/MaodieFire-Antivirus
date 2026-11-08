@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 

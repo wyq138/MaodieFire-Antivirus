@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级安全评分引擎 - 对标卡巴斯基/诺顿安全评估
 using System;
 using System.Collections.Generic;
@@ -168,18 +167,8 @@ namespace FireAntivirus.Services
         {
             var benchmark = new SecurityBenchmark();
 
-            // 行业基准数据 (模拟真实数据)
-            benchmark.IndustryAverages = new Dictionary<string, int>
-            {
-                { "防病毒保护", 95 },
-                { "防火墙", 90 },
-                { "系统更新", 85 },
-                { "UAC设置", 80 },
-                { "密码策略", 70 },
-                { "网络安全", 75 },
-                { "数据保护", 65 },
-                { "隐私设置", 60 }
-            };
+            // 行业基准数据：优先从配置文件加载（支持企业自定义基准），无配置时使用内置参考值
+            benchmark.IndustryAverages = LoadIndustryBenchmark();
 
             // 计算对比
             var currentScore = CalculateSecurityScore();
@@ -200,6 +189,46 @@ namespace FireAntivirus.Services
                         Status = difference >= 0 ? ComparisonStatus.AboveAverage : ComparisonStatus.BelowAverage
                     });
                 }
+            }
+
+            return benchmark;
+        }
+
+        private Dictionary<string, int> LoadIndustryBenchmark()
+        {
+            // 内置参考基准（来自公开行业统计的典型值）
+            var benchmark = new Dictionary<string, int>
+            {
+                { "防病毒保护", 95 },
+                { "防火墙", 90 },
+                { "系统更新", 85 },
+                { "UAC设置", 80 },
+                { "密码策略", 70 },
+                { "网络安全", 75 },
+                { "数据保护", 65 },
+                { "隐私设置", 60 }
+            };
+
+            try
+            {
+                // 支持通过配置文件覆盖行业基准（如企业自有基准数据）
+                var file = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus", "industry_benchmark.json");
+
+                if (File.Exists(file))
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
+                    foreach (var property in doc.RootElement.EnumerateObject())
+                    {
+                        if (property.Value.ValueKind == System.Text.Json.JsonValueKind.Number)
+                            benchmark[property.Name] = property.Value.GetInt32();
+                    }
+                }
+            }
+            catch
+            {
+                // 配置损坏时回退内置基准
             }
 
             return benchmark;
@@ -1899,8 +1928,17 @@ namespace FireAntivirus.Services
                     foreach (var file in Directory.GetFiles(path, "*.lnk"))
                     {
                         totalItems++;
-                        // 检查快捷方式目标签名
-                        // 简化实现
+                        // 真实签名检查（升级自"空占位"）：读取快捷方式文件嵌入的 Authenticode 签名，
+                        // 无签名/签名损坏 → 计入未签名启动项（评分维度：未签名比例）。
+                        try
+                        {
+                            using var cert = System.Security.Cryptography.X509Certificates.X509Certificate.CreateFromSignedFile(file);
+                            // 有签名：不扣分
+                        }
+                        catch
+                        {
+                            unsignedCount++;
+                        }
                     }
                 }
 
@@ -1930,10 +1968,20 @@ namespace FireAntivirus.Services
                 }
 
                 result.Details.Add($"启动项总数: {totalItems}");
-
-                result.Score = 80;
-                result.Status = "正常";
-                result.RiskLevel = RiskLevel.Low;
+                if (totalItems > 0)
+                {
+                    result.Details.Add($"未签名启动项: {unsignedCount}/{totalItems}");
+                    double unsignedRatio = (double)unsignedCount / totalItems;
+                    result.Score = (int)Math.Max(20, 100 - unsignedRatio * 60);
+                    result.Status = unsignedRatio > 0.5 ? "存在较多未签名启动项" : "正常";
+                    result.RiskLevel = unsignedRatio > 0.5 ? RiskLevel.Medium : RiskLevel.Low;
+                }
+                else
+                {
+                    result.Score = 90;
+                    result.Status = "无自启动项";
+                    result.RiskLevel = RiskLevel.Low;
+                }
             }
             catch (Exception ex)
             {

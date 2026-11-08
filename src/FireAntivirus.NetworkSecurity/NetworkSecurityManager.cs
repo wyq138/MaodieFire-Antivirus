@@ -1,5 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -341,8 +339,20 @@ namespace FireAntivirus.NetworkSecurity
             if (!_blockedIPs.Contains(ipAddress))
             {
                 _blockedIPs.Add(ipAddress);
-                // 这里可以添加实际的IP阻止逻辑
-                Console.WriteLine($"已阻止IP: {ipAddress}");
+                // 真实封禁：写入 Windows 防火墙入站+出站阻止规则
+                string ruleName = $"FireAntivirus_Block_{ipAddress}";
+                try
+                {
+                    RunNetsh($"advfirewall firewall add rule name=\"{ruleName}_In\" dir=in action=block remoteip={ipAddress}");
+                    RunNetsh($"advfirewall firewall add rule name=\"{ruleName}_Out\" dir=out action=block remoteip={ipAddress}");
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                        $"已通过防火墙封禁IP: {ipAddress}");
+                }
+                catch (Exception ex)
+                {
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error,
+                        $"封禁IP失败 {ipAddress}: {ex.Message}");
+                }
             }
         }
 
@@ -351,7 +361,40 @@ namespace FireAntivirus.NetworkSecurity
             if (_blockedIPs.Contains(ipAddress))
             {
                 _blockedIPs.Remove(ipAddress);
-                Console.WriteLine($"已解除阻止IP: {ipAddress}");
+                // 真实解封：删除对应的防火墙规则
+                string ruleName = $"FireAntivirus_Block_{ipAddress}";
+                try
+                {
+                    RunNetsh($"advfirewall firewall delete rule name=\"{ruleName}_In\"");
+                    RunNetsh($"advfirewall firewall delete rule name=\"{ruleName}_Out\"");
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info,
+                        $"已解除封禁IP: {ipAddress}");
+                }
+                catch (Exception ex)
+                {
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error,
+                        $"解除封禁失败 {ipAddress}: {ex.Message}");
+                }
+            }
+        }
+
+        private static void RunNetsh(string arguments)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "netsh.exe",
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using var p = System.Diagnostics.Process.Start(psi);
+            p?.WaitForExit(15000);
+            if (p != null && p.ExitCode != 0)
+            {
+                var err = p.StandardError.ReadToEnd();
+                throw new InvalidOperationException($"netsh 退出码 {p.ExitCode}: {err}");
             }
         }
 
@@ -378,13 +421,32 @@ namespace FireAntivirus.NetworkSecurity
 
         private List<IPAddress> LoadSuspiciousIPs()
         {
-            // 加载可疑IP列表
-            return new List<IPAddress>
+            // 不再硬编码"示例IP"（此前把 1.1.1.1/8.8.8.8 等公共 DNS 当可疑源，纯属误报）。
+            // 真实来源：读取 SignatureDatabaseUpdater 持久化的恶意 IP 情报文件。
+            var list = new List<IPAddress>();
+            try
             {
-                // 这里可以添加可疑IP地址
-                IPAddress.Parse("1.1.1.1"), // 示例IP
-                IPAddress.Parse("8.8.8.8")  // 示例IP
-            };
+                string ipFile = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus", "SignatureDatabase", "malicious_ips.json");
+                if (File.Exists(ipFile))
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(ipFile));
+                    if (doc.RootElement.TryGetProperty("Ips", out var arr))
+                    {
+                        foreach (var el in arr.EnumerateArray())
+                        {
+                            var ip = el.GetString();
+                            if (IPAddress.TryParse(ip, out var parsed)) list.Add(parsed);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"加载恶意IP情报失败: {ex.Message}");
+            }
+            return list;
         }
 
         private List<int> LoadSuspiciousPorts()

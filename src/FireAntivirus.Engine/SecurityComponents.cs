@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -380,7 +379,7 @@ namespace FireAntivirus.Engine
             {
                 using var stream = File.OpenRead(filePath);
                 var header = new byte[4];
-                stream.Read(header, 0, 4);
+                stream.ReadExactly(header, 0, 4);
                 return BitConverter.ToString(header).Replace("-", " ");
             }
             catch { return ""; }

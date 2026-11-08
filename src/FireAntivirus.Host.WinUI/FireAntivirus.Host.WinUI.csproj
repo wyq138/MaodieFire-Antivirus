@@ -1,4 +1,3 @@
-<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -18,6 +17,8 @@
     <WindowsSdkPackageVersion>10.0.19041.38</WindowsSdkPackageVersion>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- exe 文件图标：小猫图（由 resized-20260723 原图生成的多尺寸 ICO） -->
+    <ApplicationIcon>Assets\app_cat.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -76,8 +77,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 图标与首页/关于页图片（随输出复制；UiKit 从 AppContext.BaseDirectory\Assets 读取） -->
+    <Content Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />
     <!-- 保留内置图片资源 -->
     <Content Include="Resources\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 威胁特征库（源目录 ThreatData：家族/哈希/YARA/勒索/挖矿等 JSON），缺失则家族识别与内置查杀全部空库 -->
+    <Content Include="ThreatData\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 沙箱组件（随软件分发）：Sandbox\Start.exe / SbieIni.exe（来自 Sandboxie-Plus），缺失时回退系统安装路径 -->
+    <Content Include="Sandbox\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 内核驱动打包（dist 由 FireAntivirus.Driver 构建产出） -->
+    <Content Include="..\FireAntivirus.Driver\dist\FireAntivirusKrn.sys" CopyToOutputDirectory="PreserveNewest" Link="FireAntivirusKrn.sys" />
+    <Content Include="..\FireAntivirus.Driver\dist\FireAntivirusKrn.inf" CopyToOutputDirectory="PreserveNewest" Link="FireAntivirusKrn.inf" Condition="Exists('..\FireAntivirus.Driver\dist\FireAntivirusKrn.inf')" />
   </ItemGroup>
 
 </Project>

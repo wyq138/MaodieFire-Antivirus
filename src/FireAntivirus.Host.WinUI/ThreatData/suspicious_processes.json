@@ -1,0 +1,17 @@
+[
+  { "Name": "mimikatz", "Threat": "凭证窃取工具" },
+  { "Name": "procdump", "Threat": "进程转储工具" },
+  { "Name": "lazagne", "Threat": "密码提取工具" },
+  { "Name": "pwdump", "Threat": "密码转储工具" },
+  { "Name": "nc", "Threat": "NetCat后门" },
+  { "Name": "ncat", "Threat": "NetCat后门" },
+  { "Name": "meterpreter", "Threat": "Metasploit载荷" },
+  { "Name": "cobaltstrike", "Threat": "渗透测试框架" },
+  { "Name": "msfvenom", "Threat": "Metasploit生成器" },
+  { "Name": "wce", "Threat": "口令窃取工具" },
+  { "Name": "beacon", "Threat": "远控装载器" },
+  { "Name": "metasploit", "Threat": "渗透测试框架" },
+  { "Name": "thumbs!Edge", "Threat": "银狐远控木马(SilverFox)" },
+  { "Name": "svchost64", "Threat": "银狐远控木马(SilverFox)" },
+  { "Name": "xfolder32", "Threat": "银狐远控木马(SilverFox)" }
+]

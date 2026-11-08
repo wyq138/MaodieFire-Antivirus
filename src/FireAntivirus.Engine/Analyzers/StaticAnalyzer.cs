@@ -68,7 +68,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         public StaticAnalyzer()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             fileHashCache = new Dictionary<string, string>();
         }
 
@@ -239,15 +239,12 @@ namespace FireAntivirus.Engine.Analyzers
                 var fileContent = File.ReadAllBytes(filePath);
                 var result = AnalyzeFileCore(filePath, fileContent);
                 results.Add(result);
-
-                if (result.IsInfected)
-                {
-                    dataManager.LogThreat($"静态分析检测到恶意文件: {filePath}", $"评分: {result.Confidence:P}", "StaticAnalyzer");
-                }
+                // 文件被占用/无权限是常态（安装器临时文件等），静默跳过——逐文件 Error 日志会形成日志风暴
+                // 是否确报由 ScanFile 多源共识统一裁决
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                dataManager.LogError($"静态分析失败: {filePath}", ex.Message, "StaticAnalyzer");
+                // 文件被占用/无权限（安装器临时文件等常态）静默跳过，防日志风暴
             }
 
             return results;

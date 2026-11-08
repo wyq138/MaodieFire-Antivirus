@@ -56,7 +56,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         public ProcessAnalyzer()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             processCache = new Dictionary<int, List<string>>();
         }
 

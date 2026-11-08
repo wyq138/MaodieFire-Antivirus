@@ -479,16 +479,37 @@ namespace FireAntivirus.Services
         {
             try
             {
-                // 从备份中恢复驱动
-                // 简化实现：记录需要恢复的驱动
-                dataManager.AddLog(new LogEntry
+                // 真实恢复：从备份目录还原被篡改的驱动文件
+                var backupDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus", "DriverBackup");
+                var backupFile = Path.Combine(backupDir, Path.GetFileName(driverPath));
+
+                if (File.Exists(backupFile))
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    Time = DateTime.Now,
-                    Type = "DriverRestoreNeeded",
-                    Message = "需要恢复被篡改的驱动",
-                    Details = $"驱动路径: {driverPath}"
-                });
+                    File.Copy(backupFile, driverPath, overwrite: true);
+
+                    dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "DriverRestored",
+                        Message = "被篡改的驱动已从备份恢复",
+                        Details = $"驱动路径: {driverPath}, 备份: {backupFile}"
+                    });
+                }
+                else
+                {
+                    // 无备份可用时如实记录，等待用户处理
+                    dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "DriverRestoreNeeded",
+                        Message = "需要恢复被篡改的驱动（无可用备份，请通过系统还原或重装驱动处理）",
+                        Details = $"驱动路径: {driverPath}"
+                    });
+                }
             }
             catch (Exception ex)
             {

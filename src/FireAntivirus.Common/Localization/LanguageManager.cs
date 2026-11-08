@@ -1,7 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
-
-// 耄耋软件工作室 开发，严禁非法反编译
-
 using System;
 
 using System.Collections.Generic;
@@ -47,9 +43,6 @@ namespace FireAntivirus.Common.Localization
         private LanguageManager()
 
         {
-
-            // 耄耋软件工作室 开发，严禁非法反编译
-
             _languageResources = new Dictionary<string, Dictionary<string, string>>();
 
             LoadLanguageResources();
@@ -172,7 +165,7 @@ namespace FireAntivirus.Common.Localization
 
                             {
 
-                                var connected = (bool)connectMethod.Invoke(pipeClient, null);
+                                var connected = connectMethod.Invoke(pipeClient, null) is bool b && b;
 
                                 if (connected)
 

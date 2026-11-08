@@ -1,0 +1,11 @@
+[
+  { "Name": "WannaCry", "Family": "勒索软件", "Patterns": ["WNcry@@", "WannaCry", "wcry.exe", "tasksche.exe", "mssecsvc.exe"], "RiskLevel": "严重" },
+  { "Name": "Emotet", "Family": "银行木马", "Patterns": ["Emotet", "Geodo", "Heodo", "Cridex"], "RiskLevel": "高" },
+  { "Name": "TrickBot", "Family": "银行木马", "Patterns": ["TrickBot", "TrickLoader", "trickbot"], "RiskLevel": "高" },
+  { "Name": "Ryuk", "Family": "勒索软件", "Patterns": ["Ryuk", "HERMES", "RYUK"], "RiskLevel": "严重" },
+  { "Name": "Maze", "Family": "勒索软件", "Patterns": ["Maze", "ChaCha", "mazecrypt"], "RiskLevel": "严重" },
+  { "Name": "CobaltStrike", "Family": "渗透测试/后渗透", "Patterns": ["cobaltstrike", "beacon", "stager", "artifact.exe"], "RiskLevel": "高" },
+  { "Name": "Mimikatz", "Family": "凭证窃取", "Patterns": ["mimikatz", "sekurlsa", "logonpasswords", "privilege::debug"], "RiskLevel": "严重" },
+  { "Name": "Meterpreter", "Family": "后门", "Patterns": ["meterpreter", "reverse_tcp", "reverse_https", "staged"], "RiskLevel": "严重" },
+  { "Name": "SilverFox", "Family": "远控木马", "Patterns": ["SilverFox", "Zenpak", "BigWolf", "thumbs!Edge", "svchost64", "xfolder32", "QEMB8WGP#", "LK@", "getinstall64"], "RiskLevel": "严重" }
+]

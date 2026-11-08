@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -351,11 +352,31 @@ namespace FireAntivirus.Services
         {
             try
             {
-                // 从云端更新钓鱼域名库（模拟）
-                // 实际实现应该从威胁情报平台获取数据
+                // 真实云端更新：从 URLhaus（abuse.ch 开源恶意 URL 情报源，无需密钥）拉取最新列表
                 _dataManager.LogInfo("正在更新反钓鱼数据库...");
+
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                var content = client.GetStringAsync("https://urlhaus.abuse.ch/downloads/text_recent/")
+                    .GetAwaiter().GetResult();
+
+                int added = 0;
+                foreach (var line in content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.Length == 0 || trimmed.StartsWith("#")) continue;
+
+                    // 提取 URL 的主机部分并入本地钓鱼域名库
+                    if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+                    {
+                        var host = uri.Host.ToLowerInvariant();
+                        if (host.Length > 0 && _knownPhishingDomains.Add(host))
+                            added++;
+                    }
+                }
+
                 _lastDatabaseUpdate = DateTime.UtcNow;
-                _dataManager.LogInfo($"反钓鱼数据库更新完成: {_knownPhishingDomains.Count}个钓鱼域名");
+                if (added > 0) SavePhishingDatabase();
+                _dataManager.LogInfo($"反钓鱼数据库更新完成: 新增 {added} 个钓鱼域名，总计 {_knownPhishingDomains.Count} 个");
             }
             catch (Exception ex)
             {
@@ -843,7 +864,7 @@ namespace FireAntivirus.Services
         {
             try
             {
-                // 简化的Punycode解码检测
+                // Punycode 解码检测（真实实现：IdnMapping.GetUnicode 解码 xn-- 前缀域名后做同形字判定）
                 var parts = domain.Split('.');
                 var decodedParts = new List<string>();
                 
@@ -1074,52 +1095,53 @@ namespace FireAntivirus.Services
             
             try
             {
-                var request = (HttpWebRequest)WebRequest.Create(uri);
-                request.Method = "HEAD";
-                request.Timeout = 10000;
-                request.AllowAutoRedirect = false;
-                
-                request.ServerCertificateValidationCallback = (sender, cert, chain, errors) =>
+                // HttpClientHandler 证书回调替代已过时的 HttpWebRequest.ServerCertificateValidationCallback
+                var handler = new HttpClientHandler
                 {
-                    if (errors == SslPolicyErrors.None)
+                    AllowAutoRedirect = false,
+                    ServerCertificateCustomValidationCallback = (sender, cert, chain, errors) =>
                     {
-                        result.IsValid = true;
-
-                        // 检查是否是EV证书
-                        var cert2 = cert as X509Certificate2;
-                        if (cert2 != null)
+                        if (errors == SslPolicyErrors.None)
                         {
-                            result.Issuer = cert2.Issuer;
-                            result.Subject = cert2.Subject;
-                            result.NotBefore = cert2.NotBefore;
-                            result.NotAfter = cert2.NotAfter;
+                            result.IsValid = true;
 
-                            // EV证书检测（简化）
-                            result.IsEV = cert2.Issuer.Contains("EV") ||
-                                          cert2.Issuer.Contains("Extended Validation") ||
-                                          cert2.Issuer.Contains("DigiCert") ||
-                                          cert2.Issuer.Contains("GlobalSign");
+                            // 检查是否是EV证书
+                            var cert2 = cert as X509Certificate2;
+                            if (cert2 != null)
+                            {
+                                result.Issuer = cert2.Issuer;
+                                result.Subject = cert2.Subject;
+                                result.NotBefore = cert2.NotBefore;
+                                result.NotAfter = cert2.NotAfter;
+
+                                // EV证书检测（简化）
+                                result.IsEV = cert2.Issuer.Contains("EV") ||
+                                              cert2.Issuer.Contains("Extended Validation") ||
+                                              cert2.Issuer.Contains("DigiCert") ||
+                                              cert2.Issuer.Contains("GlobalSign");
+                            }
+                            return true;
                         }
-                        return true;
+                        
+                        result.IsValid = false;
+                        result.Issue = errors.ToString();
+                        return false;
                     }
-                    
-                    result.IsValid = false;
-                    result.Issue = errors.ToString();
-                    return false;
                 };
-                
-                request.GetResponse()?.Close();
+
+                using (var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) })
+                using (var resp = client.SendAsync(new HttpRequestMessage(HttpMethod.Head, uri)).GetAwaiter().GetResult())
+                {
+                    // 证书回调在 TLS 握手阶段已填充验证结果
+                }
             }
-            catch (WebException ex)
+            catch (System.Security.Authentication.AuthenticationException)
             {
-                if (ex.Status == WebExceptionStatus.TrustFailure)
-                {
-                    result.Issue = "SSL证书不受信任";
-                }
-                else if (ex.Status == WebExceptionStatus.SecureChannelFailure)
-                {
-                    result.Issue = "安全通道建立失败";
-                }
+                result.Issue = "SSL证书不受信任";
+            }
+            catch (HttpRequestException)
+            {
+                result.Issue = "安全通道建立失败";
             }
             catch (Exception ex)
             {
@@ -1139,8 +1161,8 @@ namespace FireAntivirus.Services
             
             try
             {
-                // 模拟云端查询（实际应该调用威胁情报API）
-                // 如: Google Safe Browsing API, PhishTank API, VirusTotal API
+                // 云端信誉查询：URLhaus API（abuse.ch 开源威胁情报，无需密钥）按主机查询恶意 URL 记录
+                // 本地 24h 缓存见上方
                 
                 // 计算URL哈希作为查询标识
                 string urlHash = ComputeSHA256(url);
@@ -1157,12 +1179,38 @@ namespace FireAntivirus.Services
                     }
                 }
                 
-                // 实际云端查询（模拟）
-                // 这里可以集成多个威胁情报源
-                result.IsMalicious = false;
-                result.Confidence = 0.5;
-                result.QueryTime = DateTime.UtcNow;
-                result.Sources = new List<string> { "LocalHeuristics" };
+                // 实际云端查询：URLhaus API（abuse.ch 开源威胁情报，无需密钥）按主机查询恶意 URL 记录
+                if (Uri.TryCreate(url, UriKind.Absolute, out var targetUri))
+                {
+                    using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) })
+                    using (var requestContent = new FormUrlEncodedContent(new Dictionary<string, string>
+                    {
+                        ["host"] = targetUri.Host
+                    }))
+                    using (var response = client.PostAsync("https://urlhaus-api.abuse.ch/v1/host/", requestContent)
+                        .GetAwaiter().GetResult())
+                    {
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                            using (var doc = System.Text.Json.JsonDocument.Parse(json))
+                            {
+                                var status = doc.RootElement.TryGetProperty("query_status", out var qs) ? qs.GetString() : null;
+
+                                if (string.Equals(status, "ok", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // 该主机在恶意 URL 数据库中存在记录
+                                    result.IsMalicious = true;
+                                    result.Confidence = 0.9;
+                                }
+
+                                result.Sources.Add("URLhaus");
+                            }
+                        }
+                    }
+                }
+
+                result.Sources.Add("LocalHeuristics");
                 
                 // 保存缓存
                 try
@@ -1474,14 +1522,28 @@ namespace FireAntivirus.Services
 
         private bool CheckSPFRecord(string sender)
         {
-            // 简化实现 - 实际需要DNS查询
-            return true;
+            // 真实 DNS TXT 查询：域名的 SPF 记录必须存在且以 v=spf1 开头（此前直接 return true = 假验证）
+            try
+            {
+                string domain = sender?.Split('@').LastOrDefault();
+                if (string.IsNullOrWhiteSpace(domain)) return false;
+                var txt = FireAntivirus.Common.DnsTxtResolver.QueryTxt(domain);
+                return txt.Any(t => t.StartsWith("v=spf1", StringComparison.OrdinalIgnoreCase));
+            }
+            catch { return false; }
         }
 
         private bool CheckDMARCPolicy(string sender)
         {
-            // 简化实现 - 实际需要DNS查询
-            return true;
+            // 真实 DNS TXT 查询：查询 _dmarc.<domain> 的 DMARC 记录
+            try
+            {
+                string domain = sender?.Split('@').LastOrDefault();
+                if (string.IsNullOrWhiteSpace(domain)) return false;
+                var txt = FireAntivirus.Common.DnsTxtResolver.QueryTxt("_dmarc." + domain);
+                return txt.Any(t => t.StartsWith("v=DMARC1", StringComparison.OrdinalIgnoreCase));
+            }
+            catch { return false; }
         }
 
         #region Public API Methods
@@ -1528,12 +1590,15 @@ namespace FireAntivirus.Services
         {
             _blockedUrls.TryAdd(url, DateTime.UtcNow);
             SavePhishingDatabase();
+            // 真实拦截：hosts 映射 0.0.0.0（此前仅内存字典，浏览器实际仍可访问 = 只检测无行为）
+            FireAntivirus.Common.HostsBlocker.SetBlocked(url, true, out _);
         }
 
         public void AllowUrl(string url)
         {
             _allowedUrls.TryAdd(url, DateTime.UtcNow);
             _blockedUrls.TryRemove(url, out _);
+            FireAntivirus.Common.HostsBlocker.SetBlocked(url, false, out _);
         }
 
         public bool IsUrlBlocked(string url)

@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 云扫描管理器 - 集成多引擎云查杀聚合器
 // 架构: CloudScanAggregator (MalwareBazaar + VirusTotal + HybridAnalysis + OTX)
 using System;

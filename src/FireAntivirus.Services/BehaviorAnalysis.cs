@@ -494,12 +494,16 @@ namespace FireAntivirus.Services
                 }
                 else
                 {
-                    // 检查是否为已知的可疑IP
-                    var suspiciousIps = new List<string> { "8.8.8.8", "8.8.4.4" }; // 示例，实际应该使用威胁情报数据库
-                    if (suspiciousIps.Contains(ipAddress))
+                    // 真实威胁情报判定（Feodo C2 IP 库/abuse.ch 实时库）：
+                    // 此前用 {"8.8.8.8","8.8.4.4"} 当可疑 IP = 假数据且把 Google 公共 DNS 误判为恶意
+                    bool knownBadIp = false;
+                    try { knownBadIp = FireAntivirus.Engine.SignatureDatabaseUpdater.IsMaliciousIp(ipAddress); }
+                    catch { }
+
+                    if (knownBadIp)
                     {
                         analysisResult.Score += 0.3;
-                        analysisResult.Details.Add("Known suspicious IP address");
+                        analysisResult.Details.Add("命中威胁情报恶意 IP（Feodo/abuse.ch 实时库）");
                     }
                 }
 

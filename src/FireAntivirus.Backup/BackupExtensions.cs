@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 // 备份扩展模块 - 包含更多真实备份功能
 using System;
 using System.Collections.Generic;
@@ -323,6 +322,9 @@ namespace FireAntivirus.Backup
                     };
                 }
 
+// FTP 上传/下载依赖 FtpWebRequest（HttpClient 不支持 FTP 协议），SYSLIB0014 为合理例外
+#pragma warning disable SYSLIB0014
+
                 var result = await Task.Run(() =>
                 {
                     try
@@ -547,7 +549,7 @@ namespace FireAntivirus.Backup
             {
                 using var inputStream = File.OpenRead(inputPath);
                 var iv = new byte[16];
-                inputStream.Read(iv, 0, 16);
+                inputStream.ReadExactly(iv, 0, 16);
 
                 using var outputStream = File.Create(outputPath);
                 using var aes = Aes.Create();

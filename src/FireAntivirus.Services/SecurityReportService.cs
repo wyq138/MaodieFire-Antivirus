@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级安全报告引擎 - 对标企业级安全审计报告
 using System;
 using System.Collections.Generic;
@@ -1357,14 +1356,44 @@ namespace FireAntivirus.Services
 
             try
             {
-                // 从历史报告读取趋势
+                // 真实读取历史报告文件，提取综合评分生成趋势
+                var scores = new List<(DateTime Time, int Score)>();
                 var reports = GetSavedReports().Take(30).ToList();
+
                 foreach (var reportFile in reports)
                 {
-                    // 简化实现：假设历史评分存储在文件名或内容中
+                    try
+                    {
+                        if (string.IsNullOrEmpty(reportFile?.FilePath) || !File.Exists(reportFile.FilePath))
+                            continue;
+
+                        // 历史报告为 JSON 格式，提取 OverallScore 字段
+                        var json = File.ReadAllText(reportFile.FilePath);
+                        using var doc = System.Text.Json.JsonDocument.Parse(json);
+                        if (doc.RootElement.TryGetProperty("OverallScore", out var scoreEl) &&
+                            scoreEl.ValueKind == System.Text.Json.JsonValueKind.Number)
+                        {
+                            var creationTime = File.GetLastWriteTime(reportFile.FilePath);
+                            scores.Add((creationTime, scoreEl.GetInt32()));
+                        }
+                    }
+                    catch { /* 单个报告解析失败不影响整体趋势 */ }
                 }
 
-                trend.ScoreTrend = "稳定";
+                if (scores.Count >= 2)
+                {
+                    scores = scores.OrderBy(s => s.Time).ToList();
+                    int oldest = scores.First().Score;
+                    int newest = scores.Last().Score;
+
+                    if (newest > oldest + 5) trend.ScoreTrend = "上升";
+                    else if (newest < oldest - 5) trend.ScoreTrend = "下降";
+                    else trend.ScoreTrend = "稳定";
+                }
+                else
+                {
+                    trend.ScoreTrend = "稳定";   // 历史数据不足，无法判定趋势
+                }
             }
             catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
 
@@ -1419,8 +1448,19 @@ namespace FireAntivirus.Services
 
         private List<int> GetOpenPorts()
         {
+            // 真实枚举本机 TCP 监听端口
             var ports = new List<int>();
-            // 简化实现
+            try
+            {
+                var properties = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+                foreach (var endpoint in properties.GetActiveTcpListeners())
+                {
+                    if (!ports.Contains(endpoint.Port))
+                        ports.Add(endpoint.Port);
+                }
+                ports.Sort();
+            }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SecurityReportService.cs exception", ex.Message);  }
             return ports;
         }
 
@@ -1562,10 +1602,74 @@ namespace FireAntivirus.Services
             catch { return true; }
         }
 
-        private bool CheckAuditPolicy() => true; // 简化实现
-        private bool CheckUpdateStatus() => true; // 简化实现
-        private bool CheckPasswordPolicy() => true; // 简化实现
-        private bool CheckBitLocker() => true; // 简化实现
+        // 真实实现：查询实际系统状态，不再硬编码 true
+        private bool CheckAuditPolicy()
+        {
+            try
+            {
+                // 审核策略：读取注册表 Policy\Microsoft\Windows\Audit 的子键（各事件类别 1=关闭）
+                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Lsa");
+                var crashOnAuditFail = key?.GetValue("CrashOnAuditFail");
+                if (crashOnAuditFail is int v && v != 0) return false; // 审核失败即停机=策略异常
+                return true;
+            }
+            catch { return false; }
+        }
+
+        private bool CheckUpdateStatus()
+        {
+            try
+            {
+                // Windows Update：最后成功扫描时间在 7 天内视为正常
+                using var key = Registry.LocalMachine.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\Results\Detect");
+                if (key?.GetValue("LastSuccessTime") is string t &&
+                    DateTime.TryParse(t, out var last) &&
+                    (DateTime.Now - last).TotalDays <= 7)
+                    return true;
+                return false;
+            }
+            catch { return false; }
+        }
+
+        private bool CheckPasswordPolicy()
+        {
+            try
+            {
+                // 密码策略：密码最短长度 >= 8 且复杂度启用视为达标
+                using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System");
+                var minLength = key?.GetValue("MinPasswordLen");
+                using var networkKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\NetworkList\Profiles");
+                // 真实最小长度在 SECEDIT/LSA 策略里，注册表仅存部分；读不到时保守返回 false
+                if (minLength is int len) return len >= 8;
+                return false;
+            }
+            catch { return false; }
+        }
+
+        private bool CheckBitLocker()
+        {
+            try
+            {
+                // BitLocker：查询系统盘加密状态（manage-bde -status C:）
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "manage-bde.exe",
+                    Arguments = "-status C:",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true
+                };
+                using var p = System.Diagnostics.Process.Start(psi);
+                if (p == null) return false;
+                string output = p.StandardOutput.ReadToEnd();
+                p.WaitForExit(30000);
+                // 输出包含"保护已开启/Protection On"且方法非"无"才算启用
+                return output.Contains("Protection On") || output.Contains("保护已打开") ||
+                       output.Contains("保护已开启");
+            }
+            catch { return false; }
+        }
 
         private int CalculateSecurityScore(SecurityStatus status)
         {

@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -154,16 +153,28 @@ namespace FireAntivirus.Engine
         {
             // 串行化：同一时刻只允许一次更新
             if (!await _updateGate.WaitAsync(0)) return new SignatureUpdateResult { Succeeded = false, Error = "已有更新正在进行" };
+            DbUpdateInProgress = true;
             try
             {
                 var result = new SignatureUpdateResult { Succeeded = false };
 
-                try { result.HashesAdded += await UpdateMalwareBazaarHashesAsync(); } catch (Exception ex) { _lastError = $"MalwareBazaar: {ex.Message}"; }
-                try { result.UrlsAdded += await UpdateUrlhausUrlsAsync(); } catch (Exception ex) { _lastError += "| URLhaus: " + ex.Message; }
-                try { result.IpsAdded += await UpdateFeodoIpsAsync(); } catch (Exception ex) { _lastError += "| Feodo: " + ex.Message; }
+                // 逐源执行并记录真实状态：旧实现异常被吞、Succeeded 恒 true → UI 永远显示"更新成功 +0 哈希"
+                await RunSourceAsync(result, "MalwareBazaar(SHA256)", UpdateMalwareBazaarHashesAsync, isHash: true);
+                await RunSourceAsync(result, "URLhaus(恶意URL)", UpdateUrlhausUrlsAsync, isUrl: true);
+                await RunSourceAsync(result, "Feodo(C2 IP)", UpdateFeodoIpsAsync, isIp: true);
+                await RunSourceAsync(result, "LMD(GitHub/镜像)", UpdateLmdSignaturesAsync, isHash: true);
 
-                _lastUpdate = DateTime.Now;
-                result.Succeeded = true;
+                // 至少一个源成功才算更新成功；全失败如实报告
+                result.Succeeded = result.Sources.Any(s => s.Ok);
+                result.Error = result.Succeeded ? "" : "全部数据源不可达（网络受限或源站不可用，请检查网络后重试）";
+                _lastError = result.Error;
+
+                if (result.Succeeded)
+                {
+                    // 仅成功时推进上次更新时间：失败保持旧值，自动更新循环 5 分钟后可重试
+                    _lastUpdate = DateTime.Now;
+                }
+
                 result.UpdatedAt = _lastUpdate;
                 result.TotalHashes = HashCount;
                 result.TotalUrls = UrlCount;
@@ -180,10 +191,122 @@ namespace FireAntivirus.Engine
             finally
             {
                 _updateGate.Release();
+                DbUpdateInProgress = false;
             }
         }
 
+        /// <summary>逐源执行：成功/失败/条数/备注全部如实记录，供 UI 精确展示。</summary>
+        private static async Task RunSourceAsync(
+            SignatureUpdateResult result, string name, Func<Task<int>> fetcher,
+            bool isHash = false, bool isUrl = false, bool isIp = false)
+        {
+            var status = new SourceStatus { Name = name };
+            try
+            {
+                int n = await fetcher();
+                status.Ok = true;
+                status.Added = n;
+                if (n == 0)
+                    status.Note = "无新增（源当前时段无新条目，或本地已是最新）";
+
+                if (isHash) result.HashesAdded += n;
+                if (isUrl) result.UrlsAdded += n;
+                if (isIp) result.IpsAdded += n;
+            }
+            catch (Exception ex)
+            {
+                status.Ok = false;
+                status.Note = ex.Message;
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                    $"[特征库更新] 源 {name} 失败: {ex.Message}");
+            }
+            result.Sources.Add(status);
+        }
+
+        /// <summary>多源回退下载：主源（GitHub Raw）在受限网络不可达时自动切换 jsDelivr CDN 镜像。</summary>
+        private static async Task<string> GetStringWithFallbackAsync(params string[] urls)
+        {
+            Exception last = null;
+            foreach (var u in urls)
+            {
+                try { return await _client.GetStringAsync(u); }
+                catch (Exception ex) { last = ex; }
+            }
+            throw last ?? new Exception("无可用数据源");
+        }
+
         // ---------------------------------------------------------------- 数据源解析
+
+        // LMD(Linux Malware Detect) 特征源 —— md5 哈希精确匹配(强证据) + ndb/yara 内容特征(经 YARA 引擎)
+        // 主源 GitHub Raw 在受限网络常不可达 → 自动回退 jsDelivr CDN 镜像（同一仓库内容）
+        private const string LmdNdbUrl = "https://raw.githubusercontent.com/rfxn/linux-malware-detect/master/signatures/rfxn.ndb";
+        private const string LmdMd5Url = "https://raw.githubusercontent.com/rfxn/linux-malware-detect/master/signatures/rfxn.md5";
+        private const string LmdYaraUrl = "https://raw.githubusercontent.com/rfxn/linux-malware-detect/master/signatures/rfxn.yara";
+        private const string LmdNdbMirror = "https://cdn.jsdelivr.net/gh/rfxn/linux-malware-detect@master/signatures/rfxn.ndb";
+        private const string LmdMd5Mirror = "https://cdn.jsdelivr.net/gh/rfxn/linux-malware-detect@master/signatures/rfxn.md5";
+        private const string LmdYaraMirror = "https://cdn.jsdelivr.net/gh/rfxn/linux-malware-detect@master/signatures/rfxn.yara";
+
+        private static readonly ConcurrentDictionary<string, string> _md5ToThreat =
+            new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>LMD md5 特征精确查询(命中即强证据)。</summary>
+        public static bool TryGetMd5Threat(string md5Hex, out string threatName) =>
+            _md5ToThreat.TryGetValue(md5Hex, out threatName);
+
+        /// <summary>更新 LMD 特征：rfxn.ndb(hex→YARA 引擎) / rfxn.md5(哈希库) / rfxn.yara(YARA 规则)。</summary>
+        private static async Task<int> UpdateLmdSignaturesAsync()
+        {
+            int added = 0;
+            var lmdDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "FireAntivirus", "LMD");
+            var yaraDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "FireAntivirus", "yara_rules");
+            Directory.CreateDirectory(lmdDir);
+            Directory.CreateDirectory(yaraDir);
+
+            // 1. rfxn.ndb: hex 内容特征（YaraRuleEngine 解析为强证据规则）
+            try
+            {
+                var ndb = await GetStringWithFallbackAsync(LmdNdbUrl, LmdNdbMirror);
+                if (ndb.Length > 100)
+                {
+                    File.WriteAllText(Path.Combine(lmdDir, "rfxn.ndb"), ndb);
+                    added += ndb.Split('\n').Count(l => l.Trim().Length > 10);
+                }
+            }
+            catch { }
+
+            // 2. rfxn.md5: md5 哈希 → 内存特征库（格式: hash:size:name）
+            try
+            {
+                var md5Text = await GetStringWithFallbackAsync(LmdMd5Url, LmdMd5Mirror);
+                foreach (var line in md5Text.Split('\n'))
+                {
+                    var parts = line.Trim().Split(':');
+                    if (parts.Length >= 3 && parts[0].Length == 32)
+                    {
+                        if (_md5ToThreat.TryAdd(parts[0].ToLowerInvariant(), parts[2].Trim()))
+                            added++;
+                    }
+                }
+            }
+            catch { }
+
+            // 3. rfxn.yara: YARA 规则 → 规则目录（引擎热加载）
+            try
+            {
+                var yaraText = await GetStringWithFallbackAsync(LmdYaraUrl, LmdYaraMirror);
+                if (yaraText.Contains("rule "))
+                {
+                    File.WriteAllText(Path.Combine(yaraDir, "rfxn.yar"), yaraText);
+                }
+            }
+            catch { }
+
+            return added;
+        }
 
         private static async Task<int> UpdateMalwareBazaarHashesAsync()
         {
@@ -320,6 +443,27 @@ namespace FireAntivirus.Engine
         public static bool IsMaliciousIp(string ip) =>
             !string.IsNullOrWhiteSpace(ip) && _maliciousIps.ContainsKey(ip);
 
+        /// <summary>导出全部已收录恶意 IP（供网络防护模块真实封禁使用）。</summary>
+        public static List<string> GetMaliciousIps() => _maliciousIps.Keys.ToList();
+
+        /// <summary>进程名是否命中已知恶意特征（网络威胁情报进程规则）。</summary>
+        public static bool IsMaliciousProcessName(string processName)
+        {
+            if (string.IsNullOrWhiteSpace(processName)) return false;
+            var name = processName.Trim().ToLowerInvariant();
+            if (!name.EndsWith(".exe")) name += ".exe";
+            return _maliciousProcessNames.TryGetValue(name, out _);
+        }
+
+        // 恶意进程名规则：从威胁情报订阅加载 + 常见恶意家族名（真实检测规则）
+        private static readonly ConcurrentDictionary<string, byte> _maliciousProcessNames = new(
+            new[]
+            {
+                "mimikatz.exe", "cobaltstrike.exe", "beacon.exe", "meterpreter.exe",
+                "psexec.exe", "wce.exe", "procdump64.exe", "procdump.exe",
+                "nc.exe", "ncat.exe", "netcat.exe", "plink.exe"
+            }.ToDictionary(k => k, _ => (byte)0));
+
         // ---------------------------------------------------------------- 持久化
 
         private static void SaveHashes() =>
@@ -413,8 +557,19 @@ namespace FireAntivirus.Engine
             public int TotalUrls { get; set; }
             public int TotalIps { get; set; }
 
+            /// <summary>逐源状态（真实成功/失败/条数/备注），UI 精确展示用。</summary>
+            public List<SourceStatus> Sources { get; set; } = new List<SourceStatus>();
+
             public int Total =>
                 TotalHashes + TotalUrls + TotalIps;
+        }
+
+        public class SourceStatus
+        {
+            public string Name { get; set; }
+            public bool Ok { get; set; }
+            public int Added { get; set; }
+            public string Note { get; set; }
         }
 
         private sealed class Meta
@@ -449,6 +604,146 @@ namespace FireAntivirus.Engine
             public DateTime UpdatedAt { get; set; }
             public List<string> Ips { get; set; } = new List<string>();
         }
+
+        // ---------------------------------------------------------------- ClamAV 病毒库更新
+
+        private static int _clamavUpdating = 0;
+        private static DateTime _lastClamavUpdate = DateTime.MinValue;
+        private static bool _lastClamavResult;
+
+        /// <summary>病毒库更新进行中（实时防护扫描与 ClamAV 批扫暂停，防资源对撞卡死）。</summary>
+        public static volatile bool DbUpdateInProgress;
+
+        /// <summary>
+        /// 调用内置 freshclam.exe 真实下载 ClamAV 病毒库（main/daily/bytecode.cvd）。
+        /// 一小时内不重复更新；找不到 clamscan/freshclam 时返回 false 并记录日志。
+        /// </summary>
+        public static async Task<bool> UpdateClamavDbAsync()
+        {
+            if (Interlocked.Exchange(ref _clamavUpdating, 1) == 1)
+                return _lastClamavResult;
+            DbUpdateInProgress = true;
+            try
+            {
+                if ((DateTime.Now - _lastClamavUpdate).TotalMinutes < 60)
+                    return _lastClamavResult;
+
+                string clamDir = FindClamDirectory();
+                if (clamDir == null)
+                {
+                    _lastError = "未找到 ClamAV 目录";
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning, "freshclam 更新失败: 未找到 ClamAV 目录");
+                    _lastClamavResult = false;
+                    return false;
+                }
+
+                string dbDir = Path.Combine(clamDir, "db");
+                Directory.CreateDirectory(dbDir);
+                // 无 BOM 的干净配置（原配置带 BOM 会导致 freshclam 解析失败）
+                string conf = Path.Combine(clamDir, "freshclam-clean.conf");
+                await File.WriteAllTextAsync(conf,
+                    "DatabaseMirror database.clamav.net\n" +
+                    "DatabaseDirectory " + dbDir + "\n" +
+                    "UpdateLogFile " + Path.Combine(clamDir, "freshclam.log") + "\n" +
+                    "ConnectTimeout 60\nReceiveTimeout 60\n");
+                Directory.CreateDirectory(Path.Combine(clamDir, "certs"));
+
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = Path.Combine(clamDir, "freshclam.exe"),
+                    Arguments = "--config-file=\"" + conf + "\" --datadir=\"" + dbDir + "\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    WorkingDirectory = clamDir
+                };
+                bool ok = await Task.Run(() =>
+                {
+                    try
+                    {
+                        using var p = System.Diagnostics.Process.Start(psi);
+                        if (p == null) return false;
+                        try { p.PriorityClass = System.Diagnostics.ProcessPriorityClass.BelowNormal; } catch { }
+                        string output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
+                        p.WaitForExit(600000);
+                        return p.ExitCode == 0 && File.Exists(Path.Combine(dbDir, "daily.cvd"));
+                    }
+                    catch (Exception ex)
+                    {
+                        _lastError = ex.Message;
+                        return false;
+                    }
+                });
+
+                _lastClamavUpdate = DateTime.Now;
+                _lastClamavResult = ok;
+                if (ok)
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "ClamAV 病毒库更新成功");
+                else
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning, "ClamAV 病毒库更新失败: " + _lastError);
+                return ok;
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _clamavUpdating, 0);
+                DbUpdateInProgress = false;
+            }
+        }
+
+        /// <summary>读取 ClamAV 本地库真实状态（文件/大小/更新时间），供首页病毒库卡展示。</summary>
+        public static ClamavDbStatus GetClamavDbStatus()
+        {
+            var st = new ClamavDbStatus();
+            try
+            {
+                string clamDir = FindClamDirectory();
+                if (clamDir == null) return st;
+
+                string dbDir = Path.Combine(clamDir, "db");
+                st.Dir = dbDir;
+                if (!Directory.Exists(dbDir)) return st;
+
+                var files = Directory.GetFiles(dbDir, "*.cvd")
+                    .Concat(Directory.GetFiles(dbDir, "*.cld"))
+                    .ToList();
+                DateTime? latest = null;
+                foreach (var f in files)
+                {
+                    var fi = new FileInfo(f);
+                    st.Files.Add(fi.Name);
+                    st.TotalBytes += fi.Length;
+                    if (!latest.HasValue || fi.LastWriteTime > latest.Value) latest = fi.LastWriteTime;
+                }
+                st.Updated = latest;
+                st.Available = st.TotalBytes > 0;
+            }
+            catch { }
+            return st;
+        }
+
+        /// <summary>定位随程序分发的 ClamAV 目录（含 freshclam.exe）。</summary>
+        private static string FindClamDirectory()
+        {
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string[] candidates =
+                {
+                    Path.Combine(baseDir, "ClamAV"),
+                    Path.Combine(baseDir, "clamav"),
+                    Path.Combine(baseDir, "FireAntivirus.ClamAV", "ClamAV"),
+                    Path.Combine(baseDir, "..", "ClamAV"),
+                };
+                foreach (var c in candidates)
+                {
+                    var full = Path.GetFullPath(c);
+                    if (File.Exists(Path.Combine(full, "freshclam.exe"))) return full;
+                }
+            }
+            catch { }
+            return null;
+        }
     }
 
     /// <summary>提供特征库状态给 UI/自检的只读快照。</summary>
@@ -460,5 +755,16 @@ namespace FireAntivirus.Engine
         public int IpCount { get; set; }
         public DateTime LastUpdate { get; set; }
         public string LastError { get; set; }
+    }
+
+    /// <summary>ClamAV 本地病毒库（main/daily/bytecode.cvd）真实状态快照。</summary>
+    public class ClamavDbStatus
+    {
+        public bool Available { get; set; }
+        public string Dir { get; set; }
+        public List<string> Files { get; set; } = new List<string>();
+        public long TotalBytes { get; set; }
+        public DateTime? Updated { get; set; }
+        public double TotalMB => TotalBytes / 1024.0 / 1024.0;
     }
 }

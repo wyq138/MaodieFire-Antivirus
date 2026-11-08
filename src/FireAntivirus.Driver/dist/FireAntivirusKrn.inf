@@ -1,0 +1,47 @@
+; ============================================================
+; FireAntivirusKrn.sys - 耄耋安全 内核防护驱动 安装信息文件
+; 适用于 pnputil / 设备管理器安装
+; ============================================================
+[Version]
+Signature   = "$Windows NT$"
+Class       = System
+ClassGuid   = {4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider    = %ProviderName%
+CatalogFile = FireAntivirusKrn.cat
+DriverVer   = 11/02/2026,1.0.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 12 ; System32\drivers
+
+[DefaultInstall.ntamd64]
+CopyFiles = @FireAntivirusKrn.sys
+
+[DefaultInstall.ntamd64.Services]
+AddService = FireAntivirusKrn, 0x800, FireAntivirusKrn.Service
+
+[DefaultUninstall.ntamd64]
+LegacyUninstall = 1
+
+[DefaultUninstall.ntamd64.Services]
+DelService = FireAntivirusKrn, 0x200
+
+[FireAntivirusKrn.Service]
+DisplayName    = %ServiceName%
+Description    = %ServiceDesc%
+ServiceBinary  = %12%\FireAntivirusKrn.sys
+ServiceType    = 1       ; SERVICE_KERNEL_DRIVER
+StartType      = 3       ; SERVICE_DEMAND_START
+ErrorControl   = 1       ; SERVICE_ERROR_NORMAL
+
+[SourceDisksNames]
+1 = %DiskName%
+
+[SourceDisksFiles]
+FireAntivirusKrn.sys = 1
+
+[Strings]
+ProviderName = "耄耋软件工作室"
+ServiceName  = "FireAntivirus Kernel Protection Driver"
+ServiceDesc  = "耄耋安全 内核防护驱动(进程/注册表/分区表/UEFI 防护)"
+DiskName     = "FireAntivirus Driver Installation Disk"

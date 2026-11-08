@@ -1,0 +1,4 @@
+probe: E:\Program Files\Microsoft Visual Studio\18\BuildTools\MSBuild\Current\Bin\amd64\MSBuild.exe
+exists: False
+READ FAILED: Cannot find path 'E:\Program Files\Microsoft Visual Studio\18\BuildTools\MSBuild\Current\Bin\amd64\MSBuild.exe' because it does not exist.
+kits include dir exists: True

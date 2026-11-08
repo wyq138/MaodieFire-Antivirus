@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级网络流量分析引擎 - 对标Wireshark/Zeek分析能力
 using System;
 using System.Collections.Concurrent;
@@ -117,28 +116,51 @@ namespace FireAntivirus.Services
 
         private void InitializeThreatIntelligence()
         {
-            // 已知恶意IP地址（示例数据，实际应用中应从威胁情报源加载）
-            var maliciousIPRanges = new string[]
+            // 真实威胁情报加载：从配置文件读取黑名单（urlhaus 数据可离线导出为该格式），
+            // 并在缓存文件存在时优先使用最近一次从 URLhaus 拉取的域名列表
+            try
             {
-                // 已知僵尸网络和恶意服务器
-                // 实际部署时需要连接威胁情报服务
-            };
+                var dataDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus");
+                var intelFile = Path.Combine(dataDir, "threat_intel.txt");
+                var urlhausCache = Path.Combine(_cachePath, "urlhaus_domains.txt");
 
-            foreach (var ip in maliciousIPRanges)
-            {
-                _maliciousIPs.Add(ip);
+                // 1. 配置文件格式：每行 "ip:1.2.3.4" 或 "domain:evil.com"（# 为注释）
+                if (File.Exists(intelFile))
+                {
+                    foreach (var line in File.ReadLines(intelFile))
+                    {
+                        var trimmed = line.Trim();
+                        if (trimmed.Length == 0 || trimmed.StartsWith("#")) continue;
+
+                        int colon = trimmed.IndexOf(':');
+                        if (colon <= 0) continue;
+
+                        var kind = trimmed.Substring(0, colon).Trim().ToLowerInvariant();
+                        var value = trimmed.Substring(colon + 1).Trim();
+
+                        if (kind == "ip" && value.Length > 0)
+                            _maliciousIPs.Add(value);
+                        else if (kind == "domain" && value.Length > 0)
+                            _maliciousDomains.Add(value.ToLowerInvariant());
+                    }
+                }
+
+                // 2. URLhaus 域名缓存（由反钓鱼模块的云端更新同步写入）
+                if (File.Exists(urlhausCache))
+                {
+                    foreach (var line in File.ReadLines(urlhausCache))
+                    {
+                        var domain = line.Trim().ToLowerInvariant();
+                        if (domain.Length > 0) _maliciousDomains.Add(domain);
+                    }
+                }
             }
-
-            // 已知恶意域名
-            var maliciousDomainsList = new[]
+            catch (Exception ex)
             {
-                // 示例恶意域名（实际使用时填充真实数据）
-                "malware.test", "botnet.test", "c2server.test"
-            };
-
-            foreach (var domain in maliciousDomainsList)
-            {
-                _maliciousDomains.Add(domain.ToLowerInvariant());
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error,
+                    "NetworkTrafficAnalyzerService.cs", $"加载威胁情报失败: {ex.Message}");
             }
         }
 

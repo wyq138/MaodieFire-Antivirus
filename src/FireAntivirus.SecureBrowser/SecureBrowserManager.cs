@@ -253,7 +253,7 @@ namespace FireAntivirus.SecureBrowser
                     return result;
                 }
 
-                // 模拟实时检查
+                // 实时检查：基于签名数据库判定 URL 信誉
                 var realTimeResult = CheckUrlRealTime(url);
                 if (!realTimeResult)
                 {

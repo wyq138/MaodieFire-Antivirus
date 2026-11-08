@@ -1,5 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
-// 耄耋软件工作室 开发，严禁非法反编译
 using FireAntivirus.CloudAV;
 using FireAntivirus.Firewall;
 using FireAntivirus.PEAnalyzer;

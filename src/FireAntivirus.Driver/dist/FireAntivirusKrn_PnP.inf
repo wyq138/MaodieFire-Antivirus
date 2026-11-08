@@ -1,0 +1,47 @@
+; FireAntivirusKrn root-enumerated device INF (PnP install path)
+[Version]
+Signature   = "$Windows NT$"
+Class       = System
+ClassGuid   = {4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider    = %ProviderName%
+CatalogFile = FireAntivirusKrn.cat
+DriverVer   = 11/08/2026,1.0.0.2
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[Manufacturer]
+%ProviderName% = FireAntivirus,ntamd64
+
+[FireAntivirus.ntamd64]
+%DeviceDesc% = FireAntivirusKrn.Install, Root\FireAntivirusKrn
+
+[FireAntivirusKrn.Install]
+CopyFiles = FireAntivirusKrn.Files
+
+[FireAntivirusKrn.Files]
+FireAntivirusKrn.sys,,,0x00000040
+
+[FireAntivirusKrn.Install.Services]
+AddService = FireAntivirusKrn, 0x00000000, FireAntivirusKrn.Service
+
+[FireAntivirusKrn.Service]
+DisplayName    = %ServiceName%
+Description    = %ServiceDesc%
+ServiceBinary  = %12%\FireAntivirusKrn.sys
+ServiceType    = 1
+StartType      = 3
+ErrorControl   = 1
+
+[SourceDisksNames]
+1 = %DiskName%
+
+[SourceDisksFiles]
+FireAntivirusKrn.sys = 1
+
+[Strings]
+ProviderName = "FireAntivirus Software Studio"
+DeviceDesc   = "FireAntivirus Kernel Protection Device"
+ServiceName  = "FireAntivirus Kernel Protection Driver"
+ServiceDesc  = "FireAntivirus kernel protection driver"
+DiskName     = "FireAntivirus Driver Installation Disk"

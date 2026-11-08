@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Win32.Registry" Version="4.7.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="7.0.3" />
   </ItemGroup>
 

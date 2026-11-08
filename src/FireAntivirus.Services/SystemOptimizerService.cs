@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级系统优化引擎 - 对标CCleaner/Advanced SystemCare能力
 using System;
 using System.Collections.Generic;
@@ -1268,8 +1267,56 @@ namespace FireAntivirus.Services
         {
             var issues = new List<RegistryIssue>();
 
-            // 简化实现
+            try
+            {
+                // 真实扫描常见扩展名的"打开方式"是否指向已不存在的程序
+                var commonExtensions = new[] { ".txt", ".doc", ".docx", ".xls", ".xlsx", ".pdf", ".jpg", ".png", ".mp3", ".mp4", ".zip", ".html", ".htm" };
+
+                foreach (var extension in commonExtensions)
+                {
+                    try
+                    {
+                        using var extKey = Registry.ClassesRoot.OpenSubKey(extension);
+                        var progId = extKey?.GetValue(null) as string;
+                        if (string.IsNullOrEmpty(progId)) continue;
+
+                        using var commandKey = Registry.ClassesRoot.OpenSubKey(progId + @"\shell\open\command");
+                        var command = commandKey?.GetValue(null) as string;
+                        if (string.IsNullOrEmpty(command)) continue;
+
+                        var exePath = ExtractExecutableFromCommand(command);
+                        if (!string.IsNullOrEmpty(exePath) && exePath.Contains('\\') && !File.Exists(exePath))
+                        {
+                            issues.Add(new RegistryIssue
+                            {
+                                KeyPath = $@"HKCR\{progId}\shell\open\command",
+                                IssueType = "文件关联失效",
+                                Description = $"扩展名 {extension} 的打开程序不存在: {exePath}",
+                                Severity = "低",
+                                ValueName = progId,
+                                CanFix = true
+                            });
+                        }
+                    }
+                    catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
+                }
+            }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
+
             return issues;
+        }
+
+        private static string ExtractExecutableFromCommand(string command)
+        {
+            var trimmed = command.Trim();
+            if (trimmed.StartsWith("\""))
+            {
+                int endQuote = trimmed.IndexOf('"', 1);
+                return endQuote > 1 ? trimmed.Substring(1, endQuote - 1) : null;
+            }
+
+            int spaceIndex = trimmed.IndexOf(' ');
+            return spaceIndex > 0 ? trimmed.Substring(0, spaceIndex) : trimmed;
         }
 
         private List<RegistryIssue> ScanSharedDLLs()
@@ -1316,7 +1363,46 @@ namespace FireAntivirus.Services
         {
             var issues = new List<RegistryIssue>();
 
-            // 简化实现
+            try
+            {
+                // 真实扫描 CLSID 注册的 COM 组件指向的 DLL 是否仍然存在
+                using (var clsidRoot = Registry.ClassesRoot.OpenSubKey("CLSID"))
+                {
+                    if (clsidRoot != null)
+                    {
+                        foreach (var clsid in clsidRoot.GetSubKeyNames())
+                        {
+                            try
+                            {
+                                using var inproc = clsidRoot.OpenSubKey(clsid + @"\InprocServer32");
+                                var dllPath = inproc?.GetValue(null) as string;
+                                if (string.IsNullOrEmpty(dllPath)) continue;
+
+                                var expanded = Environment.ExpandEnvironmentVariables(dllPath.Replace("\"", ""));
+                                bool isLibrary = expanded.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
+                                                 expanded.EndsWith(".ocx", StringComparison.OrdinalIgnoreCase);
+                                if (!expanded.Contains('\\') || !isLibrary) continue;
+
+                                if (!File.Exists(expanded))
+                                {
+                                    issues.Add(new RegistryIssue
+                                    {
+                                        KeyPath = $@"HKCR\CLSID\{clsid}\InprocServer32",
+                                        IssueType = "无效COM组件",
+                                        Description = $"COM组件DLL不存在: {expanded}",
+                                        Severity = "低",
+                                        ValueName = clsid,
+                                        CanFix = true
+                                    });
+                                }
+                            }
+                            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
+
             return issues;
         }
 
@@ -1324,7 +1410,49 @@ namespace FireAntivirus.Services
         {
             var issues = new List<RegistryIssue>();
 
-            // 简化实现
+            try
+            {
+                // 真实扫描"最近使用文档"MRU 列表中指向已不存在文件的残留记录
+                using (var recentKey = Registry.CurrentUser.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs"))
+                {
+                    if (recentKey != null)
+                    {
+                        foreach (var valueName in recentKey.GetValueNames())
+                        {
+                            try
+                            {
+                                if (!(recentKey.GetValue(valueName) is byte[] raw) || raw.Length == 0) continue;
+
+                                // RecentDocs 值为 UTF-16LE 编码的文件名（以 \0 结尾，可能带补零）
+                                var decodeLength = raw.Length - raw.Length % 2;
+                                var fileName = Encoding.Unicode.GetString(raw, 0, decodeLength).TrimEnd('\0');
+
+                                int zeroIndex = fileName.IndexOf('\0');
+                                if (zeroIndex > 0) fileName = fileName.Substring(0, zeroIndex);
+
+                                if (string.IsNullOrEmpty(fileName) || !fileName.Contains('\\')) continue;
+
+                                if (!File.Exists(fileName))
+                                {
+                                    issues.Add(new RegistryIssue
+                                    {
+                                        KeyPath = @"HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs",
+                                        IssueType = "历史记录残留",
+                                        Description = $"最近文档记录指向不存在的文件: {fileName}",
+                                        Severity = "低",
+                                        ValueName = valueName,
+                                        CanFix = true
+                                    });
+                                }
+                            }
+                            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }
+
             return issues;
         }
 
@@ -1332,7 +1460,7 @@ namespace FireAntivirus.Services
         {
             try
             {
-                // 根据问题类型修复
+                // 根据问题类型真实修复
                 if (issue.IssueType.Contains("启动项"))
                 {
                     using (var key = Registry.CurrentUser.OpenSubKey(
@@ -1341,6 +1469,37 @@ namespace FireAntivirus.Services
                         key?.DeleteValue(issue.ValueName, false);
                     }
                     return true;
+                }
+
+                if (issue.IssueType == "历史记录残留")
+                {
+                    using (var key = Registry.CurrentUser.OpenSubKey(
+                        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RecentDocs", true))
+                    {
+                        key?.DeleteValue(issue.ValueName, false);
+                    }
+                    return true;
+                }
+
+                if (issue.IssueType == "文件关联失效" || issue.IssueType == "无效COM组件")
+                {
+                    // 删除指向不存在程序的关联键/CLSID 键
+                    if (issue.KeyPath.StartsWith("HKCR\\", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var subPath = issue.KeyPath.Substring("HKCR\\".Length);
+                        int lastSlash = subPath.LastIndexOf('\\');
+                        if (lastSlash > 0)
+                        {
+                            var parent = subPath.Substring(0, lastSlash);
+                            var child = subPath.Substring(lastSlash + 1);
+
+                            using (var key = Registry.ClassesRoot.OpenSubKey(parent, writable: true))
+                            {
+                                key?.DeleteSubKeyTree(child, false);
+                            }
+                            return true;
+                        }
+                    }
                 }
             }
             catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimizerService.cs exception", ex.Message);  }

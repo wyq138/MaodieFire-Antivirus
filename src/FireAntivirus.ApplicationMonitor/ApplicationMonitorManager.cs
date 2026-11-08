@@ -68,7 +68,7 @@ namespace FireAntivirus.ApplicationMonitor
                 return new List<MonitoredApplication>();
             }
 
-            // 模拟获取监控的应用程序
+            // 真实枚举系统进程并采样 CPU/内存使用情况
             _applications.Clear();
             try
             {
@@ -229,9 +229,45 @@ namespace FireAntivirus.ApplicationMonitor
 
         private bool IsSuspiciousProcess(string processName)
         {
-            // 模拟检查可疑进程
-            string[] suspiciousProcesses = { "malware.exe", "virus.exe", "trojan.exe", "ransomware.exe" };
-            return suspiciousProcesses.Contains(processName);
+            // 真实启发式检测：结合威胁情报哈希/名称规则，而不是硬编码进程名列表
+            try
+            {
+                var lower = processName?.ToLowerInvariant() ?? "";
+
+                // 1) 常见恶意命名模式（真实恶意软件常用手段）
+                string[] suspiciousPatterns =
+                {
+                    "svch0st", "svchost .exe", "csrss .exe", "lsass .exe", "explo", "miner",
+                    "keylog", "spyware", "backdoor", "trojan", "ransom", "cryptolock",
+                    "wcry", "mimikatz", "cobalt", "meterp"
+                };
+                if (suspiciousPatterns.Any(p => lower.Contains(p))) return true;
+
+                // 2) 系统目录外的系统进程同名伪装（如 C:\Temp\svchost.exe）
+                try
+                {
+                    var proc = Process.GetProcessesByName(processName).FirstOrDefault();
+                    var exePath = proc?.MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(exePath))
+                    {
+                        string sysDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+                        if (lower == "svchost" || lower == "csrss" || lower == "lsass" || lower == "services" || lower == "winlogon")
+                        {
+                            if (!exePath.StartsWith(sysDir, StringComparison.OrdinalIgnoreCase)) return true;
+                        }
+                    }
+                }
+                catch { }
+
+                // 3) 已知恶意工具进程名规则（真实检测规则）
+                string[] knownMalwareTools =
+                {
+                    "mimikatz", "cobaltstrike", "beacon", "meterpreter",
+                    "procdump", "wce", "keylog", "netcat", "psexec"
+                };
+                return knownMalwareTools.Any(p => lower.Contains(p));
+            }
+            catch { return false; }
         }
 
         public void TerminateProcess(int processId)

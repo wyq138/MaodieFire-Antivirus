@@ -105,8 +105,7 @@ namespace FireAntivirus.Services
                 var salt = GenerateRandomBytes(SaltSize);
                 
                 // 使用PBKDF2派生密钥
-                using var pbkdf2 = new Rfc2898DeriveBytes(masterPassword, salt, Iterations, HashAlgorithmName.SHA256);
-                var hash = pbkdf2.GetBytes(32); // 256位哈希
+                var hash = Rfc2898DeriveBytes.Pbkdf2(masterPassword, salt, Iterations, HashAlgorithmName.SHA256, 32); // 256位哈希
                 
                 // 存储盐和哈希
                 var hashData = new Data.MasterPasswordHashData
@@ -168,8 +167,7 @@ namespace FireAntivirus.Services
                 var storedHash = Convert.FromBase64String(hashData.Hash);
                 
                 // 验证密码
-                using var pbkdf2 = new Rfc2898DeriveBytes(masterPassword, salt, hashData.Iterations, HashAlgorithmName.SHA256);
-                var computedHash = pbkdf2.GetBytes(32);
+                var computedHash = Rfc2898DeriveBytes.Pbkdf2(masterPassword, salt, hashData.Iterations, HashAlgorithmName.SHA256, 32);
                 
                 if (computedHash.SequenceEqual(storedHash))
                 {
@@ -233,9 +231,9 @@ namespace FireAntivirus.Services
 
         private void DeriveEncryptionKey(string password, byte[] salt)
         {
-            using var pbkdf2 = new Rfc2898DeriveBytes(password + "_encryption", salt, Iterations, HashAlgorithmName.SHA256);
-            _encryptionKey = pbkdf2.GetBytes(KeySize / 8); // 32字节 = 256位
-            _encryptionIV = pbkdf2.GetBytes(BlockSize / 8); // 16字节 = 128位
+            byte[] derived = Rfc2898DeriveBytes.Pbkdf2(password + "_encryption", salt, Iterations, HashAlgorithmName.SHA256, (KeySize + BlockSize) / 8);
+            _encryptionKey = derived[..(KeySize / 8)]; // 32字节 = 256位
+            _encryptionIV = derived[(KeySize / 8)..];  // 16字节 = 128位
         }
 
         private void LoadMasterPasswordHash()

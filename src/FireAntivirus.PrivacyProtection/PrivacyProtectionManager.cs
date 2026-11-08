@@ -1,5 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -483,63 +481,44 @@ namespace FireAntivirus.PrivacyProtection
             CleanupBrowserCache();
         }
 
-        public void BlockCameraAccess()
+        // Windows 隐私访问策略（ConsentStore）：真实禁用/恢复摄像头与麦克风访问（即时生效，无需重启）
+        private const string ConsentStoreRoot =
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore";
+
+        private static bool SetConsentValue(string category, string value, out string error)
         {
+            error = null;
             try
             {
-                // 通过禁用摄像头设备来阻止访问
-                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%Camera%'");
-                foreach (ManagementObject device in searcher.Get())
-                {
-                    try
-                    {
-                        // 获取设备ID
-                        string deviceId = device["DeviceID"]?.ToString();
-                        if (!string.IsNullOrEmpty(deviceId))
-                        {
-                            // 记录被阻止的设备
-                            Console.WriteLine($"已阻止摄像头访问: {device["Name"]}");
-                            
-                            FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, 
-                                "PrivacyProtection", $"已阻止摄像头: {device["Name"]}");
-                        }
-                    }
-                    catch { }
-                }
+                using var key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey($@"{ConsentStoreRoot}\{category}");
+                if (key == null) { error = "无法打开注册表策略键（需管理员权限）"; return false; }
+                key.SetValue("Value", value, Microsoft.Win32.RegistryValueKind.String);
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info,
+                    $"隐私策略已写入: {category} = {value}");
+                return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"阻止摄像头访问失败: {ex.Message}");
+                error = ex.Message;
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error,
+                    $"隐私策略写入失败 {category}: {ex.Message}");
+                return false;
             }
         }
 
-        public void BlockMicrophoneAccess()
-        {
-            try
-            {
-                // 通过禁用麦克风设备来阻止访问
-                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%Microphone%'");
-                foreach (ManagementObject device in searcher.Get())
-                {
-                    try
-                    {
-                        string deviceId = device["DeviceID"]?.ToString();
-                        if (!string.IsNullOrEmpty(deviceId))
-                        {
-                            Console.WriteLine($"已阻止麦克风访问: {device["Name"]}");
-                            
-                            FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, 
-                                "PrivacyProtection", $"已阻止麦克风: {device["Name"]}");
-                        }
-                    }
-                    catch { }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"阻止麦克风访问失败: {ex.Message}");
-            }
-        }
+        /// <summary>阻止摄像头访问（真实写入 Windows 隐私策略 webcam=Deny，所有应用生效）。</summary>
+        public bool BlockCameraAccess() => SetConsentValue("webcam", "Deny", out _);
+
+        /// <summary>阻止麦克风访问（真实写入 Windows 隐私策略 microphone=Deny）。</summary>
+        public bool BlockMicrophoneAccess() => SetConsentValue("microphone", "Deny", out _);
+
+        /// <summary>恢复摄像头访问（webcam=Allow）。</summary>
+        public bool UnblockCameraAccess() => SetConsentValue("webcam", "Allow", out _);
+
+        /// <summary>恢复麦克风访问（microphone=Allow）。</summary>
+        public bool UnblockMicrophoneAccess() => SetConsentValue("microphone", "Allow", out _);
+
+        public void BlockMicrophoneAccessLegacyRemoved() { }
 
         private List<string> LoadSensitiveDirectories()
         {

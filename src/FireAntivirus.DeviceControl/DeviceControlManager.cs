@@ -314,31 +314,44 @@ namespace FireAntivirus.DeviceControl
             return policy?.AccessType ?? DeviceAccessType.Allow;
         }
 
+        /// <summary>
+        /// 真实阻止设备：WMI 禁用 PnP 设备并校验返回码（0=成功）。
+        /// 此前 InvokeMethod 结果被丢弃、失败也标记成功 = 只检测无行为；现在失败如实返回 false。
+        /// </summary>
         public bool BlockDevice(Device device)
         {
             try
             {
-                // 使用 WMI 禁用设备
-                if (_devicePnpIds.TryGetValue(device.Id, out string pnpDeviceId))
+                bool hasPnpId = _devicePnpIds.TryGetValue(device.Id, out string pnpDeviceId);
+                bool applied = false;
+                uint errorCode = 0;
+
+                if (hasPnpId)
                 {
-                    try
+                    using (var searcher = new ManagementObjectSearcher(
+                        $"SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID = '{pnpDeviceId.Replace("'", "''")}'"))
                     {
-                        using (var searcher = new ManagementObjectSearcher($"SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID = '{pnpDeviceId.Replace("'", "''")}'"))
+                        foreach (ManagementObject pnpEntity in searcher.Get())
                         {
-                            foreach (ManagementObject pnpEntity in searcher.Get())
-                            {
-                                var result = pnpEntity.InvokeMethod("Disable", null);
-                                if (result != null)
-                                {
-                                    // result is uint, 0 = success
-                                }
-                            }
+                            var result = pnpEntity.InvokeMethod("Disable", null);
+                            if (result is uint u && u == 0) applied = true;
+                            else if (result is uint err) errorCode = err;
                         }
                     }
-                    catch
+                }
+
+                // 真实禁用未成功（无 PnP 映射或 WMI 返回非 0）：如实失败，不伪装成功
+                if (hasPnpId && !applied)
+                {
+                    _dataManager.AddLog(new LogEntry
                     {
-                        // WMI 禁用失败时，仍标记状态
-                    }
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "DeviceBlockError",
+                        Message = "设备阻止未生效",
+                        Details = $"名称: {device.Name}, WMI 返回码: {errorCode}（需管理员权限且设备支持禁用）"
+                    });
+                    return false;
                 }
 
                 device.Status = DeviceStatus.Blocked;
@@ -348,7 +361,7 @@ namespace FireAntivirus.DeviceControl
                     Time = DateTime.Now,
                     Type = "DeviceBlocked",
                     Message = "设备已被阻止",
-                    Details = $"名称: {device.Name}, 类型: {device.Type}"
+                    Details = $"名称: {device.Name}, 类型: {device.Type}" + (hasPnpId ? "（WMI 已禁用）" : "（仅策略标记）")
                 });
                 return true;
             }
@@ -366,31 +379,42 @@ namespace FireAntivirus.DeviceControl
             }
         }
 
+        /// <summary>
+        /// 真实放行设备：WMI 启用 PnP 设备并校验返回码（0=成功）；失败如实返回 false。
+        /// </summary>
         public bool AllowDevice(Device device)
         {
             try
             {
-                // 使用 WMI 启用设备
-                if (_devicePnpIds.TryGetValue(device.Id, out string pnpDeviceId))
+                bool hasPnpId = _devicePnpIds.TryGetValue(device.Id, out string pnpDeviceId);
+                bool applied = false;
+                uint errorCode = 0;
+
+                if (hasPnpId)
                 {
-                    try
+                    using (var searcher = new ManagementObjectSearcher(
+                        $"SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID = '{pnpDeviceId.Replace("'", "''")}'"))
                     {
-                        using (var searcher = new ManagementObjectSearcher($"SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID = '{pnpDeviceId.Replace("'", "''")}'"))
+                        foreach (ManagementObject pnpEntity in searcher.Get())
                         {
-                            foreach (ManagementObject pnpEntity in searcher.Get())
-                            {
-                                var result = pnpEntity.InvokeMethod("Enable", null);
-                                if (result != null)
-                                {
-                                    // result is uint, 0 = success
-                                }
-                            }
+                            var result = pnpEntity.InvokeMethod("Enable", null);
+                            if (result is uint u && u == 0) applied = true;
+                            else if (result is uint err) errorCode = err;
                         }
                     }
-                    catch
+                }
+
+                if (hasPnpId && !applied)
+                {
+                    _dataManager.AddLog(new LogEntry
                     {
-                        // WMI 启用失败时，仍标记状态
-                    }
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "DeviceAllowError",
+                        Message = "设备放行未生效",
+                        Details = $"名称: {device.Name}, WMI 返回码: {errorCode}"
+                    });
+                    return false;
                 }
 
                 device.Status = DeviceStatus.Connected;

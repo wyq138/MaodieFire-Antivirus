@@ -404,7 +404,7 @@ namespace FireAntivirus.Engine.Coordinator
         public DateTime LastScanTime { get; set; }
     }
 
-    // 已定义的类型（简化实现）
+    // 多引擎协调的类型定义（接口与结果模型）
     public interface IDetectionEngine
     {
         string Name { get; }

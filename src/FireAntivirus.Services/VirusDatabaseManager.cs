@@ -13,6 +13,9 @@ namespace FireAntivirus.Services
 {
     public class VirusDatabaseManager
     {
+        // HttpClient 线程安全共享（替代已过时的 WebClient）
+        private static readonly System.Net.Http.HttpClient _http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+
         private DataManager dataManager;
         private AntivirusEngine antivirusEngine;
         private bool isUpdating;
@@ -99,13 +102,10 @@ namespace FireAntivirus.Services
                         string fileName = Path.GetFileName(url);
                         string localPath = Path.Combine(databasePath, fileName);
 
-                        using (WebClient client = new WebClient())
-                        {
-                            client.Headers.Add("User-Agent", "FireAntivirus/1.0");
-                            client.DownloadFile(url, localPath);
-                            dataManager.LogInfo($"成功下载病毒库文件: {fileName}");
-                            successCount++;
-                        }
+                        var bytes = _http.GetByteArrayAsync(url).GetAwaiter().GetResult();
+                        File.WriteAllBytes(localPath, bytes);
+                        dataManager.LogInfo($"成功下载病毒库文件: {fileName}");
+                        successCount++;
 
                         // 验证下载的文件
                         if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
@@ -238,19 +238,16 @@ namespace FireAntivirus.Services
 
                     try
                     {
-                        using (WebClient client = new WebClient())
+                        var bytes = _http.GetByteArrayAsync(urls[i]).GetAwaiter().GetResult();
+                        File.WriteAllBytes(localPath, bytes);
+                        if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
                         {
-                            client.Headers.Add("User-Agent", "FireAntivirus/1.0");
-                            client.DownloadFile(urls[i], localPath);
-                            if (File.Exists(localPath) && new FileInfo(localPath).Length > 0)
-                            {
-                                dataManager.LogInfo($"成功下载病毒库文件: {cvdFiles[i]}");
-                            }
-                            else
-                            {
-                                dataManager.LogWarning($"病毒库文件下载验证失败: {cvdFiles[i]}");
-                                if (File.Exists(localPath)) File.Delete(localPath);
-                            }
+                            dataManager.LogInfo($"成功下载病毒库文件: {cvdFiles[i]}");
+                        }
+                        else
+                        {
+                            dataManager.LogWarning($"病毒库文件下载验证失败: {cvdFiles[i]}");
+                            if (File.Exists(localPath)) File.Delete(localPath);
                         }
                     }
                     catch (Exception ex)
@@ -743,31 +740,36 @@ namespace FireAntivirus.Services
             }
         }
         
+        // HttpClient 线程安全共享（替代已过时的 WebClient）
+        private static readonly System.Net.Http.HttpClient _http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+
         private bool QueryVirusTotal(string fileHash)
         {
             try
             {
-                // 使用公开API（有限制）或用户配置的API密钥
                 string apiKey = GetConfig("virustotal_api_key", "");
                 if (string.IsNullOrEmpty(apiKey))
                 {
                     dataManager.LogInfo("VirusTotal API密钥未配置，跳过在线查询");
                     return false;
                 }
-                
+
                 string url = $"https://www.virustotal.com/api/v3/files/{fileHash}";
-                
-                using (WebClient client = new WebClient())
+
+                using (var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url))
                 {
-                    client.Headers.Add("x-apikey", apiKey);
-                    client.Headers.Add("User-Agent", "FireAntivirus/1.0");
-                    
-                    string response = client.DownloadString(url);
-                    // 简单的响应解析
-                    return response.IndexOf("malicious", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                           response.IndexOf("true", StringComparison.OrdinalIgnoreCase) >= 0;
+                    request.Headers.Add("x-apikey", apiKey);
+                    request.Headers.Add("User-Agent", "FireAntivirus/1.0");
+                    using (var resp = _http.SendAsync(request).GetAwaiter().GetResult())
+                    {
+                        string response = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        // 简单的响应解析
+                        return response.IndexOf("malicious", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                               response.IndexOf("true", StringComparison.OrdinalIgnoreCase) >= 0;
+                    }
                 }
             }
+
             catch (Exception ex)
             {
                 dataManager.LogWarning($"VirusTotal查询失败: {ex.Message}");
@@ -788,16 +790,18 @@ namespace FireAntivirus.Services
                 }
                 
                 string url = $"https://api.metadefender.com/v4/hash/{fileHash}";
-                
-                using (WebClient client = new WebClient())
+
+                using (var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url))
                 {
-                    client.Headers.Add("apikey", apiKey);
-                    client.Headers.Add("User-Agent", "FireAntivirus/1.0");
-                    
-                    string response = client.DownloadString(url);
-                    // 简单的响应解析
-                    return response.IndexOf("threat_found", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                           response.IndexOf("true", StringComparison.OrdinalIgnoreCase) >= 0;
+                    request.Headers.Add("apikey", apiKey);
+                    request.Headers.Add("User-Agent", "FireAntivirus/1.0");
+                    using (var resp = _http.SendAsync(request).GetAwaiter().GetResult())
+                    {
+                        string response = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        // 简单的响应解析
+                        return response.IndexOf("threat_found", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                               response.IndexOf("true", StringComparison.OrdinalIgnoreCase) >= 0;
+                    }
                 }
             }
             catch (Exception ex)
@@ -819,18 +823,20 @@ namespace FireAntivirus.Services
                 }
                 
                 string url = "https://www.hybrid-analysis.com/api/v2/search/hash";
-                
-                using (WebClient client = new WebClient())
+
+                using (var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Post, url))
                 {
-                    client.Headers.Add("api-key", apiKey);
-                    client.Headers.Add("User-Agent", "Falcon Sandbox");
-                    client.Headers.Add("Content-Type", "application/json");
-                    
-                    string json = $"{{\"hash\": \"{fileHash}\"}}";
-                    string response = client.UploadString(url, json);
-                    // 改进响应解析安全
-                    return response.IndexOf("verdict", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                           response.IndexOf("malicious", StringComparison.OrdinalIgnoreCase) >= 0;
+                    request.Headers.Add("api-key", apiKey);
+                    request.Headers.Add("User-Agent", "Falcon Sandbox");
+                    request.Content = new System.Net.Http.StringContent($"{{\"hash\": \"{fileHash}\"}}", Encoding.UTF8, "application/json");
+
+                    using (var resp = _http.SendAsync(request).GetAwaiter().GetResult())
+                    {
+                        string response = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        // 改进响应解析安全
+                        return response.IndexOf("verdict", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                               response.IndexOf("malicious", StringComparison.OrdinalIgnoreCase) >= 0;
+                    }
                 }
             }
             catch (Exception ex)
@@ -902,18 +908,12 @@ namespace FireAntivirus.Services
             {
                 // 使用公开可用的MD5哈希查询服务（有频率限制）
                 string url = $"https://md5calc.com/hash/{fileHash}/info.json";
-                
-                using (WebClient client = new WebClient())
-                {
-                    client.Headers.Add("User-Agent", "FireAntivirus/1.0");
-                    // WebClient does not support Timeout in .NET Core
-                    
-                    string response = client.DownloadString(url);
-                    // 检查是否有已知威胁信息
-                    return response.IndexOf("malicious", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                           response.IndexOf("threat", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                           response.IndexOf("virus", StringComparison.OrdinalIgnoreCase) >= 0;
-                }
+
+                string response = _http.GetStringAsync(url).GetAwaiter().GetResult();
+                // 检查是否有已知威胁信息
+                return response.IndexOf("malicious", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                       response.IndexOf("threat", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                       response.IndexOf("virus", StringComparison.OrdinalIgnoreCase) >= 0;
             }
             catch (Exception ex)
             {
@@ -926,11 +926,8 @@ namespace FireAntivirus.Services
         {
             try
             {
-                using (WebClient client = new WebClient())
-                {
-                    client.Headers.Add("User-Agent", "FireAntivirus Database Updater");
-                    await client.DownloadFileTaskAsync(url, savePath);
-                }
+                var bytes = await _http.GetByteArrayAsync(url);
+                await File.WriteAllBytesAsync(savePath, bytes);
             }
             catch (Exception ex)
             {

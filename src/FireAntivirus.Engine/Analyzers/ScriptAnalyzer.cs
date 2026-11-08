@@ -20,7 +20,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         public ScriptAnalyzer()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             scriptCache = new Dictionary<string, List<string>>();
             InitializeScriptPatterns();
             InitializeScriptSignatures();

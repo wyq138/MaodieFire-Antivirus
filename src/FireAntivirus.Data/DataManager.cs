@@ -1,5 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -359,7 +357,7 @@ namespace FireAntivirus.Data
     public class DataManager : IDisposable
     {
         private List<VirusSignature> signatures = new List<VirusSignature>();
-        private ConcurrentDictionary<string, QuarantineItem> quarantineItems;
+
         private List<TrustItem> trustList = new List<TrustItem>();
         private List<LogEntry> logs = new List<LogEntry>();
         private List<BackupItem> backupItems = new List<BackupItem>();
@@ -370,19 +368,29 @@ namespace FireAntivirus.Data
         private UpdateSettings updateSettings = new UpdateSettings();
         private InterfaceSettings interfaceSettings = new InterfaceSettings();
         private AdvancedSettings advancedSettings = new AdvancedSettings();
-        private List<ThreatIntelligenceItem> threatIntelligenceItems = new List<ThreatIntelligenceItem>();
-        private List<VulnerabilityItem> vulnerabilityItems = new List<VulnerabilityItem>();
-        private List<ApplicationControlRule> applicationControlRules = new List<ApplicationControlRule>();
-        private List<FirewallRule> firewallRules = new List<FirewallRule>();
-        private List<SandboxSetting> sandboxSettings = new List<SandboxSetting>();
-        private List<BehaviorMonitoringRule> behaviorMonitoringRules = new List<BehaviorMonitoringRule>();
-        private CloudProtectionSettings cloudProtectionSettings = new CloudProtectionSettings();
-        private MachineLearningSettings machineLearningSettings = new MachineLearningSettings();
-        private SecurityScore securityScore = new SecurityScore();
-        private List<SecurityRecommendation> securityRecommendations = new List<SecurityRecommendation>();
-        private List<SystemOptimizationSetting> systemOptimizationSettings = new List<SystemOptimizationSetting>();
-        private List<PrivacyProtectionSetting> privacyProtectionSettings = new List<PrivacyProtectionSetting>();
-        private List<ParentalControlSetting> parentalControlSettings = new List<ParentalControlSetting>();
+        // ---- 数据集合静态共享：所有 DataManager 实例（引擎分析器们各自 new 的）共用同一份数据 ----
+        // 此前每个分析器 new DataManager() 各自加载全量文件（启动 IO 风暴），
+        // 且"实例 A 加载后实例 B 空集合 Save"会清空用户数据——静态共享后彻底消除。
+        private static List<ThreatIntelligenceItem> threatIntelligenceItems = new List<ThreatIntelligenceItem>();
+        private static List<VulnerabilityItem> vulnerabilityItems = new List<VulnerabilityItem>();
+        private static List<ApplicationControlRule> applicationControlRules = new List<ApplicationControlRule>();
+        private static List<FirewallRule> firewallRules = new List<FirewallRule>();
+        private static List<SandboxSetting> sandboxSettings = new List<SandboxSetting>();
+        private static List<BehaviorMonitoringRule> behaviorMonitoringRules = new List<BehaviorMonitoringRule>();
+        private static CloudProtectionSettings cloudProtectionSettings = new CloudProtectionSettings();
+        private static MachineLearningSettings machineLearningSettings = new MachineLearningSettings();
+        private static SecurityScore securityScore = new SecurityScore();
+        private static List<SecurityRecommendation> securityRecommendations = new List<SecurityRecommendation>();
+        private static List<SystemOptimizationSetting> systemOptimizationSettings = new List<SystemOptimizationSetting>();
+        private static List<PrivacyProtectionSetting> privacyProtectionSettings = new List<PrivacyProtectionSetting>();
+        private static List<ParentalControlSetting> parentalControlSettings = new List<ParentalControlSetting>();
+        private static ConcurrentDictionary<string, QuarantineItem> quarantineItems = new ConcurrentDictionary<string, QuarantineItem>();
+        private static JsonSerializerSettings jsonSettings = new JsonSerializerSettings
+        {
+            Formatting = Formatting.Indented,
+            TypeNameHandling = TypeNameHandling.Auto,
+            DateFormatHandling = DateFormatHandling.IsoDateFormat
+        };
         private string dataPath;
         private string quarantinePath;
         private string logsPath;
@@ -399,11 +407,19 @@ namespace FireAntivirus.Data
         private string optimizationPath;
         private string privacyPath;
         private string parentalControlPath;
-        private JsonSerializerSettings jsonSettings;
+
+
+        // ---- 静态加载标志（多实例共享：全量文件加载与病毒库下载全局只做一次）----
+        private static int s_localDataLoaded;
+        private static bool s_missingSigWarned;
+        /// <summary>
+        /// 进程级共享单例：引擎各分析器/宿主页面统一使用此实例，
+        /// 彻底消除"每分析器 new DataManager"造成的 N 倍文件加载与 IO 风暴。
+        /// </summary>
+        public static DataManager SharedInstance { get; } = new DataManager();
 
         public DataManager()
         {
-            // 耄耋软件工作室 开发，严禁非法反编译
             dataPath = FireAntivirus.Common.PathHelper.GetDataPath();
             quarantinePath = FireAntivirus.Common.PathHelper.GetQuarantinePath();
             logsPath = FireAntivirus.Common.PathHelper.GetLogsPath();
@@ -420,20 +436,15 @@ namespace FireAntivirus.Data
             optimizationPath = Path.Combine(dataPath, "Optimization");
             privacyPath = Path.Combine(dataPath, "Privacy");
             parentalControlPath = Path.Combine(dataPath, "ParentalControl");
-            quarantineItems = new ConcurrentDictionary<string, QuarantineItem>();
-            jsonSettings = new JsonSerializerSettings
-            {
-                Formatting = Formatting.Indented,
-                TypeNameHandling = TypeNameHandling.Auto,
-                DateFormatHandling = DateFormatHandling.IsoDateFormat
-            };
 
             InitializeDirectories();
-            
-            // 后台异步加载数据，不阻塞主线程
+
+            // 后台异步加载数据，不阻塞主线程。
+            // 静态标志：只有第一个实例做全量文件加载（多实例共享静态集合，杜绝 N 倍 IO 风暴）
             Task.Run(() => {
                 try
                 {
+                    if (System.Threading.Interlocked.Exchange(ref s_localDataLoaded, 1) == 1) return;
                     LoadLocalData();
                 }
                 catch (Exception ex)
@@ -1040,18 +1051,27 @@ namespace FireAntivirus.Data
             };
         }
         
+        // 全局节流：所有 DataManager 实例共享一次病毒库下载
+        // （此前多实例各自下载 3 个假源 = 每实例 15 秒网络等待，实例一多就是网络+日志风暴）
+        private static int s_globalVirusDbLoaded;
+
         public void DownloadVirusDefinitions()
         {
+            // 多实例节流：第一个实例下载成功后签名落盘共享目录，其余实例直接读本地
+            if (System.Threading.Interlocked.Exchange(ref s_globalVirusDbLoaded, 1) == 1)
+            {
+                LoadLocalVirusDefinitions();
+                return;
+            }
+
             var virusDefinitionSources = new List<string>
             {
-                // 本地文件（最优先）
+                // 本地文件（最优先，多实例共享）
                 Path.Combine(dataPath, "signatures.txt"),
                 Path.Combine(FireAntivirus.Common.PathHelper.GetAppDataPath(), "signatures.txt"),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "signatures.txt"),
-                // 网络源（备用）
-                "https://raw.githubusercontent.com/fireantivirus/signatures/main/signatures.txt",
-                "https://mirror.example.com/fireantivirus/signatures.txt",
-                "https://downloads.fireantivirus.com/signatures/latest.txt"
+                // 网络源（真实公开源）：abuse.ch MalwareBazaar 全库 MD5 导出，每日更新
+                "https://bazaar.abuse.ch/export/txt/md5/latest/"
             };
             
             bool success = false;
@@ -1138,9 +1158,29 @@ namespace FireAntivirus.Data
             {
                 var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
                 var newSignatures = new List<VirusSignature>();
-                
-                foreach (var line in lines)
+
+                foreach (var rawLine in lines)
                 {
+                    var line = rawLine.Trim();
+
+                    // 纯哈希行（abuse.ch MalwareBazaar MD5 导出格式：每行一个 32 位哈希）
+                    if (line.Length == 32 && System.Text.RegularExpressions.Regex.IsMatch(line, "^[0-9a-fA-F]{32}$"))
+                    {
+                        newSignatures.Add(new VirusSignature
+                        {
+                            Hash = line.ToLowerInvariant(),
+                            Name = "MalwareBazaar.Sample",
+                            Type = "Malware",
+                            Severity = "High",
+                            Description = "abuse.ch MalwareBazaar 全库恶意样本哈希",
+                            DetectionMethod = "Signature",
+                            AddedDate = DateTime.Now,
+                            Source = source
+                        });
+                        continue;
+                    }
+
+                    // 管道格式: hash|name|type|severity|desc|method
                     var parts = line.Split('|');
                     if (parts.Length >= 4)
                     {
@@ -1242,7 +1282,12 @@ namespace FireAntivirus.Data
                     }
                 }
                 
-                LogWarning("本地病毒库文件不存在，使用内置签名");
+                // 本地病毒库文件不存在是常态（内置签名兜底 + abuse.ch 真源下载），只警告一次防日志风暴
+                if (!s_missingSigWarned)
+                {
+                    s_missingSigWarned = true;
+                    LogWarning("本地病毒库文件不存在，使用内置签名");
+                }
                 InitializeDefaultSignatures();
             }
             catch (Exception ex)
@@ -1284,7 +1329,6 @@ namespace FireAntivirus.Data
         
         public bool IsWhitelisted(string filePath)
         {
-            // 耄耋软件工作室 开发，严禁非法反编译
             var trustItems = trustList;
             
             // 1. 路径白名单检查
@@ -1522,9 +1566,12 @@ namespace FireAntivirus.Data
         {
             try
             {
-                // 这里可以添加更多的逻辑，比如检测文件是否真的有威胁
-                // 暂时使用默认的威胁名称和类型
-                return QuarantineFile(filePath, "Unknown Threat", "Malware");
+                // 真实化：计算文件 SHA256 用于隔离记录溯源，并标注为手动隔离的可疑文件
+                string hash = CalculateFileHash(filePath);
+                string threatName = string.IsNullOrEmpty(hash)
+                    ? "手动隔离 (未识别威胁)"
+                    : $"手动隔离 (SHA256: {hash})";
+                return QuarantineFile(filePath, threatName, "Suspicious");
             }
             catch (Exception ex)
             {

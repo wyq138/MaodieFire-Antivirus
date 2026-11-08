@@ -1,6 +1,3 @@
-<!-- 耄耋软件工作室 开发，严禁非法反编译
-     主窗口：左侧 NavigationView + 顶部横向功能区 + 内容区
-     右下角威胁处理浮层（InfoBar 队列式）由 ThreatOverlayHost 承载 -->
 <Window
     x:Class="FireAntivirus.Host.WinUI.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -17,68 +14,110 @@
             IsSettingsVisible="False">
 
             <NavigationView.MenuItems>
-                <!-- 主功能 -->
-                <NavigationViewItem Content="首页" Tag="home" Icon="Home"/>
-                <NavigationViewItem Content="病毒扫描" Tag="scan" Icon="Find"/>
-                <NavigationViewItem Content="实时防护" Tag="protect" Icon="Shield"/>
-
+                <NavigationViewItem Content="首页" Tag="home">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE80F;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="病毒扫描" Tag="scan">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE721;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="实时防护" Tag="protect">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE72E;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="隔离与信任" Tag="quarantine-center">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE74D;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItemSeparator/>
-                <NavigationViewItemHeader Content="网络防护"/>
-                <NavigationViewItem Content="网络防火墙" Tag="firewall" Icon="Globe"/>
-                <NavigationViewItem Content="网络连接" Tag="network" Icon="Network"/>
-                <NavigationViewItem Content="流量分析" Tag="traffic" Icon="Sync"/>
-                <NavigationViewItem Content="网页防护" Tag="web" Icon="Web"/>
-
+                <NavigationViewItem Content="安全中心" Tag="security-center">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8A5;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="漏洞扫描" Tag="vul">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE7BA;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="网络连接" Tag="netstat">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE774;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="网络防火墙" Tag="firewall">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9D9;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItemSeparator/>
-                <NavigationViewItemHeader Content="检测与隔离"/>
-                <NavigationViewItem Content="云扫描" Tag="cloud" Icon="Cloud"/>
-                <NavigationViewItem Content="漏洞扫描" Tag="vuln" Icon="Bug"/>
-                <NavigationViewItem Content="行为分析" Tag="behavior" Icon="Diagnostic"/>
-                <NavigationViewItem Content="安全评分" Tag="score" Icon="RatingStar"/>
-                <NavigationViewItem Content="隔离区" Tag="quarantine" Icon="Delete"/>
-                <NavigationViewItem Content="信任区" Tag="trust" Icon="Protected"/>
-                <NavigationViewItem Content="安全报告" Tag="report" Icon="Document"/>
+                <NavigationViewItem Content="网页与邮件安全" Tag="web-security">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE715;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="设备与隐私" Tag="device-privacy">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE7F4;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
 
+                <NavigationViewItem Content="密码库" Tag="password">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8D7;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="数据备份" Tag="backup">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8B7;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItemSeparator/>
-                <NavigationViewItemHeader Content="防护中心"/>
-                <NavigationViewItem Content="勒索防护" Tag="ransom" Icon="Lock"/>
-                <NavigationViewItem Content="隐私保护" Tag="privacy" Icon="View"/>
-                <NavigationViewItem Content="弹窗拦截" Tag="popup" Icon="Clear"/>
-                <NavigationViewItem Content="密码管理" Tag="password" Icon="Key"/>
-                <NavigationViewItem Content="家长控制" Tag="parental" Icon="Family"/>
-                <NavigationViewItem Content="移动安全" Tag="mobile" Icon="Phone"/>
-                <NavigationViewItem Content="邮箱安全" Tag="email" Icon="Mail"/>
-                <NavigationViewItem Content="设备控制" Tag="device" Icon="USB"/>
-
-                <NavigationViewItemSeparator/>
-                <NavigationViewItemHeader Content="系统工具"/>
-                <NavigationViewItem Content="系统优化" Tag="optimizer" Icon="Sweep"/>
-                <NavigationViewItem Content="系统信息" Tag="sysinfo" Icon="Memory"/>
-                <NavigationViewItem Content="启动管理" Tag="startup" Icon="Play"/>
-                <NavigationViewItem Content="性能诊断" Tag="perf" Icon="Clock"/>
-                <NavigationViewItem Content="备份中心" Tag="backup" Icon="Save"/>
-                <NavigationViewItem Content="应用监控" Tag="appmonitor" Icon="AllApps"/>
-                <NavigationViewItem Content="安全浏览器" Tag="browser" Icon="Globe"/>
-
-                <NavigationViewItemSeparator/>
-                <NavigationViewItemHeader Content="其他"/>
-                <NavigationViewItem Content="工具箱" Tag="tools" Icon="Setting"/>
-                <NavigationViewItem Content="日志" Tag="logs" Icon="History"/>
-                <NavigationViewItem Content="设置" Tag="settings" Icon="Settings"/>
-                <NavigationViewItem Content="捐赠支持" Tag="donation" Icon="Heart"/>
-                <NavigationViewItem Content="关于" Tag="about" Icon="Info"/>
+                <NavigationViewItem Content="系统监控" Tag="system-monitor">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE950;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="系统工具" Tag="system-tools">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE9F5;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="日志" Tag="logs">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE81C;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="设置" Tag="settings">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE713;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="关于" Tag="about">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE946;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <NavigationView.Header>
-                <TextBlock Text="耄耋安全" Style="{StaticResource PageTitle}" Margin="24,20,0,4"/>
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,20,0,4">
+                    <Image x:Name="HeaderCatImage" Width="30" Height="30" Stretch="Uniform"/>
+                    <TextBlock Text="耄耋安全" Style="{StaticResource PageTitle}" VerticalAlignment="Center"/>
+                </StackPanel>
             </NavigationView.Header>
 
             <!-- 内容区 + 右下角威胁浮层 -->
             <Grid>
-                <Frame x:Name="ContentFrame"/>
-                <local:ThreatOverlayHost x:Name="ThreatHost" x:FieldModifier="public"
-                    VerticalAlignment="Bottom" HorizontalAlignment="Right"
-                    Margin="0,0,20,20"/>
+                <!-- 页面托管容器（替代 Frame）：纯代码 Page 未经 XamlTypeInfo 注册，
+                     Frame.Navigate(Type) 会挂起（六页卡死根因），改由代码直接 Add 页面实例 -->
+                <Grid x:Name="PageHost"/>
+
             </Grid>
         </NavigationView>
     </Grid>

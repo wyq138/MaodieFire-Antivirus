@@ -205,12 +205,52 @@ namespace FireAntivirus.Services
                     rule.CreatedDate = DateTime.Now;
                     _rules.Add(rule);
                     SaveRules();
+
+                    // 真实阻止：Block 规则写入 IFEO（Image File Execution Options），
+                    // 系统启动该应用时因 Debugger 指向不存在程序而无法运行。
+                    // 此前规则只存储、BlockProcess 零调用 = 应用控制零消费（假功能）。
+                    if (rule.Action == ApplicationAction.Block)
+                        ApplyIfeoBlock(rule.ApplicationPath, true);
+
                     RaiseApplicationControlEvent(new ApplicationControlEventArgs(ApplicationControlEventType.Info, "Application rule added: " + rule.Description));
                 }
                 catch (Exception ex)
                 {
                     RaiseApplicationControlEvent(new ApplicationControlEventArgs(ApplicationControlEventType.Error, "Failed to add application rule: " + ex.Message));
                 }
+            }
+        }
+
+        /// <summary>真实应用启动阻止/恢复：HKLM IFEO Debugger 键（Windows 标准机制）。</summary>
+        private void ApplyIfeoBlock(string applicationPath, bool block)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(applicationPath)) return;
+                string exeName = System.IO.Path.GetFileName(applicationPath.Trim());
+                if (string.IsNullOrWhiteSpace(exeName)) return;
+
+                string ifeoPath = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\" + exeName;
+                if (block)
+                {
+                    using var key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(ifeoPath);
+                    if (key == null) return;
+                    // Debugger 指向不存在的路径：应用一启动即失败，达到阻止效果
+                    key.SetValue("Debugger", @"C:\Windows\System32\FireAntivirusBlocked\blocked.exe",
+                        Microsoft.Win32.RegistryValueKind.String);
+                }
+                else
+                {
+                    Microsoft.Win32.Registry.LocalMachine.DeleteSubKeyTree(ifeoPath, false);
+                }
+
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info,
+                    $"应用控制 IFEO 已{(block ? "写入（真实阻止启动）" : "移除（恢复启动）")}: {exeName}");
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                    $"应用控制 IFEO 写入失败（需管理员权限）: {ex.Message}");
             }
         }
 
@@ -229,6 +269,9 @@ namespace FireAntivirus.Services
                         existingRule.Priority = rule.Priority;
                         existingRule.LastModifiedDate = DateTime.Now;
                         SaveRules();
+
+                        // IFEO 同步：动作变更时解除旧阻止、应用新阻止（防残留锁定）
+                        ApplyIfeoBlock(existingRule.ApplicationPath, rule.Action == ApplicationAction.Block);
                         RaiseApplicationControlEvent(new ApplicationControlEventArgs(ApplicationControlEventType.Info, "Application rule updated: " + rule.Description));
                     }
                     else
@@ -254,6 +297,11 @@ namespace FireAntivirus.Services
                     {
                         _rules.Remove(rule);
                         SaveRules();
+
+                        // 解除真实阻止（删除规则后 IFEO 必须同步移除，否则应用永久无法启动）
+                        if (rule.Action == ApplicationAction.Block)
+                            ApplyIfeoBlock(rule.ApplicationPath, false);
+
                         RaiseApplicationControlEvent(new ApplicationControlEventArgs(ApplicationControlEventType.Info, "Application rule deleted: " + rule.Description));
                     }
                     else

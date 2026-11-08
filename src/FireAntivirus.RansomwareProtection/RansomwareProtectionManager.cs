@@ -8,6 +8,7 @@ using System.Management;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using FireAntivirus.Common;
 using FireAntivirus.Data;
 
@@ -465,7 +466,7 @@ namespace FireAntivirus.RansomwareProtection
         {
             try
             {
-                // 使用vssadmin查看卷影副本
+                // 使用vssadmin列出卷影副本的设备路径，真实从中复制文件恢复
                 var psi = new ProcessStartInfo
                 {
                     FileName = "vssadmin",
@@ -474,23 +475,64 @@ namespace FireAntivirus.RansomwareProtection
                     RedirectStandardOutput = true,
                     CreateNoWindow = true
                 };
-                
+
                 using var process = Process.Start(psi);
                 var output = process?.StandardOutput.ReadToEnd() ?? "";
-                
-                if (output.Contains("Shadow Copy ID"))
+
+                // 解析所有卷影卷设备路径（\\?\GLOBALROOT\Device\HarddiskVolumeShadowCopyN）
+                var matches = System.Text.RegularExpressions.Regex.Matches(
+                    output, @"\\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy\d+");
+                if (matches.Count == 0)
                 {
-                    // 有卷影副本可用
                     _dataManager.AddLog(new LogEntry
                     {
                         Id = Guid.NewGuid().ToString(),
                         Time = DateTime.Now,
-                        Type = "ShadowCopyAvailable",
-                        Message = "检测到卷影副本",
+                        Type = "ShadowCopyRestore",
+                        Message = "未找到可用卷影副本，无法从卷影恢复",
                         Details = $"文件: {filePath}"
                     });
-                    return true;
+                    return false;
                 }
+
+                // 相对路径从卷影卷根尝试还原（卷影副本保存的是整卷视图）
+                string relative = filePath;
+                var root = Path.GetPathRoot(filePath) ?? "";
+                if (!string.IsNullOrEmpty(root) && filePath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                    relative = filePath.Substring(root.Length).TrimStart('\\', '/');
+
+                foreach (Match m in matches)
+                {
+                    string shadowFile = m.Value.TrimEnd('\\') + "\\" + relative;
+                    try
+                    {
+                        if (File.Exists(shadowFile))
+                        {
+                            Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                            File.Copy(shadowFile, filePath, overwrite: true);
+                            _dataManager.AddLog(new LogEntry
+                            {
+                                Id = Guid.NewGuid().ToString(),
+                                Time = DateTime.Now,
+                                Type = "ShadowCopyRestored",
+                                Message = "已从卷影副本恢复文件",
+                                Details = $"文件: {filePath} <- {m.Value}"
+                            });
+                            return true;
+                        }
+                    }
+                    catch { /* 该卷影中不存在此文件，尝试下一个 */ }
+                }
+
+                _dataManager.AddLog(new LogEntry
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Time = DateTime.Now,
+                    Type = "ShadowCopyRestore",
+                    Message = "卷影副本中未找到该文件的可用版本",
+                    Details = $"文件: {filePath}"
+                });
+                return false;
             }
             catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "RansomwareProtectionManager.cs 捕获异常", ex.Message); }
             

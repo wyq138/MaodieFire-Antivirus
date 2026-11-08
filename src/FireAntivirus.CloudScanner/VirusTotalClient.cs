@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // VirusTotal v3 客户端 - 接入 70+ 国际杀毒引擎聚合查询
 // API 文档: https://docs.virustotal.com/reference/api
 // 免费 API Key 额度: 每分钟 4 次请求, 每日 500 次

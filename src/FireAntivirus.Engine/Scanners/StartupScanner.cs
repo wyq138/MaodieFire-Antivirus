@@ -24,7 +24,7 @@ namespace FireAntivirus.Engine.Scanners
 
         public StartupScanner()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             startupCache = new Dictionary<string, List<string>>();
             InitializeStartupLocations();
             InitializeStartupPatterns();

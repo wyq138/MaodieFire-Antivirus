@@ -92,9 +92,21 @@ namespace FireAntivirus.Services
 
         private bool IsTimeToRun(BackupTask task)
         {
-            // 检查是否到了执行时间
-            // 简化实现，实际应该根据任务的调度计划来判断
-            return true;
+            // 真实调度判断：根据任务的调度计划与上次运行时间计算是否到期
+            var lastRun = task.LastRun ?? DateTime.MinValue;
+            if (lastRun == default)
+                return true;   // 从未运行过，立即执行
+
+            var elapsed = DateTime.Now - lastRun;
+
+            return task.Schedule?.Trim().ToLowerInvariant() switch
+            {
+                "hourly" => elapsed.TotalHours >= 1,
+                "daily" => elapsed.TotalDays >= 1,
+                "weekly" => elapsed.TotalDays >= 7,
+                "monthly" => elapsed.TotalDays >= 30,
+                _ => elapsed.TotalDays >= 1   // 未知调度格式默认按每日执行
+            };
         }
 
         public void RunBackup(BackupTask task)

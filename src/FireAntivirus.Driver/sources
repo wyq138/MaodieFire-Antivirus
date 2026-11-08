@@ -1,0 +1,17 @@
+# FireAntivirusKrn 内核防护驱动 - DDK/EWDK 构建描述
+TARGETNAME  = FireAntivirusKrn
+TARGETTYPE  = DRIVER
+TARGETPATH  = obj
+
+# PsSetCreateProcessNotifyRoutineEx / ObRegisterCallbacks 需要完整性标志
+LINKER_FLAGS = /INTEGRITYCHECK
+
+MSC_WARNING_LEVEL = /W3
+
+INCLUDES =
+
+# minifilter（FltRegisterFilter / FltStartFiltering）
+TARGETLIBS = $(DDK_LIB_PATH)\FltMgr.lib
+
+SOURCES = \
+    fireantivirus_kernel.c

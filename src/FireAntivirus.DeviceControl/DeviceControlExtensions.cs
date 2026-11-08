@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 // 设备控制扩展模块 - 包含更多真实设备管理功能
 using System;
 using System.Collections.Generic;
@@ -176,7 +175,26 @@ namespace FireAntivirus.DeviceControl
 
             try
             {
-                // 简化实现
+                // 真实枚举：通过 WMI 查询系统中的蓝牙设备
+                using var searcher = new ManagementObjectSearcher(
+                    @"SELECT Name, DeviceID, Status FROM Win32_PnPEntity WHERE PNPClass = 'Bluetooth'");
+
+                foreach (var device in searcher.Get())
+                {
+                    var name = device["Name"]?.ToString();
+                    var deviceId = device["DeviceID"]?.ToString();
+                    var status = device["Status"]?.ToString();
+
+                    if (string.IsNullOrEmpty(name)) continue;
+
+                    devices.Add(new BluetoothDevice
+                    {
+                        Name = name,
+                        Address = ExtractBluetoothAddress(deviceId),
+                        IsPaired = string.Equals(status, "OK", StringComparison.OrdinalIgnoreCase),
+                        LastConnected = DateTime.MinValue
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -186,30 +204,82 @@ namespace FireAntivirus.DeviceControl
             return devices;
         }
 
+        private static string ExtractBluetoothAddress(string deviceId)
+        {
+            // 从设备实例 ID（形如 BTHENUM\DEV_001122334455\...）中提取蓝牙 MAC 地址
+            if (string.IsNullOrEmpty(deviceId)) return "未知";
+
+            var devIndex = deviceId.IndexOf("DEV_", StringComparison.OrdinalIgnoreCase);
+            if (devIndex >= 0 && devIndex + 17 <= deviceId.Length)
+            {
+                var mac = deviceId.Substring(devIndex + 4, 12);
+                return $"{mac.Substring(0, 2)}:{mac.Substring(2, 2)}:{mac.Substring(4, 2)}:{mac.Substring(6, 2)}:{mac.Substring(8, 2)}:{mac.Substring(10, 2)}";
+            }
+
+            return deviceId;
+        }
+
         public bool IsBluetoothEnabled()
         {
             try
             {
-                // 检查蓝牙状态
-                return false;
+                // 真实检查：存在状态正常（OK）的蓝牙设备即认为蓝牙可用
+                using var searcher = new ManagementObjectSearcher(
+                    @"SELECT Status FROM Win32_PnPEntity WHERE PNPClass = 'Bluetooth'");
+
+                foreach (var device in searcher.Get())
+                {
+                    if (string.Equals(device["Status"]?.ToString(), "OK", StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                LogHelper.Error("蓝牙状态检查异常", ex.Message);
             }
+
+            return false;
         }
 
         public void DisableBluetooth()
         {
             try
             {
-                // 禁用蓝牙适配器
-                LogHelper.Info("蓝牙已禁用");
+                // 真实禁用：通过 pnputil 逐个禁用蓝牙设备（需要管理员权限）
+                using var searcher = new ManagementObjectSearcher(
+                    @"SELECT PNPDeviceID FROM Win32_PnPEntity WHERE PNPClass = 'Bluetooth' AND Status = 'OK'");
+
+                int disabledCount = 0;
+                foreach (var device in searcher.Get())
+                {
+                    var pnpId = device["PNPDeviceID"]?.ToString();
+                    if (string.IsNullOrEmpty(pnpId)) continue;
+
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "pnputil.exe",
+                        Arguments = $"/disable-device \"{pnpId}\"",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    };
+
+                    using (var process = System.Diagnostics.Process.Start(psi))
+                    {
+                        process?.WaitForExit(30000);
+                        if (process?.ExitCode == 0) disabledCount++;
+                    }
+                }
+
+                LogHelper.Info(disabledCount > 0
+                    ? $"蓝牙已禁用（{disabledCount} 个设备）"
+                    : "蓝牙禁用操作未成功（可能需要管理员权限或系统不支持）");
             }
             catch (Exception ex)
             {
                 LogHelper.Error("禁用蓝牙失败", ex.Message);
             }
+
         }
     }
 

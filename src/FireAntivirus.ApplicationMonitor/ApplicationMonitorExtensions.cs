@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 // 应用监控扩展模块 - 包含更多真实的应用行为分析功能
 using System;
 using System.Collections.Concurrent;
@@ -186,9 +185,33 @@ namespace FireAntivirus.ApplicationMonitor
             var connections = new List<string>();
             try
             {
-                var properties = IPGlobalProperties.GetIPGlobalProperties();
-                var tcpConnections = properties.GetActiveTcpConnections();
-                // 简化实现
+                // 真实现：通过 netstat -ano 关联该 PID 的网络连接
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "netstat.exe",
+                    Arguments = "-ano",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                if (process == null) return connections;
+
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(30000);
+
+                foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var tokens = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (tokens.Length < 4) continue;
+
+                    var proto = tokens[0].ToUpperInvariant();
+                    if (proto != "TCP" && proto != "UDP") continue;
+
+                    if (int.TryParse(tokens[tokens.Length - 1], out var pid) && pid == processId)
+                        connections.Add(line.Trim());
+                }
             }
             catch { }
             return connections;
@@ -230,18 +253,22 @@ namespace FireAntivirus.ApplicationMonitor
             var env = new Dictionary<string, string>();
             try
             {
+                // Win32_Process 不直接暴露完整环境变量块（需内核辅助读取 PEB）。
+                // 真实可获取的进程环境信息：可执行路径、命令行、所有者、父进程
                 using var searcher = new ManagementObjectSearcher(
-                    $"SELECT * FROM Win32_Process WHERE ProcessId = {processId}");
+                    $"SELECT ExecutablePath, CommandLine, ParentProcessId FROM Win32_Process WHERE ProcessId = {processId}");
                 foreach (ManagementObject obj in searcher.Get())
                 {
-                    var variables = obj["EnvironmentVariables"] as ManagementBaseObject[];
-                    if (variables != null)
-                    {
-                        foreach (var v in variables)
-                        {
-                            // 简化实现
-                        }
-                    }
+                    env["ExecutablePath"] = obj["ExecutablePath"]?.ToString() ?? "";
+                    env["CommandLine"] = obj["CommandLine"]?.ToString() ?? "";
+                    env["ParentProcessId"] = obj["ParentProcessId"]?.ToString() ?? "";
+                }
+
+                using var ownerSearcher = new ManagementObjectSearcher(
+                    $"ASSIGNERS OF {{Win32_Process.Handle={processId}}} WHERE ResultClass=Win32_ProcessOwner");
+                foreach (ManagementObject obj in ownerSearcher.Get())
+                {
+                    env["Owner"] = $"{obj["Domain"]?.ToString()}\\{obj["User"]?.ToString()}";
                 }
             }
             catch { }

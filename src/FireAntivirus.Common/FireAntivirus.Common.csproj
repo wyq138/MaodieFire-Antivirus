@@ -14,15 +14,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="System.Windows.Forms" Version="4.0.0" />
+    <!-- WinForms/WPF 引用由下方 UseWindowsForms/UseWPF 框架特性提供，勿再引用 nuget 旧包（NU1701/漏洞传递源） -->
     <PackageReference Include="System.Management" Version="7.0.0" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="7.0.3" />
-    <PackageReference Include="System.Security.AccessControl" Version="6.0.2-mauipre.1.22102.15" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
-    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="6.0.1" />
-    <PackageReference Include="System.IO.Pipes" Version="4.3.0" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="6.0.2" />
+    <!-- 显式升级传递依赖 System.Data.SqlClient 4.8.1 -> 4.8.6（修复已知漏洞 NU1902） -->
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>
 
 

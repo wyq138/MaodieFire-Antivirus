@@ -1,0 +1,4 @@
+[
+  { "Sha256": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f", "ThreatName": "EICAR-Test-File", "ThreatType": "Test", "Severity": "Low", "FirstSeen": "1990-01-01" },
+  { "Sha256": "ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa", "ThreatName": "Ransom.WannaCry", "ThreatType": "Ransomware", "Severity": "Critical", "FirstSeen": "2017-05-12" }
+]

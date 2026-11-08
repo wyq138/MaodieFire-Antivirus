@@ -21,7 +21,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         public FileAnalyzer()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             fileHashCache = new Dictionary<string, string>();
             InitializeFilePatterns();
             InitializeFileSignatures();

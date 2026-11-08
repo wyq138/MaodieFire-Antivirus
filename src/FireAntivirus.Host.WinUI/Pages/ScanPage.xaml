@@ -1,11 +1,10 @@
-<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
-<Page
+<Page NavigationCacheMode="Required"
     x:Class="FireAntivirus.Host.WinUI.Pages.ScanPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:FireAntivirus.Host.WinUI.Pages">
 
-    <Grid Padding="24,16,24,24">
+    <Grid Padding="28,10,28,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -17,8 +16,9 @@
         <!-- 扫描目标选择（顶部横向排列） -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,14">
             <Button x:Name="QuickBtn" Content="快速扫描" Style="{StaticResource AccentButtonStyle}" Click="Quick_Click"/>
-            <Button Content="完整扫描" Click="Full_Click"/>
-            <Button Content="自定义目录" Click="Custom_Click"/>
+            <Button x:Name="FullBtn" Content="完整扫描" Click="Full_Click"/>
+            <Button x:Name="CustomBtn" Content="自定义目录" Click="Custom_Click"/>
+            <Button x:Name="StopBtn" Content="停止扫描" Click="Stop_Click" IsEnabled="False"/>
             <TextBox x:Name="PathBox" Width="360" PlaceholderText="选择扫描路径..."/>
         </StackPanel>
 

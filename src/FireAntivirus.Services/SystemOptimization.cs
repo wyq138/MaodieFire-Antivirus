@@ -1,10 +1,12 @@
 using FireAntivirus.Common;
 using FireAntivirus.Data;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace FireAntivirus.Services
@@ -412,16 +414,61 @@ namespace FireAntivirus.Services
 
             try
             {
-                // 实现回收站清理逻辑
-                // 这里简化处理，实际应该使用Windows API
-                result.CleanedItems.Add(new CleanedItem
-                {
-                    Path = "Recycle Bin",
-                    SizeBytes = 0,
-                    Type = CleanedItemType.RecycleBin
-                });
+                long totalSize = 0;
+                int totalCount = 0;
 
-                result.Success = true;
+                // 统计各驱动器回收站中的真实文件数量与大小（$Recycle.Bin\<SID>\$R*）
+                foreach (var drive in DriveInfo.GetDrives())
+                {
+                    if (drive.DriveType != DriveType.Fixed || !drive.IsReady) continue;
+
+                    var recycleRoot = Path.Combine(drive.RootDirectory.FullName, "$Recycle.Bin");
+                    if (!Directory.Exists(recycleRoot)) continue;
+
+                    try
+                    {
+                        foreach (var sidDir in Directory.EnumerateDirectories(recycleRoot))
+                        {
+                            foreach (var file in Directory.EnumerateFiles(sidDir, "$R*"))
+                            {
+                                try
+                                {
+                                    totalSize += new FileInfo(file).Length;
+                                    totalCount++;
+                                }
+                                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimization.cs 捕获异常", ex.Message); }
+                            }
+                        }
+                    }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimization.cs 捕获异常", ex.Message); }
+                }
+
+                if (totalCount > 0)
+                {
+                    // 通过 Shell API 真实清空回收站（跳过确认框与进度 UI）
+                    const uint SHERB_NOCONFIRMATION = 0x1;
+                    const uint SHERB_NOPROGRESSUI = 0x2;
+                    const uint SHERB_NOSOUND = 0x4;
+                    var hr = SHEmptyRecycleBin(IntPtr.Zero, null, SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND);
+
+                    if (hr == 0)
+                    {
+                        result.CleanedItems.Add(new CleanedItem
+                        {
+                            Path = "Recycle Bin (all drives)",
+                            SizeBytes = totalSize,
+                            Type = CleanedItemType.RecycleBin
+                        });
+                        result.FreedSpaceBytes += totalSize;
+                        Logger.Info($"Recycle bin emptied: {totalCount} items, {totalSize} bytes freed");
+                    }
+                    else
+                    {
+                        result.ErrorMessage = $"SHEmptyRecycleBin failed: HRESULT 0x{hr:X8}";
+                    }
+                }
+
+                result.Success = string.IsNullOrEmpty(result.ErrorMessage);
             }
             catch (Exception ex)
             {
@@ -494,11 +541,42 @@ namespace FireAntivirus.Services
 
             try
             {
-                // 实现启动项优化逻辑
-                // 这里简化处理，实际应该分析和优化启动项
-                optimization.Actions.Add("Analyzed startup items");
-                optimization.Actions.Add("Disabled unnecessary startup programs");
-                optimization.Actions.Add("Optimized startup services");
+                int registryItems = 0, brokenItems = 0, folderItems = 0;
+
+                // 真实枚举注册表自启动项并检查目标文件是否仍然存在
+                var runKeys = new[]
+                {
+                    (Registry.CurrentUser, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
+                    (Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run")
+                };
+
+                foreach (var (root, subKeyPath) in runKeys)
+                {
+                    using var key = root.OpenSubKey(subKeyPath);
+                    if (key == null) continue;
+
+                    foreach (var valueName in key.GetValueNames())
+                    {
+                        var command = key.GetValue(valueName)?.ToString();
+                        if (string.IsNullOrEmpty(command)) continue;
+
+                        registryItems++;
+
+                        var exePath = ExtractExecutablePath(command);
+                        if (!string.IsNullOrEmpty(exePath) && !File.Exists(exePath))
+                            brokenItems++;
+                    }
+                }
+
+                // 真实统计用户启动文件夹条目
+                var startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+                if (Directory.Exists(startupFolder))
+                    folderItems = Directory.GetFiles(startupFolder).Length;
+
+                optimization.Actions.Add($"Analyzed {registryItems} registry startup entries and {folderItems} startup-folder items");
+                optimization.Actions.Add(brokenItems > 0
+                    ? $"Found {brokenItems} startup entries pointing to missing files (cleanup candidates)"
+                    : "No broken startup entries found");
                 optimization.Success = true;
             }
             catch (Exception ex)
@@ -527,11 +605,37 @@ namespace FireAntivirus.Services
 
             try
             {
-                // 实现内存优化逻辑
-                // 这里简化处理，实际应该清理内存和优化内存使用
-                optimization.Actions.Add("Cleared memory cache");
-                optimization.Actions.Add("Optimized memory usage");
-                optimization.Actions.Add("Released unused memory");
+                var before = QueryGlobalMemoryStatus();
+
+                GC.Collect(2, GCCollectionMode.Forced, true, true);
+                GC.WaitForPendingFinalizers();
+                GC.Collect(2, GCCollectionMode.Forced, true, true);
+
+                // 修剪自身进程工作集
+                EmptyWorkingSet(Process.GetCurrentProcess().Handle);
+
+                // 修剪占用较大且可访问的进程工作集（无权限或已退出的进程静默跳过）
+                int currentProcessId = Process.GetCurrentProcess().Id;
+                int trimmedCount = 0;
+                foreach (var process in Process.GetProcesses())
+                {
+                    try
+                    {
+                        if (process.Id == currentProcessId) continue;
+                        if (process.WorkingSet64 < 50L * 1024 * 1024) continue;
+
+                        if (EmptyWorkingSet(process.Handle))
+                            trimmedCount++;
+                    }
+                    catch { }
+                    finally { process.Dispose(); }
+                }
+
+                var after = QueryGlobalMemoryStatus();
+                long freedBytes = (long)Math.Max(0, after.ullAvailPhys - before.ullAvailPhys);
+
+                optimization.Actions.Add($"Ran forced GC and trimmed working sets of {trimmedCount + 1} processes");
+                optimization.Actions.Add($"Available physical memory: {before.ullAvailPhys / 1024 / 1024} MB -> {after.ullAvailPhys / 1024 / 1024} MB (+{freedBytes / 1024 / 1024} MB)");
                 optimization.Success = true;
             }
             catch (Exception ex)
@@ -560,11 +664,40 @@ namespace FireAntivirus.Services
 
             try
             {
-                // 实现磁盘优化逻辑
-                // 这里简化处理，实际应该分析和优化磁盘使用
-                optimization.Actions.Add("Analyzed disk usage");
-                optimization.Actions.Add("Optimized disk fragmentation");
-                optimization.Actions.Add("Cleaned disk errors");
+                // 真实调用 Windows 碎片整理工具对每个固定磁盘做只读分析
+                foreach (var drive in DriveInfo.GetDrives())
+                {
+                    if (drive.DriveType != DriveType.Fixed || !drive.IsReady) continue;
+
+                    try
+                    {
+                        var psi = new ProcessStartInfo
+                        {
+                            FileName = "defrag.exe",
+                            Arguments = $"{drive.Name} /A /V",
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            CreateNoWindow = true
+                        };
+
+                        using var process = Process.Start(psi);
+                        if (process == null) continue;
+
+                        var output = process.StandardOutput.ReadToEnd();
+                        process.WaitForExit(120000);
+
+                        var fragmentLine = output.Split('\n')
+                            .Select(l => l.Trim())
+                            .FirstOrDefault(l => l.IndexOf("fragment", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                                 l.Contains("碎片"));
+
+                        optimization.Actions.Add(fragmentLine != null
+                            ? $"{drive.Name} defrag analysis: {fragmentLine}"
+                            : $"{drive.Name} defrag analysis completed (exit code {process.ExitCode})");
+                    }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "SystemOptimization.cs 捕获异常", ex.Message); }
+                }
+
                 optimization.Success = true;
             }
             catch (Exception ex)
@@ -593,11 +726,34 @@ namespace FireAntivirus.Services
 
             try
             {
-                // 实现服务优化逻辑
-                // 这里简化处理，实际应该分析和优化系统服务
-                optimization.Actions.Add("Analyzed system services");
-                optimization.Actions.Add("Disabled unnecessary services");
-                optimization.Actions.Add("Optimized service startup types");
+                // 真实查询 WMI 统计系统服务状态
+                int total = 0, autoStart = 0, running = 0, delayedAuto = 0;
+
+                using var searcher = new System.Management.ManagementObjectSearcher(
+                    "SELECT State, StartMode, DelayedAutoStart FROM Win32_Service");
+
+                foreach (var service in searcher.Get())
+                {
+                    total++;
+
+                    var state = service["State"]?.ToString();
+                    var startMode = service["StartMode"]?.ToString();
+
+                    if (string.Equals(startMode, "Auto", StringComparison.OrdinalIgnoreCase))
+                    {
+                        autoStart++;
+
+                        var delayedValue = service["DelayedAutoStart"];
+                        if (delayedValue != null && bool.TryParse(delayedValue.ToString(), out var isDelayed) && isDelayed)
+                            delayedAuto++;
+                    }
+
+                    if (string.Equals(state, "Running", StringComparison.OrdinalIgnoreCase))
+                        running++;
+                }
+
+                optimization.Actions.Add($"Analyzed {total} system services: {running} running, {autoStart} auto-start ({delayedAuto} delayed-start)");
+                optimization.Actions.Add("Reviewed service startup types; no configuration changes were applied automatically");
                 optimization.Success = true;
             }
             catch (Exception ex)
@@ -614,6 +770,56 @@ namespace FireAntivirus.Services
 
             return optimization;
         }
+
+        #region Native APIs 与辅助方法
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        private static extern int SHEmptyRecycleBin(IntPtr hwnd, string rootPath, uint flags);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool EmptyWorkingSet(IntPtr hProcess);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private class MEMORYSTATUSEX
+        {
+            public uint dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
+            public uint dwMemoryLoad;
+            public ulong ullTotalPhys;
+            public ulong ullAvailPhys;
+            public ulong ullTotalPageFile;
+            public ulong ullAvailPageFile;
+            public ulong ullTotalVirtual;
+            public ulong ullAvailVirtual;
+            public ulong ullAvailExtendedVirtual;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX buffer);
+
+        private static MEMORYSTATUSEX QueryGlobalMemoryStatus()
+        {
+            var status = new MEMORYSTATUSEX();
+            if (!GlobalMemoryStatusEx(status))
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+            return status;
+        }
+
+        private static string ExtractExecutablePath(string commandLine)
+        {
+            if (string.IsNullOrWhiteSpace(commandLine)) return null;
+
+            var trimmed = commandLine.Trim();
+            if (trimmed.StartsWith("\""))
+            {
+                int endQuote = trimmed.IndexOf('"', 1);
+                return endQuote > 1 ? trimmed.Substring(1, endQuote - 1) : null;
+            }
+
+            int spaceIndex = trimmed.IndexOf(' ');
+            return spaceIndex > 0 ? trimmed.Substring(0, spaceIndex) : trimmed;
+        }
+
+        #endregion
 
         private async Task<SystemComponentHealth> CheckCpuHealthAsync()
         {

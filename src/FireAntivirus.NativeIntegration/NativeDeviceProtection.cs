@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -299,8 +298,24 @@ namespace FireAntivirus.NativeIntegration
         {
             try
             {
-                // 简化实现 - 实际应该使用WMI或DeviceIOControl
-                return false;
+                // 真实弹出：通过 pnputil 移除设备实例（等效安全弹出，需要管理员权限）
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "pnputil.exe",
+                    Arguments = $"/remove-device \"{deviceId}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                process?.WaitForExit(30000);
+                bool success = process?.ExitCode == 0;
+
+                if (!success)
+                    Console.WriteLine($"弹出设备失败: pnputil 退出码 {process?.ExitCode}（可能需要管理员权限）");
+
+                return success;
             }
             catch (Exception ex)
             {
@@ -316,8 +331,24 @@ namespace FireAntivirus.NativeIntegration
         {
             try
             {
-                // 简化实现 - 需要管理员权限
-                return false;
+                // 真实禁用：通过 pnputil 禁用设备实例（需要管理员权限）
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "pnputil.exe",
+                    Arguments = $"/disable-device \"{deviceId}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                process?.WaitForExit(30000);
+                bool success = process?.ExitCode == 0;
+
+                if (!success)
+                    Console.WriteLine($"禁用设备失败: pnputil 退出码 {process?.ExitCode}（可能需要管理员权限）");
+
+                return success;
             }
             catch (Exception ex)
             {
@@ -331,8 +362,27 @@ namespace FireAntivirus.NativeIntegration
         #region 私有方法
         private void InitializeDefaultDevices()
         {
-            // 添加已知的安全设备ID（简化版）
-            // 实际应该从配置文件加载
+            // 真实初始化：从配置目录加载已知安全设备列表（每行一个设备实例 ID，# 为注释）
+            try
+            {
+                var knownDevicesFile = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus", "known_devices.txt");
+
+                if (File.Exists(knownDevicesFile))
+                {
+                    foreach (var line in File.ReadLines(knownDevicesFile))
+                    {
+                        var trimmed = line.Trim();
+                        if (trimmed.Length > 0 && !trimmed.StartsWith("#"))
+                            _authorizedDevices.Add(trimmed);
+                    }
+                }
+            }
+            catch
+            {
+                // 配置缺失或不可读时保持空授权列表
+            }
         }
 
         private void OnUsbDeviceChanged(object sender, EventArrivedEventArgs e)

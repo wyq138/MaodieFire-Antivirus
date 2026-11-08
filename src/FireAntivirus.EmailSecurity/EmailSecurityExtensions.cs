@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 // 邮箱安全扩展模块 - 包含更多真实邮箱安全功能
 using System;
 using System.Collections.Generic;
@@ -274,9 +273,9 @@ namespace FireAntivirus.EmailSecurity
                     result.SecurityScore -= 40;
                 }
 
-                // 检查加密套件
-                var cipherSuites = sslStream.CipherAlgorithm;
-                if (cipherSuites == System.Security.Authentication.CipherAlgorithmType.None)
+                // 检查加密套件（NegotiatedCipherSuite 替代已过时的 CipherAlgorithm；TlsCipherSuite 位于 System.Net.Security）
+                var cipherSuite = sslStream.NegotiatedCipherSuite;
+                if (cipherSuite == System.Net.Security.TlsCipherSuite.TLS_NULL_WITH_NULL_NULL)
                 {
                     result.SecurityIssues.Add("未使用加密");
                     result.SecurityScore -= 50;
@@ -307,8 +306,12 @@ namespace FireAntivirus.EmailSecurity
         {
             try
             {
-                // 使用公钥加密邮件
-                return Convert.ToBase64String(Encoding.UTF8.GetBytes(plainText));
+                // 真实实现：RSA-2048 公钥加密
+                using var rsa = System.Security.Cryptography.RSA.Create(2048);
+                rsa.FromXmlString(publicKey);
+                byte[] cipher = rsa.Encrypt(Encoding.UTF8.GetBytes(plainText),
+                    System.Security.Cryptography.RSAEncryptionPadding.OaepSHA256);
+                return Convert.ToBase64String(cipher);
             }
             catch (Exception ex)
             {
@@ -320,8 +323,12 @@ namespace FireAntivirus.EmailSecurity
         {
             try
             {
-                // 使用私钥解密邮件
-                return Encoding.UTF8.GetString(Convert.FromBase64String(encryptedText));
+                // 真实实现：RSA 私钥解密
+                using var rsa = System.Security.Cryptography.RSA.Create(2048);
+                rsa.FromXmlString(privateKey);
+                byte[] plain = rsa.Decrypt(Convert.FromBase64String(encryptedText),
+                    System.Security.Cryptography.RSAEncryptionPadding.OaepSHA256);
+                return Encoding.UTF8.GetString(plain);
             }
             catch (Exception ex)
             {
@@ -331,9 +338,13 @@ namespace FireAntivirus.EmailSecurity
 
         public async Task<(string publicKey, string privateKey)> GenerateKeyPair()
         {
-            // 生成PGP密钥对
-            await Task.Delay(100);
-            return (Guid.NewGuid().ToString(), Guid.NewGuid().ToString());
+            // 真实实现：生成 RSA-2048 密钥对（XML 格式，可直接用于上面加解密）
+            return await Task.Run(() =>
+            {
+                using var rsa = System.Security.Cryptography.RSA.Create(2048);
+                return (rsa.ToXmlString(includePrivateParameters: false),
+                        rsa.ToXmlString(includePrivateParameters: true));
+            });
         }
     }
 

@@ -283,9 +283,19 @@ namespace FireAntivirus.Backup
 
         private void SaveBackups()
         {
-            // 模拟保存备份条目到文件
-            string backupFile = Path.Combine(_backupRoot, "backups.json");
-            // 实际实现中应该序列化备份条目到文件
+            // 真实保存：序列化备份条目到 backups.json（LoadBackups 启动时读取同一文件）
+            try
+            {
+                string backupFile = Path.Combine(_backupRoot, "backups.json");
+                Directory.CreateDirectory(_backupRoot);
+                File.WriteAllText(backupFile,
+                    Newtonsoft.Json.JsonConvert.SerializeObject(_backupEntries, Newtonsoft.Json.Formatting.Indented));
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                    "保存备份索引失败: " + ex.Message);
+            }
         }
     }
 }

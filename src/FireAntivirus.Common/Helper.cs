@@ -1,5 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.IO;
 using System.Security.Cryptography;
@@ -243,27 +241,31 @@ namespace FireAntivirus.Common
 
         public static string GenerateRandomKey(int length = 32)
         {
-            using (var rng = new RNGCryptoServiceProvider())
-            {
-                var bytes = new byte[length];
-                rng.GetBytes(bytes);
-                return BitConverter.ToString(bytes).Replace("-", "").Substring(0, length);
-            }
+            var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(length);
+            return BitConverter.ToString(bytes).Replace("-", "").Substring(0, length);
         }
     }
 
     public static class NetworkHelper
     {
+        // HttpClient 线程安全，全进程共享（替代已过时的 WebClient）
+        private static readonly System.Net.Http.HttpClient _http = new System.Net.Http.HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(15)
+        };
+
+        static NetworkHelper()
+        {
+            try { _http.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus/1.0"); } catch { }
+        }
+
         public static bool IsInternetAvailable()
         {
             try
             {
-                using (var client = new WebClient())
+                using (var resp = _http.GetAsync("http://www.msftconnecttest.com/connecttest.txt").GetAwaiter().GetResult())
                 {
-                    using (client.OpenRead("http://www.msftconnecttest.com/connecttest.txt"))
-                    {
-                        return true;
-                    }
+                    return resp.IsSuccessStatusCode;
                 }
             }
             catch
@@ -276,10 +278,7 @@ namespace FireAntivirus.Common
         {
             try
             {
-                using (var client = new WebClient())
-                {
-                    return client.DownloadString("http://ipinfo.io/ip").Trim();
-                }
+                return _http.GetStringAsync("http://ipinfo.io/ip").GetAwaiter().GetResult().Trim();
             }
             catch
             {
@@ -305,20 +304,13 @@ namespace FireAntivirus.Common
 
         public static string DownloadString(string url)
         {
-            using (var client = new WebClient())
-            {
-                client.Headers.Add("User-Agent", "FireAntivirus/1.0");
-                return client.DownloadString(url);
-            }
+            return _http.GetStringAsync(url).GetAwaiter().GetResult();
         }
 
         public static void DownloadFile(string url, string filePath)
         {
-            using (var client = new WebClient())
-            {
-                client.Headers.Add("User-Agent", "FireAntivirus/1.0");
-                client.DownloadFile(url, filePath);
-            }
+            var bytes = _http.GetByteArrayAsync(url).GetAwaiter().GetResult();
+            File.WriteAllBytes(filePath, bytes);
         }
     }
 
@@ -1015,9 +1007,6 @@ namespace FireAntivirus.Common
             var rng = new Random();
             return list[rng.Next(list.Count)];
         }
-
-        // 耄耋软件工作室 开发，严禁非法反编译
-
         public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
         {
             var list = source.ToList();
@@ -2018,7 +2007,6 @@ namespace FireAntivirus.Common
 
         public static IDbConnection CreateSqliteConnection(string filePath)
         {
-            // 耄耋软件工作室 开发，严禁非法反编译
             // 使用反射创建SQLiteConnection，避免直接依赖
             var assembly = Assembly.LoadFrom(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "System.Data.SQLite.dll"));
             var connectionType = assembly.GetType("System.Data.SQLite.SQLiteConnection");

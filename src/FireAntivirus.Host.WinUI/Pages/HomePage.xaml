@@ -1,10 +1,9 @@
-<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
-<Page
+<Page NavigationCacheMode="Required"
     x:Class="FireAntivirus.Host.WinUI.Pages.HomePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer Padding="24,16,24,24">
+    <ScrollViewer Padding="28,10,28,24">
         <StackPanel Spacing="16" MaxWidth="960">
 
             <!-- 防护状态总览卡 -->
@@ -14,18 +13,22 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Width="72" Height="72" CornerRadius="36"
-                            Background="{StaticResource BrandBrush}">
-                        <FontIcon Glyph="&#xE72E;" FontSize="34" Foreground="White"/>
+                    <Border Width="72" Height="72" CornerRadius="36">
+                        <Border.Background>
+                            <ImageBrush x:Name="HomeCatBrush" Stretch="UniformToFill"/>
+                        </Border.Background>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
                         <TextBlock x:Name="StatusText" Text="你的设备受保护" FontSize="24" FontWeight="SemiBold"/>
                         <TextBlock x:Name="StatusDetail" Text="实时防护、病毒库更新已就绪" Opacity="0.7"/>
+                        <TextBlock x:Name="EngineVersion" Opacity="0.55" FontSize="12"/>
                         <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,10,0,0">
                             <Button x:Name="QuickScanButton" Content="快速扫描" Style="{StaticResource AccentButtonStyle}" Click="QuickScan_Click"/>
                             <Button Content="完整扫描" Click="FullScan_Click"/>
-                            <Button Content="更新病毒库" Click="UpdateDb_Click"/>
+                            <Button x:Name="UpdateDbButton" Content="更新病毒库" Click="UpdateDb_Click"/>
                         </StackPanel>
+                        <ProgressBar x:Name="UpdateProgress" IsIndeterminate="True" Height="4" Visibility="Collapsed" Margin="0,6,0,0"/>
+                        <TextBlock x:Name="UpdateState" Opacity="0.7" FontSize="12" Visibility="Collapsed" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -51,6 +54,7 @@
                     <StackPanel>
                         <TextBlock Text="病毒库版本" Style="{StaticResource MetricCaption}"/>
                         <TextBlock x:Name="DbVersion" Text="-" Style="{StaticResource MetricValue}" FontSize="24"/>
+                        <TextBlock x:Name="DbUpdated" Text="" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -59,10 +63,9 @@
             <Border Style="{StaticResource ModernCard}">
                 <StackPanel Spacing="4">
                     <TextBlock Text="防护模块" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                    <ToggleSwitch x:Name="RealTimeToggle" Header="实时防护" OnContent="已开启" OffContent="已关闭" Toggled="RealTimeToggle_Toggled"/>
-                    <ToggleSwitch x:Name="WebToggle" Header="网页防护（拦截恶意URL/C2）" OnContent="已开启" OffContent="已关闭" Toggled="WebToggle_Toggled"/>
-                    <ToggleSwitch x:Name="RansomToggle" Header="勒索防护" OnContent="已开启" OffContent="已关闭" Toggled="RansomToggle_Toggled"/>
-                    <ToggleSwitch x:Name="BehaviorToggle" Header="行为分析" OnContent="已开启" OffContent="已关闭" Toggled="BehaviorToggle_Toggled"/>
+                    <ToggleSwitch x:Name="RealTimeToggle" Header="实时文件防护（监控临时/下载/启动目录）" OnContent="已开启" OffContent="已关闭" Toggled="RealTimeToggle_Toggled"/>
+                    <ToggleSwitch x:Name="RansomToggle" Header="勒索防护（监控文档目录敏感写入）" OnContent="已开启" OffContent="已关闭" Toggled="RansomToggle_Toggled"/>
+                    <TextBlock x:Name="GuardStatus" Opacity="0.6" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
         </StackPanel>

@@ -286,23 +286,71 @@ namespace FireAntivirus.ServiceHost
 
         private int GetServiceProcessId(string serviceName)
         {
-            // 实现获取服务进程ID的逻辑
-            // 这里简化处理，实际应该使用WMI或其他方法
+            // 通过 WMI 真实查询服务对应的进程 ID
+            try
+            {
+                using var searcher = new System.Management.ManagementObjectSearcher(
+                    $"SELECT ProcessId FROM Win32_Service WHERE Name = '{serviceName.Replace("'", "''")}'");
+
+                foreach (var service in searcher.Get())
+                {
+                    var value = service["ProcessId"];
+                    if (value != null && int.TryParse(value.ToString(), out var pid) && pid > 0)
+                        return pid;
+                }
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Error($"Get service process id error: {ex.Message}");
+            }
+
             return 0;
         }
 
         private double GetProcessCpuUsage(Process process)
         {
-            // 实现获取进程CPU使用率的逻辑
-            // 这里简化处理，实际应该使用性能计数器
-            return 0.0;
+            // 真实计算：进程累计 CPU 时间 / 运行时长（自启动以来的平均 CPU 占用率）
+            try
+            {
+                process.Refresh();
+                var totalCpuMs = process.TotalProcessorTime.TotalMilliseconds;
+                var wallClockMs = (DateTime.Now - process.StartTime).TotalMilliseconds;
+
+                if (wallClockMs <= 0) return 0.0;
+
+                return Math.Min(totalCpuMs / wallClockMs * 100.0, 100.0 * Environment.ProcessorCount);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Error($"Get process cpu usage error: {ex.Message}");
+                return 0.0;
+            }
         }
 
         private DateTime? GetServiceStartupTime()
         {
-            // 实现获取服务启动时间的逻辑
-            // 这里简化处理，实际应该使用WMI或其他方法
-            return DateTime.UtcNow.AddHours(-1);
+            // 真实查询：先取得服务进程 PID，再读取该进程的启动时间
+            try
+            {
+                using (var serviceController = new ServiceController(_serviceName))
+                {
+                    if (serviceController.Status == ServiceControllerStatus.Running)
+                    {
+                        var processId = GetServiceProcessId(serviceController.ServiceName);
+                        if (processId > 0)
+                        {
+                            using var process = Process.GetProcessById(processId);
+                            return process.StartTime.ToUniversalTime();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Error($"Get service startup time error: {ex.Message}");
+            }
+
+            return null;
         }
 
         private HealthStatus EvaluateHealthStatus(ServiceControllerStatus status, List<ServiceMetric> metrics)

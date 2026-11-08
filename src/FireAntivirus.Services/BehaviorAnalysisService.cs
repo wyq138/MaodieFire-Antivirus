@@ -659,28 +659,59 @@ namespace FireAntivirus.Services
             return null;
         }
 
+        // 真实完整性级别检测（升级自"按路径推断"）：查询进程令牌 TokenIntegrityLevel，
+// 返回 Low / Medium / High / System（路径推断会把任意 System32 程序误判为 System 级）。
         private string GetProcessIntegrity(Process process)
         {
             try
             {
-                // 简化的完整性级别检测
-                var path = GetProcessPath(process);
-                if (string.IsNullOrEmpty(path))
-                    return "Unknown";
-                
-                if (path.ToLower().Contains("\\windows\\system32\\"))
-                    return "System";
-                
-                if (path.ToLower().Contains("\\program files\\"))
-                    return "High";
-                
-                return "Medium";
+                if (!OpenProcessToken(process.Handle, TOKEN_QUERY, out IntPtr token)) return "Unknown";
+                try
+                {
+                    GetTokenInformation(token, TokenIntegrityLevel, IntPtr.Zero, 0, out int size);
+                    if (size <= 0) return "Unknown";
+
+                    IntPtr buffer = System.Runtime.InteropServices.Marshal.AllocHGlobal(size);
+                    try
+                    {
+                        if (!GetTokenInformation(token, TokenIntegrityLevel, buffer, size, out _)) return "Unknown";
+                        IntPtr sid = System.Runtime.InteropServices.Marshal.ReadIntPtr(buffer, 0);
+                        if (sid == IntPtr.Zero) return "Unknown";
+
+                        int subAuthorityCount = System.Runtime.InteropServices.Marshal.ReadByte(sid, 1);
+                        if (subAuthorityCount <= 0) return "Unknown";
+                        int offset = 8 + (subAuthorityCount - 1) * 4;
+                        uint rid = (uint)System.Runtime.InteropServices.Marshal.ReadInt32(sid, offset);
+
+                        return rid switch
+                        {
+                            >= 0x4000 => "System",
+                            >= 0x3000 => "High",
+                            >= 0x2000 => "Medium",
+                            >= 0x1000 => "Low",
+                            _ => "Untrusted"
+                        };
+                    }
+                    finally { Marshal.FreeHGlobal(buffer); }
+                }
+                finally { CloseHandle(token); }
             }
             catch
             {
                 return "Unknown";
             }
         }
+
+        private const int TOKEN_QUERY = 0x0008;
+        private const int TokenIntegrityLevel = 25;
+
+        [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool OpenProcessToken(IntPtr processHandle, int desiredAccess, out IntPtr tokenHandle);
+
+        [System.Runtime.InteropServices.DllImport("advapi32.dll", SetLastError = true)]
+        private static extern bool GetTokenInformation(IntPtr tokenHandle, int infoClass, IntPtr info, int infoLength, out int returnLength);
+
+        // CloseHandle 始终复用本类第 66 行已有的 kernel32 声明（升级时重复声明曾触发 CS0111）
 
         private double CalculateInitialTrustScore(BehaviorProcessProfile profile)
         {

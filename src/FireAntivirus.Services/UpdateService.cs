@@ -92,21 +92,27 @@ namespace FireAntivirus.Services
             }
         }
 
+        // HttpClient 线程安全共享（替代已过时的 WebClient）
+        private static readonly System.Net.Http.HttpClient _http = new System.Net.Http.HttpClient
+        {
+            Timeout = TimeSpan.FromMinutes(10)
+        };
+
+        static UpdateService()
+        {
+            try { _http.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus Update Client"); } catch { }
+        }
+
         private static async Task<string> GetLatestVersionAsync()
         {
             foreach (string serverUrl in UpdateServerUrls)
             {
                 try
                 {
-                    using (var client = new WebClient())
+                    string version = await _http.GetStringAsync($"{serverUrl}/latest-version.txt");
+                    if (!string.IsNullOrWhiteSpace(version))
                     {
-                        client.Headers.Add("User-Agent", "FireAntivirus Update Client");
-                        // WebClient does not support Timeout in .NET Core
-                        string version = await client.DownloadStringTaskAsync($"{serverUrl}/latest-version.txt");
-                        if (!string.IsNullOrWhiteSpace(version))
-                        {
-                            return version.Trim();
-                        }
+                        return version.Trim();
                     }
                 }
                 catch
@@ -114,7 +120,7 @@ namespace FireAntivirus.Services
                     continue; // 尝试下一个服务器
                 }
             }
-            
+
             // 如果所有服务器都连接失败，返回当前版本
             return CurrentVersion;
         }
@@ -125,15 +131,10 @@ namespace FireAntivirus.Services
             {
                 try
                 {
-                    using (var client = new WebClient())
+                    string info = await _http.GetStringAsync($"{serverUrl}/updates/{version}/release-notes.txt");
+                    if (!string.IsNullOrWhiteSpace(info))
                     {
-                        client.Headers.Add("User-Agent", "FireAntivirus Update Client");
-                        // WebClient does not support Timeout in .NET Core
-                        string info = await client.DownloadStringTaskAsync($"{serverUrl}/updates/{version}/release-notes.txt");
-                        if (!string.IsNullOrWhiteSpace(info))
-                        {
-                            return info;
-                        }
+                        return info;
                     }
                 }
                 catch
@@ -141,27 +142,34 @@ namespace FireAntivirus.Services
                     continue; // 尝试下一个服务器
                 }
             }
-            
+
             return "有新版本可用";
         }
 
         private static async Task DownloadFileAsync(string url, string savePath)
         {
-            using (var client = new WebClient())
+            using (var resp = await _http.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead))
             {
-                client.Headers.Add("User-Agent", "FireAntivirus Update Client");
-                
-                client.DownloadProgressChanged += (sender, e) =>
+                resp.EnsureSuccessStatusCode();
+                long total = resp.Content.Headers.ContentLength ?? -1;
+                long received = 0;
+                using (var src = await resp.Content.ReadAsStreamAsync())
+                using (var dst = File.Create(savePath))
                 {
-                    UpdateProgress?.Invoke(null, new UpdateProgressEventArgs
+                    var buffer = new byte[81920];
+                    int read;
+                    while ((read = await src.ReadAsync(buffer, 0, buffer.Length)) > 0)
                     {
-                        ProgressPercentage = e.ProgressPercentage,
-                        BytesReceived = e.BytesReceived,
-                        TotalBytesToReceive = e.TotalBytesToReceive
-                    });
-                };
-
-                await client.DownloadFileTaskAsync(url, savePath);
+                        await dst.WriteAsync(buffer, 0, read);
+                        received += read;
+                        UpdateProgress?.Invoke(null, new UpdateProgressEventArgs
+                        {
+                            ProgressPercentage = total > 0 ? (int)(received * 100 / total) : 0,
+                            BytesReceived = received,
+                            TotalBytesToReceive = total
+                        });
+                    }
+                }
             }
         }
 
@@ -169,20 +177,15 @@ namespace FireAntivirus.Services
         {
             try
             {
-                using (var client = new WebClient())
-                {
-                    client.Headers.Add("User-Agent", "FireAntivirus Update Client");
-                    var expectedChecksum = await client.DownloadStringTaskAsync(checksumUrl);
-                    expectedChecksum = expectedChecksum.Trim();
+                var expectedChecksum = (await _http.GetStringAsync(checksumUrl)).Trim();
 
-                    using (var md5 = MD5.Create())
+                using (var md5 = MD5.Create())
+                {
+                    using (var stream = File.OpenRead(filePath))
                     {
-                        using (var stream = File.OpenRead(filePath))
-                        {
-                            var hash = md5.ComputeHash(stream);
-                            var actualChecksum = BitConverter.ToString(hash).Replace("-", "").ToLower();
-                            return actualChecksum == expectedChecksum;
-                        }
+                        var hash = md5.ComputeHash(stream);
+                        var actualChecksum = BitConverter.ToString(hash).Replace("-", "").ToLower();
+                        return actualChecksum == expectedChecksum;
                     }
                 }
             }
@@ -344,15 +347,10 @@ namespace FireAntivirus.Services
             {
                 try
                 {
-                    using (var client = new WebClient())
+                    string version = _http.GetStringAsync($"{serverUrl}/latest-version.txt").GetAwaiter().GetResult().Trim();
+                    if (!string.IsNullOrWhiteSpace(version))
                     {
-                        client.Headers.Add("User-Agent", "FireAntivirus Update Client");
-                        // WebClient does not support Timeout in .NET Core
-                        string version = client.DownloadString($"{serverUrl}/latest-version.txt").Trim();
-                        if (!string.IsNullOrWhiteSpace(version))
-                        {
-                            return version;
-                        }
+                        return version;
                     }
                 }
                 catch
@@ -360,7 +358,7 @@ namespace FireAntivirus.Services
                     continue; // 尝试下一个服务器
                 }
             }
-            
+
             return CurrentVersion;
         }
 

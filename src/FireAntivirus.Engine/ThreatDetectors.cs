@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -123,7 +122,7 @@ namespace FireAntivirus.Engine
             int int3Count = 0;
             bool hasJmpEsp = false;
             bool hasJmpEax = false;
-            bool hasCallEax = false;
+
 
             // 检测NOP滑行和INT3断点
             for (int i = 0; i < content.Length - 4; i++)
@@ -144,18 +143,16 @@ namespace FireAntivirus.Engine
             // 大幅提高NOP sled阈值: >100 才加分
             if (nopCount > 100) score += 10;
 
-            // INT3 断点单独出现不加分，仅作标记
-            if (int3Count > 5) score += 5;
+            // INT3：正常 PE 的 CC 填充大量存在，>50 才是真实断点表规模
+            if (int3Count > 50) score += 5;
 
-            // 检测JMP ESP/CALL EAX等
+            // 检测JMP ESP等（CALL EAX 在正常代码中极常见，不作为 shellcode 证据）
             for (int i = 0; i < content.Length - 2; i++)
             {
                 // JMP ESP (FF E4)
                 if (content[i] == 0xFF && content[i + 1] == 0xE4) hasJmpEsp = true;
                 // JMP EAX (FF E0)
                 if (content[i] == 0xFF && content[i + 1] == 0xE0) hasJmpEax = true;
-                // CALL EAX (FF D0)
-                if (content[i] == 0xFF && content[i + 1] == 0xD0) hasCallEax = true;
             }
 
             // 关键：只有 NOP + INT3 + JMP ESP 多种shellcode模式同时出现时才大幅加分
@@ -167,7 +164,7 @@ namespace FireAntivirus.Engine
             {
                 score += 15;
             }
-            else if (hasJmpEsp || hasJmpEax || hasCallEax)
+            else if (hasJmpEsp || hasJmpEax)
             {
                 score += 5;
             }

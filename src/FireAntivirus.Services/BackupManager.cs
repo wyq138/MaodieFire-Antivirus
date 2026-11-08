@@ -284,22 +284,24 @@ namespace FireAntivirus.Services
             }
             catch (Exception ex)
             {
-                RaiseBackupEvent(new BackupEventArgs(BackupEventType.Error, "Failed to get backups: " + ex.Message));
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "BackupManager.cs", "Failed to list backups: " + ex.Message);
             }
-            return backups.OrderByDescending(b => b.CreationDate).ToList();
+            return backups;
         }
 
-        public bool DeleteBackup(string backupPath)
+        public async Task<bool> DeleteBackupAsync(string backupPath)
         {
             try
             {
-                if (File.Exists(backupPath))
+                if (string.IsNullOrEmpty(backupPath) || !File.Exists(backupPath))
                 {
-                    File.Delete(backupPath);
-                    RaiseBackupEvent(new BackupEventArgs(BackupEventType.Info, "Backup deleted successfully: " + backupPath));
-                    return true;
+                    RaiseBackupEvent(new BackupEventArgs(BackupEventType.Error, "Backup file not found: " + backupPath));
+                    return false;
                 }
-                return false;
+
+                await Task.Run(() => File.Delete(backupPath));
+                RaiseBackupEvent(new BackupEventArgs(BackupEventType.BackupDeleted, "Backup deleted: " + backupPath));
+                return true;
             }
             catch (Exception ex)
             {
@@ -384,19 +386,16 @@ namespace FireAntivirus.Services
                 string outputPath = inputPath + ".encrypted";
                 using (var inputStream = File.OpenRead(inputPath))
                 using (var outputStream = File.Create(outputPath))
-                using (var aes = new AesManaged())
+                using (var aes = Aes.Create())
                 {
                     // 生成密钥和IV
-                    var salt = new byte[16];
-                    using (var rng = new RNGCryptoServiceProvider())
-                    {
-                        rng.GetBytes(salt);
-                    }
+                    var salt = RandomNumberGenerator.GetBytes(16);
                     outputStream.Write(salt, 0, salt.Length);
 
-                    var key = new Rfc2898DeriveBytes(password, salt, 10000);
-                    aes.Key = key.GetBytes(aes.KeySize / 8);
-                    aes.IV = key.GetBytes(aes.BlockSize / 8);
+                    // Pbkdf2 静态方法（SHA1 与旧 Rfc2898DeriveBytes 默认等价，保持旧备份可解）
+                    byte[] derived = Rfc2898DeriveBytes.Pbkdf2(password, salt, 10000, HashAlgorithmName.SHA1, 48);
+                    aes.Key = derived[..32];
+                    aes.IV = derived[32..48];
 
                     // 加密
                     using (var cryptoStream = new CryptoStream(outputStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
@@ -421,16 +420,16 @@ namespace FireAntivirus.Services
             {
                 using (var inputStream = File.OpenRead(inputPath))
                 using (var outputStream = File.Create(outputPath))
-                using (var aes = new AesManaged())
+                using (var aes = Aes.Create())
                 {
                     // 读取盐值
                     var salt = new byte[16];
-                    await inputStream.ReadAsync(salt, 0, salt.Length, cancellationToken);
+                    await inputStream.ReadExactlyAsync(salt, cancellationToken);
 
                     // 生成密钥和IV
-                    var key = new Rfc2898DeriveBytes(password, salt, 10000);
-                    aes.Key = key.GetBytes(aes.KeySize / 8);
-                    aes.IV = key.GetBytes(aes.BlockSize / 8);
+                    byte[] derived = Rfc2898DeriveBytes.Pbkdf2(password, salt, 10000, HashAlgorithmName.SHA1, 48);
+                    aes.Key = derived[..32];
+                    aes.IV = derived[32..48];
 
                     // 解密
                     using (var cryptoStream = new CryptoStream(inputStream, aes.CreateDecryptor(), CryptoStreamMode.Read))

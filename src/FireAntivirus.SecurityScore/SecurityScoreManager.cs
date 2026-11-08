@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -237,6 +238,7 @@ namespace FireAntivirus.SecurityScore
             }
 
             _lastUpdated = DateTime.Now;
+            RecordScoreSnapshot(_currentScore);
 
             _dataManager.AddLog(new LogEntry
             {
@@ -392,30 +394,67 @@ namespace FireAntivirus.SecurityScore
                 Scores = new List<ScoreEntry>()
             };
 
-            var rng = new Random();
-            int baseScore = _currentScore;
-
-            // 基于当前评分生成每日历史数据，每向前一天增加小幅随机波动
-            for (int i = days - 1; i >= 0; i--)
+            // 真实历史：读取持久化的评分记录（每次 CalculateSecurityScore 落一条）
+            // 没有记录的日期如实留空，不再用随机数伪造
+            var records = LoadScoreRecords();
+            var startDate = DateTime.Now.Date.AddDays(-(days - 1));
+            foreach (var group in records
+                .Where(r => r.Date >= startDate)
+                .GroupBy(r => r.Date.Date)
+                .OrderBy(g => g.Key))
             {
-                var date = DateTime.Now.AddDays(-i);
-                // 从天数差异产生合理波动，越早的数据波动可能越大
-                int variation = rng.Next(-10, 11);
-                int score = Math.Max(0, Math.Min(100, baseScore + variation));
-                // 对于较旧的数据，添加额外的衰减趋势（最多 -5 分）
-                if (i > days / 2)
-                {
-                    score = Math.Max(0, score - rng.Next(0, 6));
-                }
-
+                // 同一天多条记录取最后一条（当日最终评分）
                 history.Scores.Add(new ScoreEntry
                 {
-                    Date = date,
-                    Score = score
+                    Date = group.Key,
+                    Score = group.OrderBy(r => r.Time).Last().Score
                 });
             }
 
             return history;
+        }
+
+        private static string ScoreHistoryPath => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "FireAntivirus", "SecurityScore", "history.json");
+
+        private List<(DateTime Date, DateTime Time, int Score)> _scoreRecordsCache;
+
+        private List<(DateTime Date, DateTime Time, int Score)> LoadScoreRecords()
+        {
+            if (_scoreRecordsCache != null) return _scoreRecordsCache;
+            var list = new List<(DateTime, DateTime, int)>();
+            try
+            {
+                if (File.Exists(ScoreHistoryPath))
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(ScoreHistoryPath));
+                    foreach (var el in doc.RootElement.EnumerateArray())
+                    {
+                        var time = el.GetProperty("time").GetDateTime();
+                        list.Add((time.Date, time, el.GetProperty("score").GetInt32()));
+                    }
+                }
+            }
+            catch { }
+            _scoreRecordsCache = list;
+            return list;
+        }
+
+        private void RecordScoreSnapshot(int score)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(ScoreHistoryPath));
+                var records = LoadScoreRecords();
+                records.Add((DateTime.Now.Date, DateTime.Now, score));
+                // 保留最近 90 天，避免无限增长
+                records = records.Where(r => r.Item1 >= DateTime.Now.Date.AddDays(-90)).ToList();
+                var arr = records.Select(r => new { time = r.Item2, score = r.Item3 });
+                File.WriteAllText(ScoreHistoryPath,
+                    System.Text.Json.JsonSerializer.Serialize(arr));
+            }
+            catch { }
         }
 
         public void ResetAllFactors()

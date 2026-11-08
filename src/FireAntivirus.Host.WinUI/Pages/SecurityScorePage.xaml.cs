@@ -1,88 +1,167 @@
-// 耄耋软件工作室 开发，严禁非法反编译
+// 安全评分页（搬运自 WPF SecurityScorePage，WinUI 真实实现）：
+// SecurityScoreService.CalculateSecurityScore 真实计算（防护状态/更新/漏洞/密码/隐私等维度加权），
+// 展示总分/等级/分类明细/改进建议/趋势分析，全部为实时计算数据。
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using FireAntivirus.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.Win32;
 
 namespace FireAntivirus.Host.WinUI.Pages
 {
-    public sealed class ScoreRow
+    public sealed class ScoreCategoryRow
     {
-        public string Name { get; set; } = "";
-        public string Detail { get; set; } = "";
-        public int Points { get; set; }
+        public string Name { get; set; }
+        public string ScoreText { get; set; }
+        public string Status { get; set; }
+        public string Details { get; set; }
+    }
+
+    public sealed class ScoreAdviceRow
+    {
+        public string Title { get; set; }
+        public string Priority { get; set; }
+        public string Description { get; set; }
     }
 
     public sealed partial class SecurityScorePage : Page
     {
-        private readonly ObservableCollection<ScoreRow> _rows = new();
+        private readonly SecurityScoreService _service = new SecurityScoreService();
+        private readonly ObservableCollection<ScoreCategoryRow> _categories = new();
+        private readonly ObservableCollection<ScoreAdviceRow> _advices = new();
+
+        private TextBlock _scoreText;
+        private TextBlock _gradeText;
+        private TextBlock _riskText;
+        private TextBlock _trendText;
+        private TextBlock _state;
 
         public SecurityScorePage()
         {
-            InitializeComponent();
-            ScoreList.ItemsSource = _rows;
-            RunScore();
-        }
-
-        private void RunScore()
-        {
-            _rows.Clear();
-            int total = 0;
-
-            // Defender 实时保护
-            bool defender = GetDefenderStatus();
-            total += defender ? 20 : 0;
-            _rows.Add(new ScoreRow { Name = "实时防护", Detail = defender ? "Windows 安全中心实时防护已启用" : "实时防护未启用", Points = defender ? 20 : 0 });
-
-            // 防火墙
-            bool fw = GetFirewallStatus();
-            total += fw ? 20 : 0;
-            _rows.Add(new ScoreRow { Name = "防火墙", Detail = fw ? "Windows 防火墙已启用" : "防火墙已关闭", Points = fw ? 20 : 0 });
-
-            // 密码策略（简单启发：存在密码相关策略）
-            bool pw = true;
-            total += pw ? 15 : 0;
-            _rows.Add(new ScoreRow { Name = "账号安全", Detail = "系统需要登录密码", Points = pw ? 15 : 0 });
-
-            // 更新状态
-            total += 15;
-            _rows.Add(new ScoreRow { Name = "系统更新", Detail = "建议定期安装 Windows 安全更新", Points = 15 });
-
-            // 本次会话检测能力（引擎就绪）
-            bool engine = FireAntivirus.Engine.Data.EmbeddedThreatDatabase.SelfCheck().Ok;
-            total += engine ? 30 : 0;
-            _rows.Add(new ScoreRow { Name = "天盾引擎就绪", Detail = engine ? "静态/PE/YARA/启发式/行为/网络 特征库已加载" : "引擎特征库加载异常", Points = engine ? 30 : 0 });
-
-            ScoreText.Text = Math.Min(total, 100).ToString();
-            ScoreBar.Value = Math.Min(total, 100);
-            ScoreLabel.Text = total >= 90 ? "系统安全" : total >= 70 ? "安全等级良好" : "建议加强防护";
-        }
-
-        private static bool GetDefenderStatus()
-        {
+            this.NavigationCacheMode = Microsoft.UI.Xaml.Navigation.NavigationCacheMode.Required;
             try
             {
-                using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows Defender\Real-Time Protection");
-                if (key != null && key.GetValue("DisableRealtimeMonitoring") is int v)
-                    return v == 0;
+                Content = BuildLayout();
+                Refresh();
             }
-            catch { }
-            return true;
-        }
-
-        private static bool GetFirewallStatus()
-        {
-            try
+            catch (Exception ex)
             {
-                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile");
-                if (key != null && key.GetValue("EnableFirewall") is int v)
-                    return v == 1;
+                Content = PageGuard.BuildError("安全评分", ex);
             }
-            catch { }
-            return true;
         }
 
-        private void ReScore_Click(object sender, RoutedEventArgs e) => RunScore();
+        private UIElement BuildLayout()
+        {
+            var root = new StackPanel { Margin = new Thickness(28, 10, 28, 24), Spacing = 14 };
+
+            root.Children.Add(new TextBlock { Text = "安全评分", FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            _state = new TextBlock { Text = "正在计算安全评分...", Opacity = 0.7 };
+            root.Children.Add(_state);
+
+            // 评分总览卡
+            var scoreCard = new Border
+            {
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(24),
+                BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(80, 0, 122, 204))
+            };
+            var scoreRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 28 };
+            _scoreText = new TextBlock { Text = "--", FontSize = 64, FontWeight = Microsoft.UI.Text.FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
+            scoreRow.Children.Add(_scoreText);
+            var scoreInfo = new StackPanel { Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+            _gradeText = new TextBlock { Text = "等级: --", FontSize = 18, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+            _riskText = new TextBlock { Text = "风险系数: --", Opacity = 0.75 };
+            _trendText = new TextBlock { Text = "趋势: --", Opacity = 0.75 };
+            scoreInfo.Children.Add(_gradeText);
+            scoreInfo.Children.Add(_riskText);
+            scoreInfo.Children.Add(_trendText);
+            scoreRow.Children.Add(scoreInfo);
+            scoreCard.Child = scoreRow;
+            root.Children.Add(scoreCard);
+
+            var btnRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+            var refreshBtn = new Button { Content = "重新计算评分", MinWidth = 120 };
+            refreshBtn.Click += (_, _) => Refresh();
+            btnRow.Children.Add(refreshBtn);
+            root.Children.Add(btnRow);
+
+            root.Children.Add(new TextBlock { Text = "评分维度明细", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            root.Children.Add(new ListView { ItemsSource = _categories, MaxHeight = 260, SelectionMode = ListViewSelectionMode.None });
+
+            root.Children.Add(new TextBlock { Text = "改进建议（按优先级）", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            root.Children.Add(new ListView { ItemsSource = _advices, MaxHeight = 220, SelectionMode = ListViewSelectionMode.None });
+
+            return root;
+        }
+
+        private void Refresh()
+        {
+            _state.Text = "正在计算安全评分...";
+            _ = Task.Run(() =>
+            {
+                SecurityScoreResult result = null;
+                SecurityTrendAnalysis trend = null;
+                string error = null;
+                try
+                {
+                    result = _service.CalculateSecurityScore();
+                    try { trend = _service.AnalyzeTrend(); } catch { }
+                }
+                catch (Exception ex) { error = ex.Message; }
+
+                DispatcherQueue.TryEnqueue(() => Fill(result, trend, error));
+            });
+        }
+
+        private void Fill(SecurityScoreResult result, SecurityTrendAnalysis trend, string error)
+        {
+            if (result == null)
+            {
+                _state.Text = "评分计算失败: " + error;
+                return;
+            }
+
+            _scoreText.Text = result.TotalScore.ToString();
+            _gradeText.Text = $"等级: {result.Grade}";
+            _riskText.Text = $"风险系数: {result.RiskFactor:F2}";
+            if (trend != null)
+            {
+                string dir = trend.Trend switch
+                {
+                    TrendDirection.Improving => "上升",
+                    TrendDirection.Declining => "下降",
+                    _ => "稳定"
+                };
+                _trendText.Text = $"趋势: {dir}（变化 {trend.ScoreChange:+#;-#;0}，预测 {trend.Projection}）";
+            }
+
+            _categories.Clear();
+            foreach (var c in result.Categories ?? new System.Collections.Generic.List<SecurityCategory>())
+            {
+                _categories.Add(new ScoreCategoryRow
+                {
+                    Name = c.Name,
+                    ScoreText = $"{c.Score:0.#}/{c.MaxScore}（权重 {c.Weight:P0}）",
+                    Status = c.Status,
+                    Details = string.Join("；", (c.Details ?? new System.Collections.Generic.List<string>()).Take(2))
+                });
+            }
+
+            _advices.Clear();
+            foreach (var a in result.Recommendations ?? new System.Collections.Generic.List<SecurityRecommendation>())
+            {
+                _advices.Add(new ScoreAdviceRow
+                {
+                    Title = a.Title,
+                    Priority = "优先级 " + a.Priority,
+                    Description = a.Description
+                });
+            }
+
+            _state.Text = $"评分完成 · {DateTime.Now:HH:mm:ss}（共 {_categories.Count} 个维度，{_advices.Count} 条建议）";
+        }
     }
 }

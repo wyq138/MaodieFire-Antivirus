@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // Hybrid Analysis 客户端 - Payload Security 提供的免费沙箱检测服务
 // API 文档: https://www.hybrid-analysis.com/docs/api/v2
 // 免费注册: https://www.hybrid-analysis.com (免费 API Key, 每月 2000 次查询)

@@ -356,14 +356,29 @@ namespace FireAntivirus.Engine.RegistryMonitoring
         private bool IsSuspiciousBrowserExtension(string clsid)
         {
             if (string.IsNullOrEmpty(clsid)) return false;
-            
-            // 已知恶意CLSID黑名单（简化实现）
-            var maliciousClsids = new HashSet<string>
+
+            // 真实检测：读取该 CLSID 注册的扩展 DLL，检查是否位于高风险目录
+            try
             {
-                "{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}" // 示例恶意CLSID
-            };
-            
-            return maliciousClsids.Contains(clsid.ToUpper());
+                using var inproc = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(
+                    $"CLSID\\{clsid}\\InprocServer32");
+                var dllPath = inproc?.GetValue(null) as string;
+
+                if (string.IsNullOrEmpty(dllPath)) return false;
+
+                var expanded = Environment.ExpandEnvironmentVariables(dllPath.Replace("\"", "")).ToLowerInvariant();
+
+                // 扩展 DLL 位于临时/下载/公共目录属于高风险特征
+                return expanded.Contains("\\temp\\") ||
+                       expanded.Contains("\\tmp\\") ||
+                       expanded.Contains("\\downloads\\") ||
+                       expanded.Contains("\\appdata\\local\\temp\\") ||
+                       expanded.Contains("\\public\\");
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>

@@ -1,5 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.IO;
 using System.Security.Cryptography;
@@ -14,12 +12,10 @@ namespace FireAntivirus.Encryption
         {
             using (Aes aes = Aes.Create())
             {
-                // 从密码派生密钥
-                using (var pbkdf2 = new Rfc2898DeriveBytes(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000))
-                {
-                    aes.Key = pbkdf2.GetBytes(32);
-                    aes.IV = pbkdf2.GetBytes(16);
-                }
+                // 从密码派生密钥（Pbkdf2 静态方法；SHA1 与旧 Rfc2898DeriveBytes 默认等价，保持旧密文可解）
+                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 48);
+                aes.Key = derived[..32];
+                aes.IV = derived[32..48];
 
                 using (MemoryStream ms = new MemoryStream())
                 {
@@ -39,12 +35,9 @@ namespace FireAntivirus.Encryption
         {
             using (Aes aes = Aes.Create())
             {
-                // 从密码派生密钥
-                using (var pbkdf2 = new Rfc2898DeriveBytes(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000))
-                {
-                    aes.Key = pbkdf2.GetBytes(32);
-                    aes.IV = pbkdf2.GetBytes(16);
-                }
+                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 48);
+                aes.Key = derived[..32];
+                aes.IV = derived[32..48];
 
                 using (MemoryStream ms = new MemoryStream(Convert.FromBase64String(ciphertext)))
                 {
@@ -64,12 +57,9 @@ namespace FireAntivirus.Encryption
         {
             using (Aes aes = Aes.Create())
             {
-                // 从密码派生密钥
-                using (var pbkdf2 = new Rfc2898DeriveBytes(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000))
-                {
-                    aes.Key = pbkdf2.GetBytes(32);
-                    aes.IV = pbkdf2.GetBytes(16);
-                }
+                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 48);
+                aes.Key = derived[..32];
+                aes.IV = derived[32..48];
 
                 using (FileStream inputStream = new FileStream(inputFile, FileMode.Open))
                 using (FileStream outputStream = new FileStream(outputFile, FileMode.Create))
@@ -99,14 +89,11 @@ namespace FireAntivirus.Encryption
                 {
                     // 从文件开头读取IV
                     byte[] iv = new byte[16];
-                    inputStream.Read(iv, 0, iv.Length);
+                    inputStream.ReadExactly(iv, 0, iv.Length);
                     aes.IV = iv;
 
                     // 从密码派生密钥
-                    using (var pbkdf2 = new Rfc2898DeriveBytes(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000))
-                    {
-                        aes.Key = pbkdf2.GetBytes(32);
-                    }
+                    aes.Key = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
 
                     using (FileStream outputStream = new FileStream(outputFile, FileMode.Create))
                     using (CryptoStream cryptoStream = new CryptoStream(inputStream, aes.CreateDecryptor(), CryptoStreamMode.Read))
@@ -147,33 +134,22 @@ namespace FireAntivirus.Encryption
         // 生成随机密钥
         public string GenerateRandomKey(int length = 32)
         {
-            using (RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider())
-            {
-                byte[] randomBytes = new byte[length];
-                rng.GetBytes(randomBytes);
-                return Convert.ToBase64String(randomBytes).Substring(0, length);
-            }
+            byte[] randomBytes = RandomNumberGenerator.GetBytes(length);
+            return Convert.ToBase64String(randomBytes).Substring(0, length);
         }
 
         // 生成密码哈希
         public string HashPassword(string password)
         {
-            using (var pbkdf2 = new Rfc2898DeriveBytes(password, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000))
-            {
-                byte[] hash = pbkdf2.GetBytes(32);
-                return Convert.ToBase64String(hash);
-            }
+            byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
+            return Convert.ToBase64String(hash);
         }
 
         // 验证密码
         public bool VerifyPassword(string password, string hashedPassword)
         {
-            using (var pbkdf2 = new Rfc2898DeriveBytes(password, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000))
-            {
-                byte[] hash = pbkdf2.GetBytes(32);
-                string computedHash = Convert.ToBase64String(hash);
-                return computedHash.Equals(hashedPassword);
-            }
+            byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
+            return Convert.ToBase64String(hash).Equals(hashedPassword);
         }
 
         // 加密文件流
@@ -181,12 +157,9 @@ namespace FireAntivirus.Encryption
         {
             using (Aes aes = Aes.Create())
             {
-                // 从密码派生密钥
-                using (var pbkdf2 = new Rfc2898DeriveBytes(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000))
-                {
-                    aes.Key = pbkdf2.GetBytes(32);
-                    aes.IV = pbkdf2.GetBytes(16);
-                }
+                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 48);
+                aes.Key = derived[..32];
+                aes.IV = derived[32..48];
 
                 // 写入IV到输出流开头
                 outputStream.Write(aes.IV, 0, aes.IV.Length);
@@ -210,14 +183,11 @@ namespace FireAntivirus.Encryption
             {
                 // 从输入流开头读取IV
                 byte[] iv = new byte[16];
-                inputStream.Read(iv, 0, iv.Length);
+                inputStream.ReadExactly(iv, 0, iv.Length);
                 aes.IV = iv;
 
                 // 从密码派生密钥
-                using (var pbkdf2 = new Rfc2898DeriveBytes(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000))
-                {
-                    aes.Key = pbkdf2.GetBytes(32);
-                }
+                aes.Key = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
 
                 using (CryptoStream cryptoStream = new CryptoStream(inputStream, aes.CreateDecryptor(), CryptoStreamMode.Read))
                 {
@@ -287,12 +257,7 @@ namespace FireAntivirus.Encryption
         // 生成随机初始化向量
         public byte[] GenerateRandomIV(int length = 16)
         {
-            using (RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider())
-            {
-                byte[] iv = new byte[length];
-                rng.GetBytes(iv);
-                return iv;
-            }
+            return RandomNumberGenerator.GetBytes(length);
         }
     }
 }

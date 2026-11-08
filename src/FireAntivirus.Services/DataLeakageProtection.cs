@@ -692,22 +692,42 @@ namespace FireAntivirus.Services
 
         private string GetProcessNameByPort(int port)
         {
+            // 真实端口→进程归属（升级自"简化处理返回 Unknown"）：解析 netstat -ano 输出匹配本地端口与 PID
             try
             {
-                var processes = Process.GetProcesses();
-                foreach (var process in processes)
+                var psi = new ProcessStartInfo
                 {
-                    try
+                    FileName = "netstat",
+                    Arguments = "-ano",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true
+                };
+                using var p = Process.Start(psi);
+                if (p == null) return "Unknown";
+                string output = p.StandardOutput.ReadToEnd();
+                p.WaitForExit(5000);
+
+                foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var t = line.Trim();
+                    if (!t.StartsWith("TCP", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    var parts = t.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length < 5) continue;
+
+                    int colon = parts[1].LastIndexOf(':');
+                    if (colon < 0 || !int.TryParse(parts[1].Substring(colon + 1), out int localPort)) continue;
+                    if (localPort != port) continue;
+
+                    if (int.TryParse(parts[4], out int pid))
                     {
-                        // 使用netstat获取进程与端口的关联
-                        using var searcher = new System.Management.ManagementObjectSearcher(
-                            $"SELECT * FROM Win32_Process");
-                        // 简化处理，返回当前活动进程
+                        try { return Process.GetProcessById(pid).ProcessName; }
+                        catch { return "PID " + pid; }
                     }
-                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
                 }
             }
-            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DataLeakageProtection.cs 捕获异常", ex.Message); }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning, "端口进程归属解析失败: " + ex.Message); }
             return "Unknown";
         }
 

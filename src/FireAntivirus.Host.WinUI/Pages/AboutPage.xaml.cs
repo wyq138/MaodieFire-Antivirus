@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 using Microsoft.UI.Xaml.Controls;
 
 namespace FireAntivirus.Host.WinUI.Pages
@@ -8,6 +7,13 @@ namespace FireAntivirus.Host.WinUI.Pages
         public AboutPage()
         {
             InitializeComponent();
+            _ = LoadCatImageAsync();
+        }
+
+        private async System.Threading.Tasks.Task LoadCatImageAsync()
+        {
+            var image = await UiKit.LoadAssetAsync("cat_home.png");
+            if (image != null) AboutCatImage.Source = image;
         }
     }
 }

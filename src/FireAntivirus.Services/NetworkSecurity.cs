@@ -78,8 +78,7 @@ namespace FireAntivirus.Services
                     Anomalies = new List<NetworkAnomaly>()
                 };
 
-                // 模拟连接分析
-                await Task.Delay(500);
+                // 真实连接特征分析（此前 await Task.Delay(500) 仅为模拟耗时，已移除）
 
                 // 分析连接特征
                 await AnalyzeConnectionFeaturesAsync(analysis);
@@ -179,10 +178,20 @@ namespace FireAntivirus.Services
                     IsEnabled = true
                 };
 
-                // 实现防火墙规则创建逻辑
-                await Task.Delay(200);
+                // 真实实现：调用 netsh advfirewall 创建系统防火墙规则
+                string dir = ruleType == FirewallRuleType.Outbound ? "out" : "in";
+                string act = action == FirewallAction.Allow ? "allow" : "block";
+                string proto = protocol == ProtocolType.Udp ? "udp" : "tcp";
+                string remoteIp = destinationEndPoint?.Address?.Equals(IPAddress.Any) != false
+                    ? "any" : destinationEndPoint.Address.ToString();
+                string remotePort = destinationEndPoint != null && destinationEndPoint.Port > 0
+                    ? destinationEndPoint.Port.ToString() : "any";
+                string ruleName = $"FireAntivirus_{name}";
 
-                Logger.Info($"Created firewall rule: {name}");
+                await Task.Run(() => RunNetsh(
+                    $"advfirewall firewall add rule name=\"{ruleName}\" dir={dir} action={act} protocol={proto} remoteip={remoteIp} remoteport={remotePort}"));
+
+                Logger.Info($"Created firewall rule: {ruleName}");
                 return rule;
             }
             catch (Exception ex)
@@ -196,14 +205,29 @@ namespace FireAntivirus.Services
         {
             try
             {
-                // 实现防火墙规则更新逻辑
-                await Task.Delay(200);
+                // 真实实现：删除旧规则后按更新内容重建（netsh 无部分更新语义）
+                string ruleName = $"FireAntivirus_{ruleId}";
+                await Task.Run(() =>
+                {
+                    RunNetsh($"advfirewall firewall delete rule name=\"{ruleName}\"");
+                    if (update.IsEnabled != false)
+                    {
+                        string dir = (update.RuleType ?? FirewallRuleType.Inbound) == FirewallRuleType.Outbound ? "out" : "in";
+                        string act = (update.Action ?? FirewallAction.Block) == FirewallAction.Allow ? "allow" : "block";
+                        string proto = (update.Protocol ?? ProtocolType.Tcp) == ProtocolType.Udp ? "udp" : "tcp";
+                        string remoteIp = update.DestinationEndPoint?.Address?.Equals(IPAddress.Any) != false
+                            ? "any" : update.DestinationEndPoint?.Address?.ToString() ?? "any";
+                        string remotePort = update.DestinationEndPoint != null && update.DestinationEndPoint.Port > 0
+                            ? update.DestinationEndPoint.Port.ToString() : "any";
+                        RunNetsh($"advfirewall firewall add rule name=\"{ruleName}\" dir={dir} action={act} protocol={proto} remoteip={remoteIp} remoteport={remotePort}");
+                    }
+                });
 
                 var rule = new NetworkFirewallRule
                 {
                     Id = ruleId,
                     RuleType = update.RuleType ?? FirewallRuleType.Inbound,
-                    Name = update.Name,
+                    Name = ruleId,
                     Description = update.Description,
                     SourceEndPoint = update.SourceEndPoint,
                     DestinationEndPoint = update.DestinationEndPoint,
@@ -214,7 +238,7 @@ namespace FireAntivirus.Services
                     IsEnabled = update.IsEnabled ?? true
                 };
 
-                Logger.Info($"Updated firewall rule: {ruleId}");
+                Logger.Info($"Updated firewall rule: {ruleName}");
                 return rule;
             }
             catch (Exception ex)
@@ -228,10 +252,10 @@ namespace FireAntivirus.Services
         {
             try
             {
-                // 实现防火墙规则删除逻辑
-                await Task.Delay(100);
-
-                Logger.Info($"Deleted firewall rule: {ruleId}");
+                // 真实实现：从系统防火墙删除规则
+                string ruleName = $"FireAntivirus_{ruleId}";
+                await Task.Run(() => RunNetsh($"advfirewall firewall delete rule name=\"{ruleName}\""));
+                Logger.Info($"Deleted firewall rule: {ruleName}");
             }
             catch (Exception ex)
             {
@@ -244,40 +268,49 @@ namespace FireAntivirus.Services
         {
             try
             {
-                // 实现获取防火墙规则逻辑
-                await Task.Delay(300);
-
-                var rules = new List<NetworkFirewallRule>
+                // 真实实现：解析 netsh advfirewall firewall show rule 输出中本软件创建的规则
+                var rules = new List<NetworkFirewallRule>();
+                await Task.Run(() =>
                 {
-                    new NetworkFirewallRule
+                    var psi = new System.Diagnostics.ProcessStartInfo
                     {
-                        Id = "1",
-                        RuleType = FirewallRuleType.Inbound,
-                        Name = "Block Malicious IP",
-                        Description = "Blocks connections from known malicious IPs",
-                        SourceEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 0),
-                        DestinationEndPoint = new IPEndPoint(IPAddress.Any, 0),
-                        Protocol = ProtocolType.Tcp,
-                        Action = FirewallAction.Block,
-                        CreatedAt = DateTime.UtcNow.AddDays(-7),
-                        IsEnabled = true
-                    },
-                    new NetworkFirewallRule
-                    {
-                        Id = "2",
-                        RuleType = FirewallRuleType.Outbound,
-                        Name = "Allow HTTP/HTTPS",
-                        Description = "Allows HTTP and HTTPS traffic",
-                        SourceEndPoint = new IPEndPoint(IPAddress.Any, 0),
-                        DestinationEndPoint = new IPEndPoint(IPAddress.Any, 80),
-                        Protocol = ProtocolType.Tcp,
-                        Action = FirewallAction.Allow,
-                        CreatedAt = DateTime.UtcNow.AddDays(-14),
-                        IsEnabled = true
-                    }
-                };
+                        FileName = "netsh.exe",
+                        Arguments = "advfirewall firewall show rule name=all verbose",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        RedirectStandardOutput = true
+                    };
+                    using var p = System.Diagnostics.Process.Start(psi);
+                    string output = p?.StandardOutput.ReadToEnd() ?? "";
+                    p?.WaitForExit(30000);
 
-                // 过滤规则
+                    NetworkFirewallRule current = null;
+                    foreach (var raw in output.Split('\n'))
+                    {
+                        var line = raw.Trim();
+                        if (line.StartsWith("Rule Name:"))
+                        {
+                            current = null; // 新规则块开始
+                            var rn = line.Substring("Rule Name:".Length).Trim();
+                            if (rn.StartsWith("FireAntivirus_", StringComparison.OrdinalIgnoreCase))
+                            {
+                                current = new NetworkFirewallRule
+                                {
+                                    Id = rn.Substring("FireAntivirus_".Length),
+                                    Name = rn,
+                                    IsEnabled = true
+                                };
+                                rules.Add(current);
+                            }
+                        }
+                        if (current == null) continue;
+                        if (line.StartsWith("Enabled:")) current.IsEnabled = line.Contains("Yes", StringComparison.OrdinalIgnoreCase);
+                        else if (line.StartsWith("Direction:")) current.RuleType = line.Contains("Out", StringComparison.OrdinalIgnoreCase) ? FirewallRuleType.Outbound : FirewallRuleType.Inbound;
+                        else if (line.StartsWith("Action:")) current.Action = line.Contains("Allow", StringComparison.OrdinalIgnoreCase) ? FirewallAction.Allow : FirewallAction.Block;
+                        else if (line.StartsWith("Description:")) current.Description = line.Substring("Description:".Length).Trim();
+                    }
+                });
+
                 if (ruleType.HasValue)
                 {
                     rules = rules.Where(r => r.RuleType == ruleType.Value).ToList();
@@ -631,6 +664,27 @@ namespace FireAntivirus.Services
             }
 
             await Task.CompletedTask;
+        }
+
+        /// <summary>执行 netsh 命令，非零退出码抛异常（真实防火墙操作）。</summary>
+        private static void RunNetsh(string arguments)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "netsh.exe",
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using var p = System.Diagnostics.Process.Start(psi);
+            p?.WaitForExit(20000);
+            if (p != null && p.ExitCode != 0)
+            {
+                var err = p.StandardError.ReadToEnd();
+                throw new InvalidOperationException($"netsh 退出码 {p.ExitCode}: {err}");
+            }
         }
     }
 

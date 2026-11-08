@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 云查杀多引擎聚合器 - 对标国际大厂的多引擎云查杀架构
 // 聚合 MalwareBazaar + VirusTotal(70+引擎) + HybridAnalysis沙箱 + AlienVault OTX
 // 架构: Hash查询 -> 多引擎并行查询 -> 阈值判定 -> 可选上传VirusTotal深度分析

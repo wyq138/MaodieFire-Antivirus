@@ -1,5 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,6 +16,7 @@ namespace FireAntivirus.SystemMonitor
         private List<Process> _processes;
         private List<ConnectionInfo> _connections;
         private List<FileOperationInfo> _fileOperations;
+        private List<FileSystemWatcher> _fileWatchers;
         
         public event EventHandler<ProcessCreatedEventArgs> ProcessCreated;
         public event EventHandler<ConnectionEstablishedEventArgs> ConnectionEstablished;
@@ -155,12 +154,98 @@ namespace FireAntivirus.SystemMonitor
         /// </summary>
         private async Task MonitorFileOperations()
         {
-            // 这里可以使用文件系统监视器或其他方法来监控文件操作
-            // 为了简单起见，我们使用一个模拟实现
-            while (!_cancellationTokenSource.Token.IsCancellationRequested)
+            // 真实实现：使用 FileSystemWatcher 监控关键用户目录的文件操作，
+            // 事件由操作系统回调触发，不再使用空转循环
+            var watchedDirectories = new[]
             {
-                await Task.Delay(5000, _cancellationTokenSource.Token);
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+                Environment.GetFolderPath(Environment.SpecialFolder.Startup)
+            };
+
+            _fileWatchers = new List<FileSystemWatcher>();
+
+            foreach (var directory in watchedDirectories.Distinct())
+            {
+                if (string.IsNullOrEmpty(directory) || !Directory.Exists(directory)) continue;
+
+                try
+                {
+                    var watcher = new FileSystemWatcher(directory)
+                    {
+                        IncludeSubdirectories = true,
+                        NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                        EnableRaisingEvents = true
+                    };
+
+                    watcher.Created += OnFileSystemEvent;
+                    watcher.Changed += OnFileSystemEvent;
+                    watcher.Deleted += OnFileSystemEvent;
+                    watcher.Renamed += OnFileSystemRenamed;
+
+                    _fileWatchers.Add(watcher);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"启动文件监控失败 [{directory}]: {ex.Message}");
+                }
             }
+
+            try
+            {
+                // 实际文件事件由 FileSystemWatcher 回调触发，此任务仅维持生命周期直至取消
+                await Task.Delay(Timeout.Infinite, _cancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // 监控已取消
+            }
+            finally
+            {
+                foreach (var watcher in _fileWatchers)
+                {
+                    try
+                    {
+                        watcher.EnableRaisingEvents = false;
+                        watcher.Dispose();
+                    }
+                    catch { }
+                }
+                _fileWatchers.Clear();
+            }
+        }
+
+        private void OnFileSystemEvent(object sender, FileSystemEventArgs e)
+        {
+            RecordFileOperation(e.FullPath, e.ChangeType.ToString());
+        }
+
+        private void OnFileSystemRenamed(object sender, RenamedEventArgs e)
+        {
+            RecordFileOperation(e.FullPath, $"Renamed (from: {e.OldFullPath})");
+        }
+
+        private void RecordFileOperation(string path, string operation)
+        {
+            var info = new FileOperationInfo
+            {
+                Path = path,
+                Operation = operation,
+                ProcessName = "未知",
+                Timestamp = DateTime.Now
+            };
+
+            lock (_fileOperations)
+            {
+                _fileOperations.Add(info);
+
+                // 限制记录数量，避免内存无限增长
+                if (_fileOperations.Count > 1000)
+                    _fileOperations.RemoveAt(0);
+            }
+
+            OnFileOperation(new FileOperationEventArgs { Operation = info });
         }
 
         /// <summary>

@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级勒索防护引擎 - 对标卡巴斯基/诺顿防护能力
 using System;
 using System.Collections.Concurrent;
@@ -1407,7 +1406,7 @@ namespace FireAntivirus.Services
                 var bytes = new byte[4096];
                 using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
                 {
-                    fs.Read(bytes, 0, bytes.Length);
+                    fs.ReadExactly(bytes, 0, bytes.Length);
                 }
 
                 return CalculateEntropy(bytes);

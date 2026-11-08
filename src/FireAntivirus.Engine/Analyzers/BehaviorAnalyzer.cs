@@ -54,7 +54,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         public BehaviorAnalyzer()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             processBehaviors = new Dictionary<int, List<string>>();
             processModules = new Dictionary<int, List<string>>();
             processFiles = new Dictionary<int, List<string>>();

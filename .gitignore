@@ -38,3 +38,23 @@ Thumbs.db
 
 ## Temp
 module_stats.txt
+## 发布范围（2026-11-08）：只交本项目 WinUI 主线源码
+# 对标参考项目（绝不出库）
+src/XIGUASecurity10x/
+# 旧版 UI（WPF / WinForms）
+src/FireAntivirus.Host.WPF/
+src/FireAntivirus.Host/
+# 构建输出目录
+build2/
+build2ClamAV/
+bld/x64/
+# 病毒库（运行时由 freshclam 下载）
+src/FireAntivirus.ClamAV/ClamAV/db/
+# 工具与临时产物
+src/.atomcode/
+src/.codeartsdoer/
+src/.merkle-snapshot.json
+src/setup_env.txt
+src/_diag_out.ps1
+src/_verify_out.ps1
+src/构建警告.txt

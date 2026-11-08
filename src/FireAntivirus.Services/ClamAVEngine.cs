@@ -198,9 +198,9 @@ namespace FireAntivirus.Services
                 string[] cvdFiles = { "daily.cvd", "main.cvd", "bytecode.cvd" };
                 string baseUrl = "https://database.clamav.net/";
 
-                using (var client = new WebClient())
+                using (var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromMinutes(10) })
                 {
-                    client.Headers.Add("User-Agent", "ClamAV/1.0");
+                    client.DefaultRequestHeaders.Add("User-Agent", "ClamAV/1.0");
                     foreach (var file in cvdFiles)
                     {
                         string url = baseUrl + file;
@@ -208,7 +208,8 @@ namespace FireAntivirus.Services
 
                         try
                         {
-                            client.DownloadFile(url, destPath);
+                            var bytes = client.GetByteArrayAsync(url).GetAwaiter().GetResult();
+                            File.WriteAllBytes(destPath, bytes);
                             _dataManager?.LogInfo($"下载病毒库: {file}");
                         }
                         catch (Exception ex)

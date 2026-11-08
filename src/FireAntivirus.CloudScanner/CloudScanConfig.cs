@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 云查杀配置 - 管理用户配置的各云查杀服务 API Key
 using System;
 using System.IO;

@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -542,10 +541,66 @@ namespace FireAntivirus.NativeIntegration
             return children;
         }
 
+        // netstat 查询结果缓存（15秒），避免高频调用
+        private static Dictionary<int, bool> _networkConnectionCache;
+        private static DateTime _networkCacheTime = DateTime.MinValue;
+        private static readonly object _networkCacheLock = new object();
+
         private bool HasNetworkConnections(int processId)
         {
-            // 简化实现，实际应该使用netstat或ETW
-            return false;
+            // 真实检测：通过 netstat -ano 查询该 PID 是否持有网络连接（带 15 秒缓存）
+            lock (_networkCacheLock)
+            {
+                if (_networkConnectionCache == null || (DateTime.Now - _networkCacheTime).TotalSeconds > 15)
+                {
+                    _networkConnectionCache = BuildNetworkConnectionCache();
+                    _networkCacheTime = DateTime.Now;
+                }
+
+                return _networkConnectionCache.TryGetValue(processId, out var hasConnection) && hasConnection;
+            }
+        }
+
+        private static Dictionary<int, bool> BuildNetworkConnectionCache()
+        {
+            var result = new Dictionary<int, bool>();
+
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "netstat.exe",
+                    Arguments = "-ano",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                if (process == null) return result;
+
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(30000);
+
+                foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var tokens = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (tokens.Length < 4) continue;
+
+                    var proto = tokens[0].ToUpperInvariant();
+                    if (proto != "TCP" && proto != "UDP") continue;
+
+                    // 最后一列为 PID
+                    if (int.TryParse(tokens[tokens.Length - 1], out var pid) && pid > 0)
+                        result[pid] = true;
+                }
+            }
+            catch
+            {
+                // 查询失败时返回空缓存（视为无连接）
+            }
+
+            return result;
         }
         #endregion
 

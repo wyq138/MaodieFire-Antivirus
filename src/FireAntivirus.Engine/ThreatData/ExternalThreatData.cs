@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -23,8 +22,25 @@ namespace FireAntivirus.Engine
         private static readonly object _lock = new object();
         private static bool _loaded;
         private static readonly List<string> _warnings = new List<string>();
-        private static readonly string DataDir =
-            Path.Combine(AppContext.BaseDirectory, "ThreatData");
+
+        /// <summary>
+        /// 数据目录：在线更新的运行时库（ProgramData，含 version.json）优先，否则回退出厂库。
+        /// </summary>
+        private static string DataDir
+        {
+            get
+            {
+                try
+                {
+                    var runtime = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                        "FireAntivirus", "ThreatData");
+                    if (File.Exists(Path.Combine(runtime, "version.json"))) return runtime;
+                }
+                catch { }
+                return Path.Combine(AppContext.BaseDirectory, "ThreatData");
+            }
+        }
 
         public static List<string> LastWarnings => _warnings;
 
@@ -63,6 +79,27 @@ namespace FireAntivirus.Engine
                 {
                     _warnings.Add($"外部威胁数据加载异常: {ex.Message}");
                 }
+            }
+        }
+
+        /// <summary>特征库在线更新落盘后调用：丢弃全部已加载缓存，下次访问按新库重载。</summary>
+        public static void Reload()
+        {
+            lock (_lock)
+            {
+                _loaded = false;
+                SuspiciousProcesses = new List<SuspiciousProcessEntry>();
+                MalwareFamilies = new List<MalwareFamilyEntry>();
+                RansomwareExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                RansomwareNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                RansomNotes = new List<string>();
+                CommandIndicators = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                ExploitNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                MiningProtocols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                MiningPools = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                MiningBinaries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                SuspiciousProcessNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                _warnings.Clear();
             }
         }
 

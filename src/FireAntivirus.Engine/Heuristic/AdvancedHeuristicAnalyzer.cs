@@ -476,13 +476,89 @@ namespace FireAntivirus.Engine.Heuristic
         public DateTime Timestamp { get; set; }
     }
 
-    // 支持类定义（简化实现）
+    // 支持类：基于真实静态特征执行规则/行为/模型/情报分析
     public class HeuristicRuleEngine
     {
         public async Task<List<HeuristicRuleMatch>> AnalyzeWithRulesAsync(string filePath, StaticFeatures features)
         {
             await Task.CompletedTask;
-            return new List<HeuristicRuleMatch>();
+
+            var matches = new List<HeuristicRuleMatch>();
+            if (features == null) return matches;
+
+            // 规则 R001：高熵值（加壳/加密内容）
+            if (features.Entropy > 7.5)
+            {
+                matches.Add(new HeuristicRuleMatch
+                {
+                    RuleId = "R001",
+                    Description = $"文件熵值过高 ({features.Entropy:F2}/8.0)，疑似加壳或加密载荷",
+                    Severity = ThreatLevel.Medium,
+                    Confidence = 0.75
+                });
+            }
+
+            // 规则 R002：可疑 API 调用密集
+            if (features.SuspiciousApiCount >= 5)
+            {
+                matches.Add(new HeuristicRuleMatch
+                {
+                    RuleId = "R002",
+                    Description = $"检测到 {features.SuspiciousApiCount} 个可疑 API 调用",
+                    Severity = ThreatLevel.High,
+                    Confidence = 0.8
+                });
+            }
+
+            // 规则 R003：可执行文件体积异常小（释放器/下载器常见特征）
+            if (features.IsExecutable && features.FileSize > 0 && features.FileSize < 20 * 1024)
+            {
+                matches.Add(new HeuristicRuleMatch
+                {
+                    RuleId = "R003",
+                    Description = "可执行文件体积异常小（<20KB）",
+                    Severity = ThreatLevel.Medium,
+                    Confidence = 0.6
+                });
+            }
+
+            // 规则 R004：检测到打包代码节
+            if (features.HasPackedCode)
+            {
+                matches.Add(new HeuristicRuleMatch
+                {
+                    RuleId = "R004",
+                    Description = "检测到打包/加壳代码节",
+                    Severity = ThreatLevel.Medium,
+                    Confidence = 0.7
+                });
+            }
+
+            // 规则 R005：导入表极少（运行时动态解析 API 的典型特征）
+            if (features.IsExecutable && features.ImportCount <= 3)
+            {
+                matches.Add(new HeuristicRuleMatch
+                {
+                    RuleId = "R005",
+                    Description = $"导入表项过少 ({features.ImportCount})，疑似运行时动态解析 API",
+                    Severity = ThreatLevel.Medium,
+                    Confidence = 0.65
+                });
+            }
+
+            // 规则 R006：包含可疑字符串但无数字签名
+            if (features.ContainsSuspiciousStrings && !features.HasDigitalSignature)
+            {
+                matches.Add(new HeuristicRuleMatch
+                {
+                    RuleId = "R006",
+                    Description = "文件包含可疑字符串且无数字签名",
+                    Severity = ThreatLevel.Medium,
+                    Confidence = 0.6
+                });
+            }
+
+            return matches;
         }
     }
 
@@ -491,7 +567,35 @@ namespace FireAntivirus.Engine.Heuristic
         public async Task<double> AnalyzeBehaviorAsync(string filePath)
         {
             await Task.CompletedTask;
-            return 0.0;
+
+            // 基于文件真实属性的静态行为风险评分（0-1）
+            double score = 0.0;
+            try
+            {
+                if (!File.Exists(filePath)) return 0.0;
+
+                var fileInfo = new FileInfo(filePath);
+                var ext = fileInfo.Extension.ToLowerInvariant();
+
+                // 脚本类型文件具备即时执行能力
+                if (ext == ".bat" || ext == ".cmd" || ext == ".ps1" || ext == ".vbs" || ext == ".js")
+                    score += 0.4;
+
+                // 位于临时/下载目录的文件
+                var path = filePath.ToLowerInvariant();
+                if (path.Contains("\\temp\\") || path.Contains("\\tmp\\") ||
+                    path.Contains("\\downloads\\") || path.Contains("\\appdata\\local\\temp\\"))
+                    score += 0.3;
+
+                // 文件名含双重扩展名伪装（如 invoice.pdf.exe）
+                if (Path.GetFileNameWithoutExtension(filePath).Contains('.'))
+                    score += 0.3;
+            }
+            catch
+            {
+            }
+
+            return Math.Min(score, 1.0);
         }
     }
 
@@ -500,7 +604,17 @@ namespace FireAntivirus.Engine.Heuristic
         public async Task<double> PredictThreatAsync(StaticFeatures features, double behaviorScore)
         {
             await Task.CompletedTask;
-            return 0.0;
+
+            if (features == null) return Math.Min(behaviorScore, 1.0);
+
+            // 线性加权组合：熵值、可疑 API 密度、打包标记与行为分数
+            double entropyScore = Math.Max(0, (features.Entropy - 6.0) / 2.0);
+            double apiScore = Math.Min(features.SuspiciousApiCount / 10.0, 1.0);
+            double packedScore = features.HasPackedCode ? 1.0 : 0.0;
+
+            double threatScore = entropyScore * 0.25 + apiScore * 0.35 + packedScore * 0.2 + behaviorScore * 0.2;
+
+            return Math.Min(Math.Max(threatScore, 0.0), 1.0);
         }
     }
 
@@ -509,6 +623,44 @@ namespace FireAntivirus.Engine.Heuristic
         public async Task<ThreatIntelligenceData> CheckFileAsync(string filePath)
         {
             await Task.CompletedTask;
+
+            // 真实查询本地威胁情报哈希库（threat_hashes.txt 每行一个 SHA256，可由云端同步更新）
+            try
+            {
+                if (!File.Exists(filePath)) return new ThreatIntelligenceData();
+
+                string hash;
+                using (var sha256 = System.Security.Cryptography.SHA256.Create())
+                using (var stream = File.OpenRead(filePath))
+                {
+                    hash = BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+                }
+
+                var hashFile = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus", "threat_hashes.txt");
+
+                if (File.Exists(hashFile))
+                {
+                    foreach (var line in File.ReadLines(hashFile))
+                    {
+                        if (line.Trim().Equals(hash, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return new ThreatIntelligenceData
+                            {
+                                ThreatLevel = ThreatLevel.High,
+                                DetectionCount = 1,
+                                LastSeen = DateTime.Now,
+                                ThreatType = "KnownThreat"
+                            };
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
             return new ThreatIntelligenceData();
         }
     }

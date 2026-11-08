@@ -1,22 +1,27 @@
-<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
-<Page
+<Page NavigationCacheMode="Required"
     x:Class="FireAntivirus.Host.WinUI.Pages.AboutPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer Padding="24,16,24,24">
+    <ScrollViewer Padding="28,10,28,24">
         <StackPanel Spacing="14" MaxWidth="760">
             <TextBlock Text="关于" Style="{StaticResource PageTitle}"/>
             <Border Style="{StaticResource ModernCard}">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="耄耋安全" FontSize="26" FontWeight="Bold"/>
-                    <TextBlock Text="多阶段威胁检测与实时防护引擎" Opacity="0.65"/>
-                    <TextBlock Text="版本 1.0" Opacity="0.5"/>
+                <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,0,0,6">
+                    <Image x:Name="AboutCatImage" Width="88" Height="88" Stretch="Uniform"/>
+                    <StackPanel Spacing="4" VerticalAlignment="Center">
+
+                        <TextBlock Text="多阶段威胁检测与实时防护引擎" Opacity="0.65"/>
+                        <TextBlock Text="版本 1.0" Opacity="0.5"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource ModernCard}">
                 <StackPanel Spacing="6">
-                    <TextBlock Text="本软件由 耄耋软件工作室 开发，严禁非法反编译。" TextWrapping="Wrap"/>
+                    <TextBlock Text="本软件由 耄耋软件工作室 开发。" TextWrapping="Wrap"/>
+                    <TextBlock Text="开发者：耄耋软件工作室" TextWrapping="Wrap"/>
+                    <TextBlock Text="电话：18281970402" TextWrapping="Wrap"/>
+                    <TextBlock Text="邮箱：zjhwyq123456@qq.com" TextWrapping="Wrap"/>
                     <TextBlock Text="检测手段包含静态特征、PE 结构解析、导入表分析、YARA 规则、启发式、沙箱、行为与网络防护，多引擎加权评分，力争兼顾检出率与低误报。" TextWrapping="Wrap" Opacity="0.75"/>
                 </StackPanel>
             </Border>

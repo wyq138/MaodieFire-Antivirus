@@ -1,40 +1,157 @@
-<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
-<Page
+<Page NavigationCacheMode="Required"
     x:Class="FireAntivirus.Host.WinUI.Pages.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer Padding="24,16,24,24">
+    <ScrollViewer Padding="28,10,28,24">
         <StackPanel Spacing="14" MaxWidth="920">
 
             <TextBlock Text="设置" Style="{StaticResource PageTitle}"/>
 
+            <!-- 常规 -->
             <Border Style="{StaticResource ModernCard}">
                 <StackPanel Spacing="10">
                     <TextBlock Text="常规" FontSize="16" FontWeight="SemiBold"/>
-                    <ToggleSwitch Header="开机自启动" IsOn="True"/>
-                    <ToggleSwitch Header="最小化到托盘" IsOn="True"/>
-                    <ToggleSwitch Header="自动更新特征库（每小时）" IsOn="True"/>
+                    <ToggleSwitch x:Name="AutoStartToggle" Header="开机自启动（写入注册表 HKCU Run）" Toggled="AutoStart_Toggled"/>
+                    <ToggleSwitch x:Name="WatchdogToggle" Header="看门狗自恢复（被病毒杀死后由系统计划任务自动拉起）" Toggled="Watchdog_Toggled"/>
                 </StackPanel>
             </Border>
 
+            <!-- 扫描与防护 -->
             <Border Style="{StaticResource ModernCard}">
                 <StackPanel Spacing="10">
-                    <TextBlock Text="检测与处理" FontSize="16" FontWeight="SemiBold"/>
-                    <ToggleSwitch Header="实时防护" IsOn="True"/>
-                    <ToggleSwitch Header="高风险仅隔离不删除" IsOn="True"/>
-                    <ToggleSwitch Header="启用多阶段评分响应" IsOn="True"/>
+                    <TextBlock Text="扫描与防护" FontSize="16" FontWeight="SemiBold"/>
+                    <NumberBox x:Name="ConcurrencyBox" Header="扫描并发数（1-8，实时防护与手动扫描共用；越大越快越吃 CPU）"
+                               Minimum="1" Maximum="8" SpinButtonPlacementMode="Compact" Value="4" Width="260" HorizontalAlignment="Left"
+                               ValueChanged="Concurrency_ValueChanged"/>
+                    <TextBlock Text="扫描排除目录（精确匹配目录及其子树，实时防护与手动扫描共用）" Opacity="0.75"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox x:Name="ExcludeBox" PlaceholderText="例如 D:\VM\Shared" Width="380"/>
+                        <Button Content="添加" Click="ExcludeAdd_Click"/>
+                    </StackPanel>
+                    <ListView x:Name="ExcludeList" MaxHeight="160" SelectionMode="None">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnSpacing="8" Padding="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <Button Grid.Column="1" Content="删除" Tag="{Binding}" Click="ExcludeRemove_Click"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
                 </StackPanel>
             </Border>
 
+            <!-- 功能模块 -->
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="功能模块" FontSize="16" FontWeight="SemiBold"/>
+                    <ToggleSwitch x:Name="PopupBlockerToggle" Header="弹窗拦截（按规则关闭骚扰弹窗，随程序启动自动恢复）" Toggled="PopupBlocker_Toggled"/>
+                    <ToggleSwitch x:Name="PrivacyMonitorToggle" Header="隐私访问监控（摄像头 / 麦克风 / 敏感数据访问实时告警）" Toggled="PrivacyMonitor_Toggled"/>
+                    <ToggleSwitch x:Name="ParentalControlToggle" Header="家长控制（开启后时间限制与内容过滤规则生效）" Toggled="ParentalControl_Toggled"/>
+                    <ToggleSwitch x:Name="SandboxToggle" Header="自动沙箱验证（未签名可疑文件在 Sandboxie 中运行 60 秒行为分析，确认恶意才报——大幅降低误报）" Toggled="Sandbox_Toggled"/>
+                    <ToggleSwitch x:Name="AmsiToggle" Header="AMSI 脚本扫描（调用系统 amsi.dll 检测脚本/命令内容，独立强证据源）" Toggled="Amsi_Toggled"/>
+                    <ToggleSwitch x:Name="CredentialAccessToggle" Header="凭据访问防护（LSASS 转储 / SAM 导出 / 凭据管理器枚举等 ATT&amp;CK 技术实时告警与处置）" Toggled="CredentialAccess_Toggled"/>
+                    <ToggleSwitch x:Name="DefenseEvasionToggle" Header="防御规避检测（卷影副本删除 / 日志清除 / Defender 篡改 / SafeBoot 操纵等 ATT&amp;CK 技术）" Toggled="DefenseEvasion_Toggled"/>
+                    <ToggleSwitch x:Name="ArchiveScanToggle" Header="压缩包深度扫描（解开 zip / tar / gz / rar / 7z 后对内部文件真实查杀）" Toggled="ArchiveScan_Toggled"/>
+                    <ToggleSwitch x:Name="HandleAuditToggle" Header="句柄访问掩码审计（全系统句柄表 + 受保护进程，60 秒周期，输出 JSON 取证报告）" Toggled="HandleAudit_Toggled"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="立即审计句柄" Click="HandleAuditNow_Click"/>
+                        <Button Content="打开审计报告目录" Click="OpenHandleAuditReports_Click"/>
+                    </StackPanel>
+                    <ToggleSwitch x:Name="SandboxEvasionToggle" Header="沙箱反沙箱对抗（识别反虚拟机/反调试痕迹并自动加固 Sandboxie 配置，防止样本装死）" Toggled="SandboxEvasion_Toggled"/>
+                    <ToggleSwitch x:Name="FuzzyHashToggle" Header="ssdeep + LSH 模糊哈希聚类（同家族/变种相似样本识别；相似度 ≥95 直接判定，85-94 参与共识）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="EntropyTimelineToggle" Header="文件 I/O 熵变时序分析（30 秒窗口内多文档低熵→高熵跃迁，判定勒索加密）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="LineageToggle" Header="进程血缘图 + kill chain（父子链追踪，Office/浏览器→shell→LOLBin 链路识别）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="ChainBlockToggle" Header="高危链路自动阻断（链路证据成立时终止整棵子进程树；系统/安全进程白名单拒杀）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="SensitiveFlowToggle" Header="敏感数据流污点追踪（Restart Manager 凭据持有者 × 外部 TCP 外连关联）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="VadScanToggle" Header="VAD 树隐匿内存剥离 + 内存 YARA（匿名可执行内存检测，剥离后落盘用 YARA 规则真实扫描，可 dump 取证）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="AsrToggle" Header="ASR 攻击面减少规则（Office 子进程/编码脚本/凭据转储/LOLBin 远程载荷/WMI 持久化，命中即链级阻断）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="TimelineToggle" Header="EDR 检测时间线（所有检测点统一 JSONL，支持时间窗口查询与导出取证）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="EtwToggle" Header="ETW-TI 内核行为遥测（Process/FileIO/NetworkTCPIP/Registry，需管理员；驱动血缘与熵时序的实时来源）" Toggled="Advanced_Toggled"/>
+                    <ToggleSwitch x:Name="WfpToggle" Header="WFP 数据包级阻断（恶意进程外连目标 IP 实时出站/入站阻断，10 分钟自动解除）" Toggled="Advanced_Toggled"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="导出 EDR 时间线（近 24 小时）" Click="ExportTimeline_Click"/>
+                        <Button Content="打开时间线目录" Click="OpenTimelineDir_Click"/>
+                    </StackPanel>
+                    <TextBlock x:Name="ModulesState" Opacity="0.65" FontSize="12" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 特征库更新 -->
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="特征库更新" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                               Text="特征库在线更新源（自托管或 GitHub Raw 目录地址，需包含 version.json 与特征 JSON 文件；留空则使用出厂特征库 + 情报订阅 + YARA 社区规则）。"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox x:Name="UpdateSourceBox" PlaceholderText="https://example.com/fireantivirus/threatdata" Width="440"/>
+                        <Button Content="保存更新源" Click="UpdateSourceSave_Click"/>
+                    </StackPanel>
+                    <TextBlock x:Name="UpdateSourceState" Opacity="0.65" FontSize="12"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 云查杀引擎 -->
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="云查杀引擎" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="CloudApiState" Opacity="0.75" TextWrapping="Wrap"
+                               Text="VirusTotal 云查杀：已启用（70 引擎聚合权威确认，由开发商提供，无需配置）"/>
+                    <TextBlock Opacity="0.6" FontSize="12" TextWrapping="Wrap"
+                               Text="MalwareBazaar / OTX 免费哈希情报常开；ClamAV 特征库本地查杀 + YARA 规则引擎并行。云端查询仅对可疑文件按需进行，不消耗用户任何资源。"/>
+                </StackPanel>
+            </Border>
+
+            <!-- AI 模型（Melix EMBER V3） -->
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="AI 模型（Melix EMBER V3）" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="MelixState" Opacity="0.75" TextWrapping="Wrap"/>
+                    <TextBlock Opacity="0.6" FontSize="12" TextWrapping="Wrap"
+                               Text="样本集训练与阈值校准全部真实执行：CART 随机森林训练 → 验证集混淆矩阵 → 在目标误报率约束下选 TPR 最高的阈值 → 写回模型 JSON（时间戳热更新，无需重启）。恶意样本来自隔离区，良性样本来自 System32 已数字签名二进制。"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox x:Name="ModelDatasetBox" PlaceholderText="样本集目录（默认 ProgramData\FireAntivirus\ML\Dataset）" Width="400"/>
+                        <Button Content="选择目录" Click="ModelDatasetPick_Click"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="目标误报率" VerticalAlignment="Center"/>
+                        <NumberBox x:Name="ModelFprBox" Minimum="0.001" Maximum="0.2" SmallChange="0.005" Value="0.01" Width="120"/>
+                        <Button Content="自动采集样本" Click="ModelBuildDataset_Click"/>
+                        <Button Content="训练模型" Click="ModelTrain_Click"/>
+                        <Button Content="校准阈值并应用" Click="ModelCalibrate_Click"/>
+                    </StackPanel>
+                    <ProgressBar x:Name="ModelProgress" IsIndeterminate="True" Visibility="Collapsed"/>
+                    <TextBlock x:Name="ModelState" Opacity="0.65" FontSize="12" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 签名验证 -->
             <Border Style="{StaticResource ModernCard}">
                 <StackPanel Spacing="10">
                     <TextBlock Text="签名验证" FontSize="16" FontWeight="SemiBold"/>
                     <TextBlock x:Name="SignInfo" Opacity="0.75" Text="数字签名使用 .NET X509Certificate 库验证（非系统校验软件）。"/>
-                    <Button Content="验证受感染文件签名" Click="VerifySign_Click" HorizontalAlignment="Left"/>
+                    <Button Content="验证文件签名" Click="VerifySign_Click" HorizontalAlignment="Left"/>
                 </StackPanel>
             </Border>
 
+            <!-- 日志维护 -->
+            <Border Style="{StaticResource ModernCard}">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="日志维护" FontSize="16" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="打开日志目录" Click="OpenLogs_Click"/>
+                        <Button Content="清理 7 天前日志" Click="CleanLogs_Click"/>
+                    </StackPanel>
+                    <TextBlock x:Name="LogsState" Opacity="0.65" FontSize="12"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 备份与数据 -->
             <Border Style="{StaticResource ModernCard}">
                 <StackPanel Spacing="10">
                     <TextBlock Text="备份与数据" FontSize="16" FontWeight="SemiBold"/>

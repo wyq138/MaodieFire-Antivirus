@@ -1,0 +1,8 @@
+<Project>
+  <ItemGroup>
+    <!-- 用 Update（只修改已存在的引用，不产生重复项）。
+         PerformanceCounter 8.0.0 依赖 ConfigurationManager >= 8.0.0，
+         而各 csproj 历史引用 4.7.0/6.0.0 → 此处统一升到 8.0.0，消除 NU1605 降级与 NU1504 重复。 -->
+    <PackageReference Update="System.Configuration.ConfigurationManager" Version="8.0.0" />
+  </ItemGroup>
+</Project>

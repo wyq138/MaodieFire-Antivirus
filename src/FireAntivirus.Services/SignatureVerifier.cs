@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.IO;
 using System.Security.Cryptography;
@@ -167,8 +166,26 @@ namespace FireAntivirus.Services
                     }
                 }
 
-                // 检查证书是否有效
-                info.IsValidCertificate = DateTime.Now >= cert.NotBefore && DateTime.Now <= cert.NotAfter;
+                // 真实验证：有效期 + 证书链（X509Chain 校验信任根与吊销状态）。
+                // 此前只查有效期：有效期内但链不可信的自签名证书也会被判"有效签名"= 假安全。
+                bool timeValid = DateTime.Now >= cert.NotBefore && DateTime.Now <= cert.NotAfter;
+                bool chainValid = false;
+                try
+                {
+                    using (var chain = new System.Security.Cryptography.X509Certificates.X509Chain())
+                    {
+                        chain.ChainPolicy.RevocationMode =
+                            System.Security.Cryptography.X509Certificates.X509RevocationMode.Online;
+                        chain.ChainPolicy.RevocationFlag =
+                            System.Security.Cryptography.X509Certificates.X509RevocationFlag.ExcludeRoot;
+                        chain.ChainPolicy.VerificationFlags =
+                            System.Security.Cryptography.X509Certificates.X509VerificationFlags.NoFlag;
+                        chain.ChainPolicy.UrlRetrievalTimeout = TimeSpan.FromSeconds(5);
+                        chainValid = chain.Build(cert);
+                    }
+                }
+                catch { }
+                info.IsValidCertificate = timeValid && chainValid;
 
                 return info;
             }

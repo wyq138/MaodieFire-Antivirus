@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FireAntivirus.Engine.Intelligence
@@ -67,6 +68,12 @@ namespace FireAntivirus.Engine.Intelligence
                 report.ThreatLevel = aggregatedResult.OverallThreatLevel;
                 report.Confidence = aggregatedResult.Confidence;
                 report.SourcesConsolidated = aggregatedResult.Sources;
+
+                // 无有效情报源时如实上报（不得伪装为确认安全）
+                if (!string.IsNullOrEmpty(aggregatedResult.Error))
+                {
+                    report.Error = aggregatedResult.Error;
+                }
 
                 // 4. 机器学习增强分析
                 var mlAnalysis = await _mlAnalyzer.EnhanceAnalysisAsync(filePath, aggregatedResult);
@@ -138,133 +145,304 @@ namespace FireAntivirus.Engine.Intelligence
         }
 
         /// <summary>
-        /// VirusTotal查询
+        /// VirusTotal查询 - 真实调用 VirusTotal v3 API（需配置环境变量 VIRUSTOTAL_API_KEY）
         /// </summary>
         private async Task<ThreatIntelligenceSourceResult> QueryVirusTotalAsync(string fileHash)
         {
+            var result = new ThreatIntelligenceSourceResult
+            {
+                SourceName = "VirusTotal",
+                QueryTime = DateTime.Now
+            };
+
             try
             {
-                // 简化实现 - 实际需要API密钥
-                var result = new ThreatIntelligenceSourceResult
+                var apiKey = Environment.GetEnvironmentVariable("VIRUSTOTAL_API_KEY");
+                if (string.IsNullOrWhiteSpace(apiKey))
                 {
-                    SourceName = "VirusTotal",
-                    QueryTime = DateTime.Now
-                };
+                    result.Error = "VirusTotal API key not configured (set VIRUSTOTAL_API_KEY)";
+                    return result;
+                }
 
-                // 模拟API调用
-                await Task.Delay(100);
-                
-                result.ThreatLevel = ThreatLevel.Safe;
-                result.Confidence = 0.95;
-                result.MalwareFamilies = new List<string>();
-                result.Tags = new List<string> { "clean" };
+                using var request = new HttpRequestMessage(HttpMethod.Get,
+                    $"https://www.virustotal.com/api/v3/files/{fileHash}");
+                request.Headers.Add("x-apikey", apiKey);
 
-                return result;
+                using var response = await _httpClient.SendAsync(request);
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    // 文件从未被提交分析：如实返回无情报记录
+                    result.ThreatLevel = ThreatLevel.Safe;
+                    result.Confidence = 0.5;
+                    result.Tags.Add("not-submitted");
+                    return result;
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.Error = $"VirusTotal API returned HTTP {(int)response.StatusCode}";
+                    return result;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+
+                var attributes = doc.RootElement.GetProperty("data").GetProperty("attributes");
+                var stats = attributes.GetProperty("last_analysis_stats");
+
+                int malicious = stats.TryGetProperty("malicious", out var m) ? m.GetInt32() : 0;
+                int suspicious = stats.TryGetProperty("suspicious", out var s) ? s.GetInt32() : 0;
+                int harmless = stats.TryGetProperty("harmless", out var h) ? h.GetInt32() : 0;
+                int undetected = stats.TryGetProperty("undetected", out var u) ? u.GetInt32() : 0;
+
+                int totalEngines = malicious + suspicious + harmless + undetected;
+                result.DetectionCount = malicious + suspicious;
+                result.Confidence = totalEngines > 0
+                    ? Math.Min((malicious + suspicious + harmless) / (double)totalEngines, 1.0)
+                    : 0.5;
+
+                if (malicious >= 5) result.ThreatLevel = ThreatLevel.High;
+                else if (malicious + suspicious > 0) result.ThreatLevel = ThreatLevel.Medium;
+                else result.ThreatLevel = ThreatLevel.Safe;
+
+                // 提取已知恶意软件家族名
+                if (attributes.TryGetProperty("popular_threat_classification", out var classification) &&
+                    classification.TryGetProperty("popular_threat_name", out var families))
+                {
+                    foreach (var family in families.EnumerateArray())
+                    {
+                        if (family.TryGetProperty("value", out var value) && value.GetString() is string name)
+                            result.MalwareFamilies.Add(name);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                return new ThreatIntelligenceSourceResult
-                {
-                    SourceName = "VirusTotal",
-                    Error = ex.Message,
-                    QueryTime = DateTime.Now
-                };
+                result.Error = ex.Message;
             }
+
+            return result;
         }
 
         /// <summary>
-        /// HybridAnalysis查询
+        /// HybridAnalysis查询 - 真实调用 Hybrid Analysis v2 API（需配置环境变量 HYBRIDANALYSIS_API_KEY）
         /// </summary>
         private async Task<ThreatIntelligenceSourceResult> QueryHybridAnalysisAsync(string fileHash)
         {
+            var result = new ThreatIntelligenceSourceResult
+            {
+                SourceName = "HybridAnalysis",
+                QueryTime = DateTime.Now
+            };
+
             try
             {
-                var result = new ThreatIntelligenceSourceResult
+                var apiKey = Environment.GetEnvironmentVariable("HYBRIDANALYSIS_API_KEY");
+                if (string.IsNullOrWhiteSpace(apiKey))
                 {
-                    SourceName = "HybridAnalysis",
-                    QueryTime = DateTime.Now
-                };
+                    result.Error = "Hybrid Analysis API key not configured (set HYBRIDANALYSIS_API_KEY)";
+                    return result;
+                }
 
-                await Task.Delay(80);
-                
-                result.ThreatLevel = ThreatLevel.Safe;
-                result.Confidence = 0.92;
-                result.BehaviorIndicators = new List<string>();
+                using var request = new HttpRequestMessage(HttpMethod.Post,
+                    "https://www.hybrid-analysis.com/api/v2/search/hash");
+                request.Headers.Add("api-key", apiKey);
+                request.Headers.UserAgent.ParseAdd("FireAntivirus");
+                request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["hash"] = fileHash
+                });
 
-                return result;
+                using var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.Error = $"Hybrid Analysis API returned HTTP {(int)response.StatusCode}";
+                    return result;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0)
+                {
+                    var first = doc.RootElement[0];
+                    var verdict = first.TryGetProperty("verdict", out var v) ? v.GetString() : null;
+
+                    switch (verdict)
+                    {
+                        case "malicious":
+                            result.ThreatLevel = ThreatLevel.High;
+                            result.Confidence = 0.9;
+                            break;
+                        case "suspicious":
+                            result.ThreatLevel = ThreatLevel.Medium;
+                            result.Confidence = 0.7;
+                            break;
+                        case "no specific threat":
+                            result.ThreatLevel = ThreatLevel.Safe;
+                            result.Confidence = 0.8;
+                            break;
+                        default:
+                            result.ThreatLevel = ThreatLevel.Safe;
+                            result.Confidence = 0.5;
+                            break;
+                    }
+
+                    if (first.TryGetProperty("count", out var countEl))
+                        result.DetectionCount = countEl.GetInt32();
+
+                    if (first.TryGetProperty("mitre_attack", out var mitre) && mitre.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var technique in mitre.EnumerateArray())
+                        {
+                            if (technique.TryGetProperty("element_identifier", out var id) && id.GetString() is string name)
+                                result.BehaviorIndicators.Add(name);
+                        }
+                    }
+                }
+                else
+                {
+                    // 沙箱无此样本记录
+                    result.ThreatLevel = ThreatLevel.Safe;
+                    result.Confidence = 0.5;
+                }
             }
             catch (Exception ex)
             {
-                return new ThreatIntelligenceSourceResult
-                {
-                    SourceName = "HybridAnalysis",
-                    Error = ex.Message,
-                    QueryTime = DateTime.Now
-                };
+                result.Error = ex.Message;
             }
+
+            return result;
         }
 
         /// <summary>
-        /// MetaDefender查询
+        /// MetaDefender查询 - 真实调用 MetaDefender Cloud v4 API（需配置环境变量 METADEFENDER_API_KEY）
         /// </summary>
         private async Task<ThreatIntelligenceSourceResult> QueryMetaDefenderAsync(string fileHash)
         {
+            var result = new ThreatIntelligenceSourceResult
+            {
+                SourceName = "MetaDefender",
+                QueryTime = DateTime.Now
+            };
+
             try
             {
-                var result = new ThreatIntelligenceSourceResult
+                var apiKey = Environment.GetEnvironmentVariable("METADEFENDER_API_KEY");
+                if (string.IsNullOrWhiteSpace(apiKey))
                 {
-                    SourceName = "MetaDefender",
-                    QueryTime = DateTime.Now
-                };
+                    result.Error = "MetaDefender API key not configured (set METADEFENDER_API_KEY)";
+                    return result;
+                }
 
-                await Task.Delay(70);
-                
-                result.ThreatLevel = ThreatLevel.Safe;
-                result.Confidence = 0.90;
-                result.DetectionCount = 0;
+                using var request = new HttpRequestMessage(HttpMethod.Get,
+                    $"https://api.metadefender.com/v4/hash/{fileHash}");
+                request.Headers.Add("apikey", apiKey);
 
-                return result;
+                using var response = await _httpClient.SendAsync(request);
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    result.ThreatLevel = ThreatLevel.Safe;
+                    result.Confidence = 0.5;
+                    return result;
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.Error = $"MetaDefender API returned HTTP {(int)response.StatusCode}";
+                    return result;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("scan_results", out var scanResults))
+                {
+                    int detected = scanResults.TryGetProperty("total_detected_avs", out var det) ? det.GetInt32() : 0;
+                    int totalAvs = scanResults.TryGetProperty("total_avs", out var tot) ? tot.GetInt32() : 0;
+
+                    result.DetectionCount = detected;
+                    result.Confidence = totalAvs > 0 ? Math.Min((double)detected / totalAvs + 0.5, 1.0) : 0.5;
+
+                    if (detected >= 5) result.ThreatLevel = ThreatLevel.High;
+                    else if (detected > 0) result.ThreatLevel = ThreatLevel.Medium;
+                    else result.ThreatLevel = ThreatLevel.Safe;
+                }
+                else
+                {
+                    result.ThreatLevel = ThreatLevel.Safe;
+                    result.Confidence = 0.5;
+                }
             }
             catch (Exception ex)
             {
-                return new ThreatIntelligenceSourceResult
-                {
-                    SourceName = "MetaDefender",
-                    Error = ex.Message,
-                    QueryTime = DateTime.Now
-                };
+                result.Error = ex.Message;
             }
+
+            return result;
         }
 
         /// <summary>
-        /// 企业威胁情报源
+        /// 企业威胁情报源 - 真实查询可配置的私有情报源（需配置环境变量 ENTERPRISE_THREAT_FEED_URL）
+        /// 接口约定：GET {url}/{sha256}，响应 JSON {"threatLevel": "High", "confidence": 0.9}
         /// </summary>
         private async Task<ThreatIntelligenceSourceResult> QueryEnterpriseThreatFeedAsync(string fileHash)
         {
+            var result = new ThreatIntelligenceSourceResult
+            {
+                SourceName = "EnterpriseThreatFeed",
+                QueryTime = DateTime.Now
+            };
+
             try
             {
-                var result = new ThreatIntelligenceSourceResult
+                var feedUrl = Environment.GetEnvironmentVariable("ENTERPRISE_THREAT_FEED_URL");
+                if (string.IsNullOrWhiteSpace(feedUrl))
                 {
-                    SourceName = "EnterpriseThreatFeed",
-                    QueryTime = DateTime.Now
-                };
+                    result.Error = "Enterprise threat feed not configured (set ENTERPRISE_THREAT_FEED_URL)";
+                    return result;
+                }
 
-                await Task.Delay(60);
-                
-                result.ThreatLevel = ThreatLevel.Safe;
-                result.Confidence = 0.88;
+                var requestUrl = $"{feedUrl.TrimEnd('/')}/{fileHash}";
+                using var response = await _httpClient.GetAsync(requestUrl);
 
-                return result;
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    // 私有情报库中无此哈希记录
+                    result.ThreatLevel = ThreatLevel.Safe;
+                    result.Confidence = 0.5;
+                    return result;
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.Error = $"Enterprise feed returned HTTP {(int)response.StatusCode}";
+                    return result;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("threatLevel", out var levelEl) &&
+                    Enum.TryParse<ThreatLevel>(levelEl.GetString(), true, out var level))
+                {
+                    result.ThreatLevel = level;
+                }
+                else
+                {
+                    result.ThreatLevel = ThreatLevel.Safe;
+                }
+
+                result.Confidence = doc.RootElement.TryGetProperty("confidence", out var confEl) && confEl.ValueKind == JsonValueKind.Number
+                    ? confEl.GetDouble()
+                    : 0.6;
             }
             catch (Exception ex)
             {
-                return new ThreatIntelligenceSourceResult
-                {
-                    SourceName = "EnterpriseThreatFeed",
-                    Error = ex.Message,
-                    QueryTime = DateTime.Now
-                };
+                result.Error = ex.Message;
             }
+
+            return result;
         }
 
         /// <summary>
@@ -426,33 +604,65 @@ namespace FireAntivirus.Engine.Intelligence
         }
 
         /// <summary>
-        /// 下载最新威胁情报
+        /// 下载最新威胁情报 - 真实从可配置情报源下载 JSON 数据（需配置环境变量 THREAT_INTEL_FEED_URL）
+        /// 数据格式：JSON 数组 [{"hash": "...", "threatLevel": "High", "threatType": "Trojan", "detectionCount": 25, "lastSeen": "2026-01-01"}]
         /// </summary>
         private async Task<List<ThreatIntelligenceData>> DownloadLatestIntelligenceAsync()
         {
             var intelligenceData = new List<ThreatIntelligenceData>();
-            
+
             try
             {
-                // 简化实现 - 实际需要调用API获取数据
-                await Task.Delay(200);
-                
-                // 模拟下载的威胁数据
-                intelligenceData.Add(new ThreatIntelligenceData
+                var feedUrl = Environment.GetEnvironmentVariable("THREAT_INTEL_FEED_URL");
+                if (string.IsNullOrWhiteSpace(feedUrl))
                 {
-                    Hash = "sample_hash_1",
-                    ThreatLevel = ThreatLevel.High,
-                    ThreatType = "Trojan",
-                    LastSeen = DateTime.Now.AddDays(-1),
-                    DetectionCount = 25
-                });
+                    Console.WriteLine("威胁情报源未配置（设置环境变量 THREAT_INTEL_FEED_URL 后启用在线更新）");
+                    return intelligenceData;
+                }
 
-                return intelligenceData;
+                var json = await _httpClient.GetStringAsync(feedUrl);
+                using var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    Console.WriteLine("威胁情报源返回的数据格式不正确（期望 JSON 数组）");
+                    return intelligenceData;
+                }
+
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    var data = new ThreatIntelligenceData
+                    {
+                        Hash = element.TryGetProperty("hash", out var hashEl) ? hashEl.GetString() : null,
+                        ThreatType = element.TryGetProperty("threatType", out var typeEl) ? typeEl.GetString() : null,
+                        DetectionCount = element.TryGetProperty("detectionCount", out var countEl) && countEl.ValueKind == JsonValueKind.Number
+                            ? countEl.GetInt32() : 0
+                    };
+
+                    if (element.TryGetProperty("threatLevel", out var levelEl) &&
+                        Enum.TryParse<ThreatLevel>(levelEl.GetString(), true, out var level))
+                    {
+                        data.ThreatLevel = level;
+                    }
+
+                    if (element.TryGetProperty("lastSeen", out var seenEl) &&
+                        DateTime.TryParse(seenEl.GetString(), out var seen))
+                    {
+                        data.LastSeen = seen;
+                    }
+
+                    if (!string.IsNullOrEmpty(data.Hash))
+                        intelligenceData.Add(data);
+                }
+
+                Console.WriteLine($"已从情报源下载 {intelligenceData.Count} 条威胁情报记录");
             }
-            catch
+            catch (Exception ex)
             {
-                return intelligenceData;
+                Console.WriteLine($"威胁情报下载失败: {ex.Message}");
             }
+
+            return intelligenceData;
         }
 
         /// <summary>
@@ -552,24 +762,38 @@ namespace FireAntivirus.Engine.Intelligence
         public string Error { get; set; }
     }
 
-    // 聚合器和缓存类（简化实现）
+    // 聚合器：基于多个情报源的真实查询结果进行聚合
     public class ThreatIntelligenceAggregator
     {
         public async Task<AggregatedIntelligenceResult> AggregateIntelligenceAsync(List<ThreatIntelligenceSourceResult> results)
         {
-            await Task.Delay(50);
-            
+            await Task.CompletedTask;
+
+            // 只统计真实返回结果的源；查询失败或未配置密钥的源不参与判定
+            var validResults = results.Where(r => string.IsNullOrEmpty(r.Error)).ToList();
+
             var aggregated = new AggregatedIntelligenceResult
             {
-                OverallThreatLevel = ThreatLevel.Safe,
-                Confidence = 0.95,
                 Sources = results.Select(r => new ThreatIntelligenceSource
                 {
                     Name = r.SourceName,
                     ThreatLevel = r.ThreatLevel,
-                    Confidence = r.Confidence
+                    Confidence = string.IsNullOrEmpty(r.Error) ? r.Confidence : 0
                 }).ToList()
             };
+
+            if (validResults.Count == 0)
+            {
+                // 没有任何有效情报源时如实上报，不得伪装成"确认安全"
+                aggregated.Error = "No threat intelligence source returned a valid result";
+                aggregated.OverallThreatLevel = ThreatLevel.Safe;
+                aggregated.Confidence = 0;
+                return aggregated;
+            }
+
+            // 保守聚合：取所有有效源中的最高威胁级别，置信度取平均
+            aggregated.OverallThreatLevel = validResults.Max(r => r.ThreatLevel);
+            aggregated.Confidence = validResults.Average(r => r.Confidence);
 
             return aggregated;
         }
@@ -578,17 +802,22 @@ namespace FireAntivirus.Engine.Intelligence
     public class LocalIntelligenceCache
     {
         private readonly Dictionary<string, CachedIntelligence> _cache = new Dictionary<string, CachedIntelligence>();
+        private readonly Dictionary<string, ThreatIntelligenceData> _intelligenceDatabase = new Dictionary<string, ThreatIntelligenceData>();
+        private long _hits;
+        private long _misses;
 
         public async Task<CachedIntelligence> GetCachedIntelligenceAsync(string fileHash)
         {
             await Task.CompletedTask;
-            
-            if (_cache.TryGetValue(fileHash, out var cached) && 
+
+            if (_cache.TryGetValue(fileHash, out var cached) &&
                 cached.CacheTime > DateTime.Now.AddHours(-24))
             {
+                System.Threading.Interlocked.Increment(ref _hits);
                 return cached;
             }
-            
+
+            System.Threading.Interlocked.Increment(ref _misses);
             return null;
         }
 
@@ -601,15 +830,28 @@ namespace FireAntivirus.Engine.Intelligence
         public async Task UpdateDatabaseAsync(List<ThreatIntelligenceData> intelligenceData)
         {
             await Task.CompletedTask;
-            // 实现数据库更新逻辑
+
+            foreach (var data in intelligenceData)
+            {
+                if (!string.IsNullOrEmpty(data.Hash))
+                    _intelligenceDatabase[data.Hash] = data;
+            }
+        }
+
+        /// <summary>
+        /// 查询本地情报数据库中的哈希记录
+        /// </summary>
+        public ThreatIntelligenceData LookupDatabase(string fileHash)
+        {
+            return fileHash != null && _intelligenceDatabase.TryGetValue(fileHash, out var data) ? data : null;
         }
 
         public async Task CleanupExpiredDataAsync()
         {
             await Task.CompletedTask;
-            var expiredKeys = _cache.Where(kvp => 
+            var expiredKeys = _cache.Where(kvp =>
                 kvp.Value.CacheTime < DateTime.Now.AddDays(-7)).Select(kvp => kvp.Key).ToList();
-            
+
             foreach (var key in expiredKeys)
             {
                 _cache.Remove(key);
@@ -619,12 +861,16 @@ namespace FireAntivirus.Engine.Intelligence
         public async Task<CacheStatistics> GetCacheStatisticsAsync()
         {
             await Task.CompletedTask;
+            var hits = System.Threading.Interlocked.Read(ref _hits);
+            var misses = System.Threading.Interlocked.Read(ref _misses);
+            var totalQueries = hits + misses;
+
             return new CacheStatistics
             {
                 TotalEntries = _cache.Count,
-                HitRate = 0.85,
-                LastUpdate = DateTime.Now,
-                DatabaseSize = _cache.Count * 0.1 // 估算大小
+                HitRate = totalQueries > 0 ? (double)hits / totalQueries : 0,
+                LastUpdate = _cache.Count > 0 ? _cache.Values.Max(c => c.CacheTime) : DateTime.MinValue,
+                DatabaseSize = (_cache.Count + _intelligenceDatabase.Count) * 0.1 // 每条记录约0.1MB估算
             };
         }
     }
@@ -633,14 +879,84 @@ namespace FireAntivirus.Engine.Intelligence
     {
         public async Task<MachineLearningAnalysis> EnhanceAnalysisAsync(string filePath, AggregatedIntelligenceResult baseResult)
         {
-            await Task.Delay(30);
-            
-            return new MachineLearningAnalysis
+            await Task.CompletedTask;
+
+            var analysis = new MachineLearningAnalysis
             {
                 EnhancedThreatLevel = baseResult.OverallThreatLevel,
                 Confidence = baseResult.Confidence,
                 ModelVersion = "v1.2.0"
             };
+
+            try
+            {
+                if (!File.Exists(filePath)) return analysis;
+
+                // 真实的本地启发式增强：熵值 + 文件特征评分
+                var fileInfo = new FileInfo(filePath);
+                double entropy = CalculateFileEntropy(filePath);
+
+                bool isExecutable = string.Equals(fileInfo.Extension, ".exe", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(fileInfo.Extension, ".dll", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(fileInfo.Extension, ".scr", StringComparison.OrdinalIgnoreCase);
+
+                int score = 0;
+                if (entropy > 7.2) score += 2;          // 高熵：加壳/加密内容
+                else if (entropy > 6.5) score += 1;
+                if (isExecutable && fileInfo.Length < 50 * 1024) score += 1;   // 小体积可执行文件
+                if (isExecutable && fileInfo.CreationTime > DateTime.Now.AddDays(-1)) score += 1;
+
+                if (score >= 3 && baseResult.OverallThreatLevel < ThreatLevel.High)
+                {
+                    analysis.EnhancedThreatLevel = ThreatLevel.High;
+                    analysis.Confidence = Math.Min(0.6 + score * 0.1, 0.9);
+                }
+                else if (score >= 2 && baseResult.OverallThreatLevel == ThreatLevel.Safe)
+                {
+                    analysis.EnhancedThreatLevel = ThreatLevel.Low;
+                    analysis.Confidence = Math.Min(0.4 + score * 0.1, 0.7);
+                }
+                else
+                {
+                    analysis.Confidence = Math.Max(baseResult.Confidence, 0.3);
+                }
+            }
+            catch
+            {
+                // 本地增强分析失败时不影响基础情报结论
+            }
+
+            return analysis;
+        }
+
+        private static double CalculateFileEntropy(string filePath)
+        {
+            var counts = new long[256];
+            long totalBytes = 0;
+            var buffer = new byte[65536];
+
+            using var stream = File.OpenRead(filePath);
+            int bytesRead;
+            while (totalBytes < buffer.Length * 8 && (bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                for (int i = 0; i < bytesRead; i++)
+                    counts[buffer[i]]++;
+                totalBytes += bytesRead;
+            }
+
+            if (totalBytes == 0) return 0;
+
+            double entropy = 0;
+            for (int i = 0; i < 256; i++)
+            {
+                if (counts[i] > 0)
+                {
+                    double probability = (double)counts[i] / totalBytes;
+                    entropy -= probability * Math.Log(probability, 2);
+                }
+            }
+
+            return entropy;
         }
     }
 
@@ -659,6 +975,7 @@ namespace FireAntivirus.Engine.Intelligence
         public ThreatLevel OverallThreatLevel { get; set; }
         public double Confidence { get; set; }
         public List<ThreatIntelligenceSource> Sources { get; set; }
+        public string Error { get; set; }
     }
 
     public class ThreatIntelligenceSource

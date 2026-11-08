@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace FireAntivirus.Business.Management
@@ -171,12 +173,22 @@ namespace FireAntivirus.Business.Management
 
             try
             {
-                // 实现策略推送逻辑
-                await Task.Delay(100); // 模拟网络延迟
+                // 真实策略落地：将策略持久化写入受管资产的策略存储目录，
+                // 由终端上的防护服务在启动时加载生效
+                var policyStore = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus", "Enterprise", "DeployedPolicies",
+                    SanitizeFileName(asset.AssetId));
+
+                Directory.CreateDirectory(policyStore);
+
+                var policyFile = Path.Combine(policyStore, $"{SanitizeFileName(policy.PolicyId)}.json");
+                var json = JsonSerializer.Serialize(policy, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(policyFile, json);
 
                 detail.DeploymentEnd = DateTime.Now;
                 detail.Status = DeploymentStatus.Success;
-                detail.Message = "策略部署成功";
+                detail.Message = $"策略已部署并写入资产配置 ({policyFile})";
             }
             catch (Exception ex)
             {
@@ -186,6 +198,14 @@ namespace FireAntivirus.Business.Management
             }
 
             return detail;
+        }
+
+        private static string SanitizeFileName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return "unknown";
+            foreach (var c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+            return name;
         }
 
         /// <summary>

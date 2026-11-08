@@ -22,6 +22,7 @@ namespace FireAntivirus.ParentalControl
         private List<User> _users;
         private List<TimeRestriction> _timeRestrictions;
         private List<ContentFilter> _contentFilters;
+        private List<Tuple<string, ContentAction>> _customBlockedDomains;
 
         public ParentalControlManager(DataManager dataManager)
         {
@@ -29,6 +30,7 @@ namespace FireAntivirus.ParentalControl
             _users = new List<User>();
             _timeRestrictions = new List<TimeRestriction>();
             _contentFilters = new List<ContentFilter>();
+            _customBlockedDomains = new List<Tuple<string, ContentAction>>();
             InitializeParentalControl();
         }
 
@@ -37,6 +39,38 @@ namespace FireAntivirus.ParentalControl
             LoadUsers();
             LoadTimeRestrictions();
             LoadContentFilters();
+            LoadBlockedDomains();
+        }
+
+        private void LoadBlockedDomains()
+        {
+            // 从配置文件加载自定义域名黑名单，每行格式: domain 或 domain|Block/Warn/Allow
+            _customBlockedDomains.Clear();
+            try
+            {
+                var file = Path.Combine(GetConfigDirectory(), "blocked_domains.txt");
+                if (!File.Exists(file)) return;
+
+                foreach (var line in File.ReadLines(file))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.Length == 0 || trimmed.StartsWith("#")) continue;
+
+                    var parts = trimmed.Split('|');
+                    var domain = parts[0].Trim();
+                    if (domain.Length == 0) continue;
+
+                    var action = ContentAction.Block;
+                    if (parts.Length > 1 && Enum.TryParse(parts[1].Trim(), true, out ContentAction parsed))
+                        action = parsed;
+
+                    _customBlockedDomains.Add(Tuple.Create(domain, action));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"加载域名黑名单失败: {ex.Message}");
+            }
         }
 
         private string GetConfigDirectory()
@@ -693,34 +727,52 @@ namespace FireAntivirus.ParentalControl
 
         public ContentAction GetContentAction(string url)
         {
-            // 模拟内容过滤
+            // 真实内容过滤：自定义域名黑名单（最高优先级）+ 按类别的关键词库匹配
+            if (string.IsNullOrWhiteSpace(url)) return ContentAction.Allow;
+
+            var lowerUrl = url.ToLowerInvariant();
+
+            // 1. 用户自定义域名黑名单
+            foreach (var entry in _customBlockedDomains)
+            {
+                if (lowerUrl.Contains(entry.Item1.ToLowerInvariant()))
+                {
+                    return entry.Item2;
+                }
+            }
+
+            // 2. 启用的过滤规则按类别关键词匹配
+            var categoryKeywords = BuildCategoryKeywords();
             foreach (var filter in _contentFilters.Where(f => f.Enabled))
             {
-                // 简单的URL匹配逻辑
-                switch (filter.Category)
+                if (categoryKeywords.TryGetValue(filter.Category, out var keywords))
                 {
-                    case ContentCategory.Adult:
-                        if (url.Contains("adult") || url.Contains("porn"))
+                    foreach (var keyword in keywords)
+                    {
+                        if (lowerUrl.Contains(keyword))
                         {
                             return filter.Action;
                         }
-                        break;
-                    case ContentCategory.Violence:
-                        if (url.Contains("violence") || url.Contains("gore"))
-                        {
-                            return filter.Action;
-                        }
-                        break;
-                    case ContentCategory.Education:
-                        if (url.Contains("education") || url.Contains("school"))
-                        {
-                            return filter.Action;
-                        }
-                        break;
+                    }
                 }
             }
 
             return ContentAction.Allow; // 默认允许
+        }
+
+        private static Dictionary<ContentCategory, string[]> BuildCategoryKeywords()
+        {
+            // 内置关键词库（覆盖全部内容类别，含中文站点常见关键词）
+            return new Dictionary<ContentCategory, string[]>
+            {
+                [ContentCategory.Adult] = new[] { "porn", "adult", "xxx", "sex", "nude", "hentai", "sese", "caoliu" },
+                [ContentCategory.Violence] = new[] { "gore", "violence", "beheading", "snuff", "brutal" },
+                [ContentCategory.Gambling] = new[] { "casino", "poker", "betting", "gambling", "slot", "bet365", "博彩", "棋牌" },
+                [ContentCategory.Drugs] = new[] { "narcotics", "cocaine", "marijuana", "heroin", "methamphetamine" },
+                [ContentCategory.SocialMedia] = new[] { "facebook.com", "twitter.com", "instagram.com", "tiktok.com", "weibo.com", "douyin.com" },
+                [ContentCategory.Education] = new[] { "education", "school", "khanacademy", "coursera", "mooc", "xuexi" },
+                [ContentCategory.Entertainment] = new[] { "youtube.com", "bilibili.com", "iqiyi.com", "youku.com", "netflix.com" }
+            };
         }
 
         private void SaveUsers()

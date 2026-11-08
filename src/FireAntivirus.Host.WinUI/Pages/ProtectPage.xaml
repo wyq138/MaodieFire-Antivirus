@@ -1,32 +1,22 @@
-<!-- 耄耋软件工作室 开发，严禁非法反编译 -->
-<Page
+<Page NavigationCacheMode="Required"
     x:Class="FireAntivirus.Host.WinUI.Pages.ProtectPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer Padding="24,16,24,24">
+    <ScrollViewer Padding="28,10,28,24">
         <StackPanel Spacing="14" MaxWidth="920">
 
             <TextBlock Text="实时防护" Style="{StaticResource PageTitle}"/>
 
             <Border Style="{StaticResource ModernCard}">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="天盾引擎多阶段检测管线" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <TextBlock Text="整合 静态/PE/导入表/YARA/启发式/沙箱/行为/网络 多手段加权评分，阶段分超阈值或已发生破坏动作才响应，杜绝误报漏报。高置信威胁仅做可逆隔离，绝不删除原始文件。" Opacity="0.75" TextWrapping="Wrap"/>
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource ModernCard}">
                 <StackPanel Spacing="14">
-                    <TextBlock Text="防护模块状态" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock Text="防护模块" FontSize="16" FontWeight="SemiBold"/>
 
-                    <ToggleSwitch Header="实时文件防护" IsOn="True"/>
-                    <ToggleSwitch Header="网页防护（拦截恶意URL/C2）" IsOn="True"/>
-                    <ToggleSwitch Header="勒索防护" IsOn="True"/>
-                    <ToggleSwitch Header="行为分析" IsOn="True"/>
-                    <ToggleSwitch Header="进程监控" IsOn="True"/>
+                    <ToggleSwitch x:Name="FileGuardToggle" Header="实时文件防护（监控临时/下载/启动目录，高危自动隔离）" Toggled="FileGuard_Toggled"/>
+                    <ToggleSwitch x:Name="RansomToggle" Header="勒索防护（监控文档目录敏感文件写入）" Toggled="Ransom_Toggled"/>
 
-                    <TextBlock Opacity="0.6" Text="检测手段：静态特征 · PE导入表 · YARA规则 · 启发式 · 沙箱 · 行为 · 网络"/>
+                    <TextBlock x:Name="WatchCount" Opacity="0.6"/>
+                    <TextBlock Opacity="0.6" Text="发现威胁时右下角弹窗提示；高危/严重威胁自动移入隔离区（可恢复），不直接删除文件。"/>
                 </StackPanel>
             </Border>
         </StackPanel>

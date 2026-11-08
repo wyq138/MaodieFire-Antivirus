@@ -61,7 +61,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         public HeuristicEngine()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             fileHashCache = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             heuristicScores = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         }

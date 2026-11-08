@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 // 威胁特征库数据源：从外置 JSON（ThreatData/embedded_threats.json）运行时加载，
 // 不把恶意字符串硬编码进 DLL，避免被病毒引擎误判。
 using System;
@@ -131,8 +130,11 @@ namespace FireAntivirus.Engine.Data
                 _loading = true;
                 try
                 {
+                    // 在线更新的运行时库（ProgramData）优先，其次出厂库（程序目录及其 ThreatData 子目录）
                     var dirs = new[]
                     {
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                            "FireAntivirus", "ThreatData"),
                         AppDomain.CurrentDomain.BaseDirectory,
                         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ThreatData")
                     };
@@ -294,6 +296,16 @@ namespace FireAntivirus.Engine.Data
                 }
             }
             return (best, bestMatches);
+        }
+
+        /// <summary>特征库在线更新落盘后调用：标记未加载，下次访问按新库重新装载。</summary>
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _loaded = false;
+                _loading = false;
+            }
         }
 
         /// <summary>自检：确认外置库是否成功加载。</summary>

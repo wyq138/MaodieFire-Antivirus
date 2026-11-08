@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 // 网络安全扩展模块 - 包含更多真实网络防护功能
 using System;
 using System.Collections.Generic;

@@ -21,14 +21,51 @@ namespace FireAntivirus.RealTimeProtectionPlus
         private AntivirusEngine _antivirusEngine;
         private List<ProtectionModule> _protectionModules;
         private bool _isEnabled;
-        
+
+        /// <summary>
+        /// 实时防护检测到威胁（UI 弹窗订阅：WinUI → ThreatDealWindow 独立处置窗口）。
+        /// 参数: 标题 / 详情 / 等级（High/Medium/Low）
+        /// </summary>
+        public static event Action<string, string, string> ThreatDetected;
+
+        private void RaiseThreat(string title, string detail, string severity)
+        {
+            try
+            {
+                FireAntivirus.Engine.Analyzers.DetectionTimeline.Record(
+                    "实时防护", title, severity, "", 0, "", detail, detail);
+            }
+            catch { }
+            ThreatDetected?.Invoke(title, detail, severity);
+        }
+
         // 监控组件
         private ManagementEventWatcher _processWatcher;
         private List<FileSystemWatcher> _fileWatchers;
         private ManagementEventWatcher _registryWatcher;
         private Thread _networkMonitorThread;
         private Thread _behaviorMonitorThread;
+        private Timer _lsassScanTimer;
         private bool _isMonitoring;
+
+        // 命令行行为检测只对这些宿主取 CommandLine：ATT&CK 命令（凭据转储/卷影删除/日志清除…）
+        // 必须由这些进程执行；WMI 查询有开销，进程创建风暴下不能对每个 PID 都查。
+        private static readonly HashSet<string> CommandLineHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe", "cscript.exe", "mshta.exe",
+            "rundll32.exe", "regsvr32.exe", "certutil.exe", "wmic.exe", "bcdedit.exe", "vssadmin.exe",
+            "reg.exe", "diskshadow.exe", "wevtutil.exe", "netsh.exe", "attrib.exe",
+            "msbuild.exe", "installutil.exe", "regasm.exe", "regsvcs.exe"
+        };
+
+        // VAD 隐匿内存扫描目标：Office/浏览器/脚本宿主/LOLBins（扫描开销大，不做全系统枚举）
+        private static readonly HashSet<string> VadTargetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "winword", "excel", "powerpnt", "outlook", "wps", "et", "wpp",
+            "chrome", "msedge", "firefox", "iexplore", "brave", "opera",
+            "powershell", "pwsh", "cmd", "rundll32", "mshta", "regsvr32",
+            "wscript", "cscript", "installutil", "msbuild"
+        };
         
         // 可疑进程名称（从外部 JSON 加载：ThreatData/malicious_indicators.json 的 suspiciousProcessNames，
         // 不内嵌于 DLL，避免杀软误报，也便于更新）
@@ -249,11 +286,20 @@ namespace FireAntivirus.RealTimeProtectionPlus
         {
             try
             {
-                // 使用WMI监控进程创建
+                // Win32_ProcessStartTrace 需要 SeSecurityPrivilege 特权（Scope 开启特权提升）
+                var scope = new System.Management.ManagementScope("root\\cimv2", new System.Management.ConnectionOptions
+                {
+                    EnablePrivileges = true,
+                    Impersonation = System.Management.ImpersonationLevel.Impersonate,
+                    Authentication = System.Management.AuthenticationLevel.Default
+                });
+                scope.Connect();
+
                 var query = new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace");
-                _processWatcher = new ManagementEventWatcher(query);
+                _processWatcher = new ManagementEventWatcher(scope, query);
                 _processWatcher.EventArrived += OnProcessCreated;
                 _processWatcher.Start();
+                StartCredentialHandleScan();
                 
                 _dataManager.AddLog(new LogEntry
                 {
@@ -280,6 +326,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
         {
             try
             {
+                StopCredentialHandleScan();
                 if (_processWatcher != null)
                 {
                     _processWatcher.Stop();
@@ -288,6 +335,115 @@ namespace FireAntivirus.RealTimeProtectionPlus
                 }
             }
             catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "停止进程监控失败", ex.Message); }
+        }
+
+        /// <summary>
+        /// LSASS 句柄表周期扫描（60 秒）：句柄枚举是全系统操作，开销大，不能挂在进程创建事件上。
+        /// 命中"非 lsass 进程持有 LSASS 的 PROCESS_VM_READ 句柄"即凭据窃取前兆。
+        /// </summary>
+        private void StartCredentialHandleScan()
+        {
+            try
+            {
+                StopCredentialHandleScan();
+                FireAntivirus.Engine.Analyzers.HandleAccessAudit.Finding -= OnHandleFinding;
+                FireAntivirus.Engine.Analyzers.HandleAccessAudit.Finding += OnHandleFinding;
+                _lsassScanTimer = new Timer(_ => ScanCredentialHandles(), null, 5000, 60000);
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Log(LogHelper.LogLevel.Warning, "句柄访问审计启动失败", ex.Message);
+            }
+        }
+
+        private void StopCredentialHandleScan()
+        {
+            try
+            {
+                FireAntivirus.Engine.Analyzers.HandleAccessAudit.Finding -= OnHandleFinding;
+                _lsassScanTimer?.Dispose();
+                _lsassScanTimer = null;
+            }
+            catch { }
+        }
+
+        private void OnHandleFinding(FireAntivirus.Engine.Analyzers.HandleAuditEntry finding)
+        {
+            RaiseThreat("句柄访问审计",
+                $"{finding.Detail} · {finding.Technique} · 掩码 0x{finding.AccessMask:X8}（{finding.Access}）",
+                finding.Risk == FireAntivirus.Engine.Analyzers.HandleRisk.Critical ? "Critical" : "High");
+        }
+
+        private void ScanCredentialHandles()
+        {
+            if (!FireAntivirus.Engine.Analyzers.HandleAccessAudit.Enabled) return;
+            try
+            {
+                // 全量审计受保护进程（lsass/csrss/winlogon/services/安全软件自身），
+                // High/Critical 由 Finding 事件即时进入处置链，此处负责落盘取证报告。
+                var report = FireAntivirus.Engine.Analyzers.HandleAccessAudit.Scan();
+                if (report.Findings.Count > 0)
+                {
+                    string reportPath = FireAntivirus.Engine.Analyzers.HandleAccessAudit.WriteReport(report);
+                    LogHelper.Log(LogHelper.LogLevel.Warning, "句柄访问审计",
+                        $"{report.Summary} → {(string.IsNullOrEmpty(reportPath) ? "报告写入失败" : reportPath)}");
+                }
+
+                // VAD 隐匿内存剥离：只扫高关注进程（Office/浏览器/LOLBins 宿主），避免全系统开销
+                if (FireAntivirus.Engine.Analyzers.MemoryVadScanner.Enabled)
+                {
+                    var vadTargets = Process.GetProcesses()
+                        .Where(p => VadTargetNames.Contains(p.ProcessName))
+                        .Select(p => p.Id).ToList();
+                    foreach (var vadReport in FireAntivirus.Engine.Analyzers.MemoryVadScanner.ScanProcesses(vadTargets, 12))
+                    {
+                        foreach (var finding in vadReport.Findings.Where(f => f.Score >= 70))
+                        {
+                            RaiseThreat("VAD 隐匿内存",
+                                $"PID {finding.Pid} 0x{finding.BaseAddress:X} {finding.Size / 1024}KB（评分 {finding.Score}）：" +
+                                string.Join("；", finding.Reasons.Take(3)),
+                                finding.Score >= 85 ? "Critical" : "High");
+                        }
+
+                        // 内存 YARA：对可疑区域 dump 后用现有规则库真实扫描（无文件/反射加载/内存马）
+                        if (vadReport.Findings.Any(f => f.Score >= 60) &&
+                            FireAntivirus.Engine.Analyzers.MemoryYaraScanner.Enabled)
+                        {
+                            var memoryYara = FireAntivirus.Engine.Analyzers.MemoryYaraScanner.ScanProcess(vadReport.Pid);
+                            foreach (var hit in memoryYara.Hits)
+                            {
+                                RaiseThreat("内存 YARA",
+                                    $"PID {vadReport.Pid} {memoryYara.ProcessName} 0x{hit.BaseAddress:X} " +
+                                    $"命中规则 {string.Join(",", hit.Rules)}（dump: {hit.DumpPath}）",
+                                    "Critical");
+                            }
+                        }
+                    }
+                }
+
+                // 敏感数据流污点：凭据持有者 × 外连 PID 关联
+                if (FireAntivirus.Engine.Analyzers.SensitiveFlowTracker.Enabled)
+                {
+                    var flow = FireAntivirus.Engine.Analyzers.SensitiveFlowTracker.Scan();
+                    foreach (var finding in flow.Findings)
+                        RaiseThreat("敏感数据流污点", finding.Detail + " · " + finding.RemoteEndpoints, finding.Severity);
+                }
+
+                FireAntivirus.Engine.Analyzers.ProcessLineageGraph.Prune();
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Log(LogHelper.LogLevel.Warning, "句柄访问审计异常", ex.Message);
+            }
+        }
+
+        private static bool IsCommandLineHost(string processName)
+        {
+            if (string.IsNullOrEmpty(processName)) return false;
+            string name = processName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                ? processName
+                : processName + ".exe";
+            return CommandLineHosts.Contains(name);
         }
 
         private void OnProcessCreated(object sender, EventArrivedEventArgs e)
@@ -309,8 +465,93 @@ namespace FireAntivirus.RealTimeProtectionPlus
                 };
                 
                 var result = AnalyzeProcessEvent(protectionEvent);
+
+                // ==== 进程血缘图 + LOLBins 无文件执行链路（实时防护入口）====
+                if (int.TryParse(processId, out var lineagePid) && lineagePid > 0)
+                {
+                    int.TryParse(parentProcessId, out var lineageParentPid);
+                    string lineagePath = "";
+                    string lineageCmd = IsCommandLineHost(processName) ? GetProcessCommandLine(lineagePid) : "";
+                    try
+                    {
+                        using var lp = Process.GetProcessById(lineagePid);
+                        lineagePath = lp.MainModule?.FileName ?? "";
+                    }
+                    catch { }
+
+                    FireAntivirus.Engine.Analyzers.ProcessLineageGraph.Register(
+                        lineagePid, lineageParentPid, processName, lineagePath, lineageCmd);
+
+                    // ASR 攻击面减少规则（Office 子进程/编码脚本/凭据转储/LOLBin 远程载荷/WMI 持久化等）
+                    var asr = FireAntivirus.Engine.Analyzers.AsrRuleEngine.Evaluate(
+                        processName, lineageCmd,
+                        FireAntivirus.Engine.Analyzers.ProcessLineageGraph.Ancestors(lineagePid));
+                    if (asr.Hit)
+                    {
+                        RaiseThreat("ASR 攻击面减少", asr.Detail, asr.Severity);
+                        if (asr.Block)
+                        {
+                            var asrBlock = FireAntivirus.Engine.Analyzers.ProcessLineageGraph.BlockChain(lineagePid);
+                            LogHelper.Log(LogHelper.LogLevel.Warning, "ASR 阻断", asrBlock.Message);
+                        }
+                    }
+
+                    var chain = FireAntivirus.Engine.Analyzers.ProcessLineageGraph.Evaluate(lineagePid);
+                    if (chain.Hit)
+                    {
+                        RaiseThreat("LOLBins 无文件执行链路",
+                            $"{chain.Name}（{chain.Technique}，评分 {chain.Score}）: {chain.Chain}",
+                            chain.Score >= 80 ? "Critical" : "High");
+
+                        if (chain.AutoBlock && FireAntivirus.Engine.Analyzers.ProcessLineageGraph.AutoBlockEnabled)
+                        {
+                            var chainBlock = FireAntivirus.Engine.Analyzers.ProcessLineageGraph.BlockChain(lineagePid);
+                            LogHelper.Log(LogHelper.LogLevel.Warning, "链路级阻断", chainBlock.Message);
+                        }
+                    }
+                }
+
+                // ==== ATT&CK 高级行为检测（凭据访问 / 防御规避）====
+                // 与进程画像扫描并行：命中即经统一威胁链弹出处置窗口（终止/隔离/信任由用户决定，
+                // 不自动杀进程——运维工具如 procdump 会被管理员合法使用，自动终止误伤率高）。
+                if (int.TryParse(processId, out var behaviorPid) && IsCommandLineHost(processName))
+                {
+                    try
+                    {
+                        string cmdLine = GetProcessCommandLine(behaviorPid);
+
+                        if (FireAntivirus.Engine.Analyzers.CredentialAccessMonitor.Enabled)
+                        {
+                            var credential = FireAntivirus.Engine.Analyzers.CredentialAccessMonitor
+                                .Analyze(processName, behaviorPid, cmdLine);
+                            if (credential.Detected)
+                                RaiseThreat("凭据访问防护", credential.Detail, credential.Severity);
+                        }
+
+                        if (FireAntivirus.Engine.Analyzers.DefenseEvasionMonitor.Enabled)
+                        {
+                            var evasion = FireAntivirus.Engine.Analyzers.DefenseEvasionMonitor
+                                .Analyze(processName, behaviorPid, cmdLine);
+                            if (evasion.Detected)
+                                RaiseThreat("防御规避检测", evasion.Detail, evasion.Severity);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogHelper.Log(LogHelper.LogLevel.Warning, "命令行行为检测失败", ex.Message);
+                    }
+                }
+
                 if (result.Action == ProtectionAction.Block)
                 {
+                    // 确认恶意 → 标记血缘节点并执行链级阻断（整棵子进程树）
+                    if (int.TryParse(processId, out var blockedPid))
+                    {
+                        FireAntivirus.Engine.Analyzers.ProcessLineageGraph.MarkMalicious(blockedPid, result.Message);
+                        var blockResult = FireAntivirus.Engine.Analyzers.ProcessLineageGraph.BlockChain(blockedPid);
+                        LogHelper.Log(LogHelper.LogLevel.Warning, "kill chain 链级阻断", blockResult.Message);
+                    }
+
                     // 尝试终止可疑进程
                     try
                     {
@@ -324,6 +565,9 @@ namespace FireAntivirus.RealTimeProtectionPlus
                             else
                             {
                                 process.Kill();
+                                RaiseThreat("进程防护",
+                                    $"已拦截并终止可疑进程: {processName} (PID {pid})",
+                                    "High");
                             }
                         }
                     }
@@ -337,15 +581,23 @@ namespace FireAntivirus.RealTimeProtectionPlus
         {
             try
             {
-                // 监控关键目录
+                // 监控关键目录（系统目录 + 全部用户数据落点：桌面/下载/文档/TEMP/开始菜单，移动盘由 UsbGuard 独立覆盖）
                 var watchPaths = new[]
                 {
                     Environment.GetFolderPath(Environment.SpecialFolder.System),
                     Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                     Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32"),
-                    Environment.GetFolderPath(Environment.SpecialFolder.Startup)
-                };
+                    Environment.GetFolderPath(Environment.SpecialFolder.Startup),
+                    Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "Windows", "Start Menu"),
+                    Path.GetTempPath()
+                }
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Distinct()
+                .ToArray();
 
                 foreach (var path in watchPaths)
                 {
@@ -427,6 +679,10 @@ namespace FireAntivirus.RealTimeProtectionPlus
                         Message = $"实时防护已隔离可逆处置文件: {e.FullPath}",
                         Details = result.Message
                     });
+
+                    RaiseThreat("文件防护",
+                        $"实时防护已隔离威胁文件: {System.IO.Path.GetFileName(e.FullPath)}\n{result.Message}",
+                        "High");
                 }
                 catch (Exception ex)
                 {
@@ -451,6 +707,10 @@ namespace FireAntivirus.RealTimeProtectionPlus
                     Message = $"实时防护提示(未处置,待确认): {e.FullPath}",
                     Details = result.Message
                 });
+
+                RaiseThreat("文件防护",
+                    $"可疑文件活动（未处置，待人工确认）: {e.FullPath}",
+                    "Medium");
             }
         }
 
@@ -479,9 +739,10 @@ namespace FireAntivirus.RealTimeProtectionPlus
             try
             {
                 // 监控注册表修改
+                // RegistryValueChangeEvent 的 Hive 必须用缩写 HKLM（完整名 HKEY_LOCAL_MACHINE 会导致 0x80042001 无效查询）
                 var query = new WqlEventQuery(
                     "SELECT * FROM RegistryValueChangeEvent WHERE " +
-                    "Hive = 'HKEY_LOCAL_MACHINE' AND " +
+                    "Hive = 'HKLM' AND " +
                     "KeyPath = 'SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run'");
                 
                 _registryWatcher = new ManagementEventWatcher(query);
@@ -535,7 +796,20 @@ namespace FireAntivirus.RealTimeProtectionPlus
                 Details = "Hive=HKEY_LOCAL_MACHINE,KeyPath=SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
             };
             
-            AnalyzeRegistryEvent(protectionEvent);
+            var result = AnalyzeRegistryEvent(protectionEvent);
+
+            if (result.Action == ProtectionAction.Block)
+            {
+                RaiseThreat("注册表防护",
+                    $"检测到自启动键 (Run) 被修改，存在持久化企图\n{protectionEvent.RegistryPath}",
+                    "High");
+            }
+            else if (result.Action == ProtectionAction.Alert)
+            {
+                RaiseThreat("注册表防护",
+                    "自启动键 (Run) 发生变更",
+                    "Medium");
+            }
         }
 
         private void StartNetworkProtection()
@@ -596,6 +870,9 @@ namespace FireAntivirus.RealTimeProtectionPlus
                                 };
                                 
                                 AnalyzeNetworkEvent(protectionEvent);
+                                RaiseThreat("网络防护",
+                                    $"检测到可疑端口连接: {conn.RemoteEndPoint}",
+                                    "Medium");
                             }
                         }
                     }
@@ -672,6 +949,9 @@ namespace FireAntivirus.RealTimeProtectionPlus
                                         else
                                         {
                                             process.Kill();
+                                            RaiseThreat("行为防护",
+                                                $"已终止可疑行为进程: {process.ProcessName} (PID {process.Id})\n命令行: {cmdLine}",
+                                                "High");
                                         }
                                     }
                                 }
@@ -880,6 +1160,30 @@ namespace FireAntivirus.RealTimeProtectionPlus
                     {
                         // 使用杀毒引擎扫描(多引擎共识:置信度>=0.8才算确认威胁)
                         var scanResult = _antivirusEngine.ScanFile(filePath);
+
+                        // 文件 I/O 熵变时序：30 秒窗口内多文档从低熵跃迁到高熵 → 勒索加密
+                        if (FireAntivirus.Engine.Analyzers.EntropyTimelineAnalyzer.Enabled)
+                        {
+                            var timeline = FireAntivirus.Engine.Analyzers.EntropyTimelineAnalyzer.Observe(filePath);
+                            if (timeline.Detected)
+                            {
+                                RaiseThreat("文件 I/O 熵变时序",
+                                    string.Join("；", timeline.Reasons) +
+                                    $"（可疑 PID: {string.Join(",", timeline.SuspectPids)}）",
+                                    "Critical");
+                                foreach (int suspect in timeline.SuspectPids)
+                                {
+                                    var entropyBlock = FireAntivirus.Engine.Analyzers.ProcessLineageGraph.BlockChain(suspect);
+                                    if (entropyBlock.Success)
+                                        LogHelper.Log(LogHelper.LogLevel.Warning, "熵变时序链级阻断", entropyBlock.Message);
+                                }
+                            }
+                        }
+
+                        // 确认恶意样本自动进入模糊哈希索引（下次变种按内容相似度识别）
+                        if (scanResult != null && scanResult.IsInfected && scanResult.Confidence >= 0.85 &&
+                            FireAntivirus.Engine.Analyzers.FuzzyHashCluster.Enabled)
+                            FireAntivirus.Engine.Analyzers.FuzzyHashCluster.IndexFile(filePath, scanResult.ThreatName, out _);
                         if (scanResult != null && scanResult.IsInfected && scanResult.Confidence >= 0.8)
                         {
                             result.Action = ProtectionAction.Block;
@@ -892,6 +1196,27 @@ namespace FireAntivirus.RealTimeProtectionPlus
                             result.Action = ProtectionAction.Alert;
                             result.Message = $"文件可疑(待人工确认,避免误报): {filePath} ({scanResult.ThreatName})";
                             return result;
+                        }
+                    }
+                    else if (FireAntivirus.Engine.Analyzers.ArchiveScanner.Enabled
+                             && FireAntivirus.Engine.Analyzers.ArchiveScanner.IsArchiveExt(filePath))
+                    {
+                        // 压缩包深度扫描：新落地的 zip/tar/gz（原生）/ rar/7z（7-Zip）解开后逐文件真实查杀
+                        try
+                        {
+                            var archive = FireAntivirus.Engine.Analyzers.ArchiveScanner
+                                .Scan(filePath, _antivirusEngine.ScanFile);
+                            var badEntry = archive.Files.FirstOrDefault(x => x.IsMalicious);
+                            if (badEntry != null)
+                            {
+                                result.Action = ProtectionAction.Block;
+                                result.Message = $"压缩包内文件确认威胁: {filePath} → {badEntry.InnerPath} ({badEntry.ThreatName})";
+                                return result;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogHelper.Log(LogHelper.LogLevel.Warning, "实时压缩包扫描失败", ex.Message);
                         }
                     }
                 }

@@ -733,9 +733,38 @@ namespace FireAntivirus.Services
 
         private List<string> GetExpectedIPs(string domain)
         {
-            // 使用DoH查询可信DNS
-            // 简化实现：返回null表示未知
-            return null;
+            // 真实基准解析：通过可信 DNS over HTTPS（Cloudflare DoH）获取域名基准 IP
+            try
+            {
+                var url = $"https://cloudflare-dns.com/dns-query?name={Uri.EscapeDataString(domain)}&type=A";
+                using var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
+                request.Headers.Add("accept", "application/dns-json");
+
+                var response = client.SendAsync(request).GetAwaiter().GetResult();
+                if (!response.IsSuccessStatusCode) return null;
+
+                var json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+                var expected = new List<string>();
+                if (doc.RootElement.TryGetProperty("Answer", out var answers) &&
+                    answers.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var answer in answers.EnumerateArray())
+                    {
+                        // 仅取 A 记录（type=1）
+                        if (answer.TryGetProperty("type", out var typeEl) && typeEl.GetInt32() == 1 &&
+                            answer.TryGetProperty("data", out var dataEl))
+                        {
+                            expected.Add(dataEl.GetString());
+                        }
+                    }
+                }
+
+                return expected.Count > 0 ? expected : null;
+            }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); return null; }
         }
 
         private List<string> ResolveDomain(string domain)
@@ -753,8 +782,64 @@ namespace FireAntivirus.Services
 
         private void CheckDNSCacheIntegrity()
         {
-            // 验证DNS缓存中的条目
-            // 实际实现需要与系统DNS缓存交互
+            // 真实校验：读取系统 DNS 缓存（ipconfig /displaydns），将缓存条目与可信 DoH 解析结果比对
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "ipconfig.exe",
+                    Arguments = "/displaydns",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                if (process == null) return;
+
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(30000);
+
+                string currentDomain = null;
+                foreach (var rawLine in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var line = rawLine.Trim();
+                    int colonIndex = line.IndexOf(':');
+                    if (colonIndex <= 0) continue;
+
+                    var key = line.Substring(0, colonIndex).Trim();
+                    var value = line.Substring(colonIndex + 1).Trim();
+
+                    // 中英文系统的 ipconfig 输出均兼容
+                    if (key.StartsWith("记录名称") || key.StartsWith("Record Name", StringComparison.OrdinalIgnoreCase))
+                    {
+                        currentDomain = value.Trim('.', ' ');
+                    }
+                    else if (currentDomain != null &&
+                             (key.StartsWith("IP 地址") || key.StartsWith("A (主机) 地址") ||
+                              key.StartsWith("IP Address", StringComparison.OrdinalIgnoreCase) ||
+                              key.StartsWith("A (Host) Address", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // 对缓存条目做可信源比对
+                        var expectedIPs = GetExpectedIPs(currentDomain);
+                        if (expectedIPs != null && expectedIPs.Count > 0 && !expectedIPs.Contains(value))
+                        {
+                            var alert = new DNSAlert
+                            {
+                                Title = "检测到DNS缓存条目异常",
+                                Description = $"域名: {currentDomain}\n缓存IP: {value}\n可信IP: {string.Join(", ", expectedIPs)}",
+                                Severity = ThreatSeverity.High,
+                                DetectedAt = DateTime.Now
+                            };
+                            _alerts.Enqueue(alert);
+                            FlushDNSCache();
+                        }
+
+                        currentDomain = null;
+                    }
+                }
+            }
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
         }
 
         #endregion
@@ -1109,13 +1194,35 @@ namespace FireAntivirus.Services
             return result;
         }
 
+        // 真实成人域名检测（升级自"仅 4 个关键词"）：内置真实成人站点域名库（精确/子域名匹配）+ 关键词启发式
+        private static readonly HashSet<string> AdultDomainList = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "pornhub.com", "xvideos.com", "xnxx.com", "xhamster.com", "redtube.com", "youporn.com",
+            "spankbang.com", "onlyfans.com", "chaturbate.com", "livejasmin.com", "bongacams.com",
+            "cam4.com", "stripchat.com", "eporner.com", "txxx.com", "hclips.com", "tube8.com",
+            "beeg.com", "tnaflix.com", "motherless.com", "porntrex.com", "drtuber.com", "sex.com"
+        };
+
+        private static readonly string[] AdultKeywords =
+        {
+            "porn", "xxx", "adult", "sex", "hentai", "nsfw", "onlyfans", "escort", "camgirl", "milf", "jav"
+        };
+
         private bool IsAdultDomain(string domain)
         {
-            // 简化的成人域名检测
-            string[] adultKeywords = { "porn", "xxx", "adult", "sex" };
-            domain = domain.ToLower();
-            
-            return adultKeywords.Any(k => domain.Contains(k));
+            if (string.IsNullOrWhiteSpace(domain)) return false;
+            var host = domain.Trim().TrimEnd('.').ToLowerInvariant();
+
+            // ①真实域名库匹配（含子域名）
+            foreach (var adult in AdultDomainList)
+            {
+                if (host.Equals(adult, StringComparison.OrdinalIgnoreCase) ||
+                    host.EndsWith("." + adult, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            // ②关键词启发式
+            return AdultKeywords.Any(k => host.Contains(k));
         }
 
         private DNSResolutionResult ResolveViaDoH(string domain)
@@ -1198,49 +1305,94 @@ namespace FireAntivirus.Services
         private List<string> ParseDNSResponse(byte[] data)
         {
             var ips = new List<string>();
-            
+
             try
             {
-                // 简化的DNS响应解析
-                // 实际实现需要完整解析DNS响应包
-                int offset = 12; // Skip header
-                
-                // Skip question section
-                while (data[offset] != 0)
+                // 完整 DNS 响应解析（升级自"简化解析"）：正确跳过压缩指针、解析 A / AAAA / CNAME
+                if (data == null || data.Length < 12) return ips;
+
+                int qdCount = (data[4] << 8) | data[5];
+                int anCount = (data[6] << 8) | data[7];
+
+                int offset = 12;
+                for (int i = 0; i < qdCount && offset < data.Length; i++)
+                    offset = SkipDnsName(data, offset) + 4;
+
+                var cnameTargets = new List<string>();
+                for (int i = 0; i < anCount && offset + 10 <= data.Length; i++)
                 {
-                    int labelLen = data[offset];
-                    offset += labelLen + 1;
-                }
-                offset += 5; // End marker + QTYPE + QCLASS
-                
-                // Parse answers
-                while (offset < data.Length - 12)
-                {
-                    // Skip name (compressed pointer)
-                    offset += 2;
-                    
+                    offset = SkipDnsName(data, offset);
+                    if (offset + 10 > data.Length) break;
+
                     ushort type = (ushort)((data[offset] << 8) | data[offset + 1]);
-                    offset += 2;
-                    ushort cls = (ushort)((data[offset] << 8) | data[offset + 1]);
-                    offset += 2;
-                    uint ttl = (uint)((data[offset] << 24) | (data[offset + 1] << 16) | 
-                                     (data[offset + 2] << 8) | data[offset + 3]);
-                    offset += 4;
-                    ushort rdLength = (ushort)((data[offset] << 8) | data[offset + 1]);
-                    offset += 2;
-                    
-                    if (type == 1 && rdLength == 4) // A record
+                    ushort rdLength = (ushort)((data[offset + 8] << 8) | data[offset + 9]);
+                    offset += 10;
+                    if (offset + rdLength > data.Length) break;
+
+                    if (type == 1 && rdLength == 4) // A
                     {
-                        string ip = $"{data[offset]}.{data[offset + 1]}.{data[offset + 2]}.{data[offset + 3]}";
-                        ips.Add(ip);
+                        ips.Add($"{data[offset]}.{data[offset + 1]}.{data[offset + 2]}.{data[offset + 3]}");
                     }
-                    
+                    else if (type == 28 && rdLength == 16) // AAAA
+                    {
+                        var sb = new System.Text.StringBuilder();
+                        for (int b = 0; b < 16; b += 2)
+                        {
+                            if (b > 0) sb.Append(':');
+                            sb.Append(((data[offset + b] << 8) | data[offset + b + 1]).ToString("x"));
+                        }
+                        ips.Add(sb.ToString());
+                    }
+                    else if (type == 5) // CNAME
+                    {
+                        var cname = ReadDnsName(data, offset);
+                        if (!string.IsNullOrEmpty(cname)) cnameTargets.Add(cname);
+                    }
+
                     offset += rdLength;
                 }
+
+                // CNAME 目标仅在无 A/AAAA 记录时作为解析结果补充（提示重定向目标）
+                if (ips.Count == 0 && cnameTargets.Count > 0)
+                    foreach (var c in cnameTargets) ips.Add("CNAME:" + c);
             }
-            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 捕获异常", ex.Message); }
-            
+            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "DNSProtection.cs 解析响应异常", ex.Message); }
+
             return ips;
+        }
+
+        /// <summary>跳过 DNS 名称（正确处理压缩指针 0xC0）。</summary>
+        private static int SkipDnsName(byte[] data, int offset)
+        {
+            while (offset < data.Length)
+            {
+                int len = data[offset];
+                if (len == 0) return offset + 1;
+                if ((len & 0xC0) == 0xC0) return offset + 2;
+                offset += len + 1;
+            }
+            return offset;
+        }
+
+        /// <summary>读取 DNS 名称（跟随压缩指针，防环）。</summary>
+        private static string ReadDnsName(byte[] data, int offset)
+        {
+            var parts = new List<string>();
+            int guard = 0;
+            while (offset < data.Length && guard++ < 64)
+            {
+                int len = data[offset];
+                if (len == 0) break;
+                if ((len & 0xC0) == 0xC0)
+                {
+                    offset = ((data[offset] & 0x3F) << 8) | data[offset + 1];
+                    continue;
+                }
+                if (offset + 1 + len > data.Length) break;
+                parts.Add(System.Text.Encoding.ASCII.GetString(data, offset + 1, len));
+                offset += len + 1;
+            }
+            return string.Join(".", parts);
         }
 
         #endregion
@@ -1249,31 +1401,77 @@ namespace FireAntivirus.Services
 
         public void BlockDomain(string domain)
         {
-            if (!string.IsNullOrEmpty(domain))
-            {
-                _blockedDomains.Add(domain.ToLower());
-                SaveDatabase();
-            }
+            if (string.IsNullOrEmpty(domain)) return;
+            _blockedDomains.Add(domain.ToLower());
+            SaveDatabase();
+            // 真实拦截：hosts 映射（此前仅内存集合 = 只检测无行为）
+            FireAntivirus.Common.HostsBlocker.SetBlocked(domain, true, out _);
         }
 
         public void UnblockDomain(string domain)
         {
+            if (string.IsNullOrEmpty(domain)) return;
             _blockedDomains.Remove(domain.ToLower());
             SaveDatabase();
+            FireAntivirus.Common.HostsBlocker.SetBlocked(domain, false, out _);
         }
 
         public void BlockIP(string ip)
         {
-            if (!string.IsNullOrEmpty(ip))
-            {
-                _blockedIPs.Add(ip);
-                SaveDatabase();
-            }
+            if (string.IsNullOrEmpty(ip)) return;
+            if (!_blockedIPs.Contains(ip)) _blockedIPs.Add(ip);
+            SaveDatabase();
+            BlockIpViaFirewall(ip, true);
         }
 
         public void UnblockIP(string ip)
         {
+            if (string.IsNullOrEmpty(ip)) return;
             _blockedIPs.Remove(ip);
+            SaveDatabase();
+            BlockIpViaFirewall(ip, false);
+        }
+
+        /// <summary>真实 IP 封禁/解封：Windows 防火墙入站+出站规则（此前仅内存集合）。</summary>
+        private static void BlockIpViaFirewall(string ip, bool block)
+        {
+            try
+            {
+                string inRule = $"FireAntivirus_DNS_Block_{ip}_In";
+                string outRule = $"FireAntivirus_DNS_Block_{ip}_Out";
+                if (block)
+                {
+                    RunNetsh($"advfirewall firewall add rule name=\"{inRule}\" dir=in action=block remoteip={ip}");
+                    RunNetsh($"advfirewall firewall add rule name=\"{outRule}\" dir=out action=block remoteip={ip}");
+                }
+                else
+                {
+                    RunNetsh($"advfirewall firewall delete rule name=\"{inRule}\"");
+                    RunNetsh($"advfirewall firewall delete rule name=\"{outRule}\"");
+                }
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info,
+                    $"DNS 防护 IP 规则已{(block ? "添加" : "删除")}: {ip}");
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                    $"DNS 防护 IP 防火墙规则失败 {ip}: {ex.Message}");
+            }
+        }
+
+        private static void RunNetsh(string args)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "netsh",
+                Arguments = args,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            using var p = System.Diagnostics.Process.Start(psi);
+            p?.WaitForExit(10000);
         }
 
         public bool SetDNSServer(string adapterName, string primaryDNS, string secondaryDNS = null)

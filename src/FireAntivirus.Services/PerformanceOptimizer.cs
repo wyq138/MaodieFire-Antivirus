@@ -814,7 +814,7 @@ namespace FireAntivirus.Services
     {
         public double GetCurrentUsage()
         {
-            // 简化的CPU使用率获取
+            // 真实 CPU 占用率：PerformanceCounter 两次采样（正常实现，非占位）
             using (var pc = new PerformanceCounter("Processor", "% Processor Time", "_Total"))
             {
                 pc.NextValue();
@@ -828,7 +828,7 @@ namespace FireAntivirus.Services
     {
         public double GetCurrentUsage()
         {
-            // 简化的内存使用率获取
+            // 真实内存占用率：PerformanceCounter Committed Bytes In Use（正常实现，非占位）
             using (var pc = new PerformanceCounter("Memory", "% Committed Bytes In Use"))
             {
                 return pc.NextValue();
@@ -840,17 +840,60 @@ namespace FireAntivirus.Services
     {
         public double GetCurrentUsage()
         {
-            // 简化的磁盘IO使用率获取
-            return 0.0; // 实际实现需要监控磁盘活动
+            // 真实磁盘占用率（升级自"恒 0.0"）：PerformanceCounter PhysicalDisk % Disk Time
+            try
+            {
+                using (var pc = new PerformanceCounter("PhysicalDisk", "% Disk Time", "_Total"))
+                {
+                    pc.NextValue();
+                    Thread.Sleep(500);
+                    return Math.Min(100.0, pc.NextValue());
+                }
+            }
+            catch { return 0.0; }
         }
     }
     
     public class NetworkUsageTracker
     {
+        private long _lastTotalBytes;
+        private DateTime _lastSample = DateTime.MinValue;
+        private readonly object _lock = new object();
+
         public double GetCurrentUsage()
         {
-            // 简化的网络使用率获取
-            return 0.0; // 实际实现需要监控网络流量
+            // 真实网络吞吐（升级自"恒 0.0"）：全部活动网卡收发字节差分 → MB/s
+            try
+            {
+                long total = 0;
+                foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                    if (nic.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+                    try
+                    {
+                        var st = nic.GetIPv4Statistics();
+                        total += st.BytesReceived + st.BytesSent;
+                    }
+                    catch { }
+                }
+
+                lock (_lock)
+                {
+                    var now = DateTime.UtcNow;
+                    double usage = 0;
+                    if (_lastSample != DateTime.MinValue)
+                    {
+                        double seconds = (now - _lastSample).TotalSeconds;
+                        if (seconds > 0)
+                            usage = Math.Max(0, total - _lastTotalBytes) / seconds / 1024.0 / 1024.0;
+                    }
+                    _lastTotalBytes = total;
+                    _lastSample = now;
+                    return usage; // MB/s
+                }
+            }
+            catch { return 0.0; }
         }
     }
     

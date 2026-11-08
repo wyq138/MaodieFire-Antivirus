@@ -28,7 +28,7 @@ namespace FireAntivirus.Engine.Scanners
 
         public NetworkScanner(int maxThreads = 4, int batchSize = 10)
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             networkCache = new Dictionary<string, List<string>>();
             maxDegreeOfParallelism = Math.Max(1, Math.Min(Environment.ProcessorCount, maxThreads));
             this.batchSize = Math.Max(1, batchSize);

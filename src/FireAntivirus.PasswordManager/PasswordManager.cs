@@ -166,14 +166,10 @@ namespace FireAntivirus.PasswordManager
             }
 
             StringBuilder password = new StringBuilder();
-            using (var rng = new RNGCryptoServiceProvider())
+            byte[] randomBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(length);
+            for (int i = 0; i < length; i++)
             {
-                byte[] randomBytes = new byte[length];
-                rng.GetBytes(randomBytes);
-                for (int i = 0; i < length; i++)
-                {
-                    password.Append(chars[randomBytes[i] % chars.Length]);
-                }
+                password.Append(chars[randomBytes[i] % chars.Length]);
             }
 
             return password.ToString();

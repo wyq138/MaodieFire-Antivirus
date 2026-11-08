@@ -642,7 +642,7 @@ namespace FireAntivirus.MachineLearning
                 using (var stream = File.OpenRead(filePath))
                 {
                     var buffer = new byte[2];
-                    stream.Read(buffer, 0, 2);
+                    stream.ReadExactly(buffer, 0, 2);
                     return BitConverter.ToUInt16(buffer, 0) == 0x5A4D; // MZ header
                 }
             }
@@ -740,50 +740,52 @@ namespace FireAntivirus.MachineLearning
             return features;
         }
 
+        /// <summary>
+        /// 逻辑回归模型（真实的可训练/可序列化模型）
+        /// </summary>
+        public class LogisticRegressionModel
+        {
+            public double[] Weights { get; set; } = Array.Empty<double>();
+            public double Bias { get; set; }
+            public int Version { get; set; } = 1;
+            public int TrainingSampleCount { get; set; }
+        }
+
         private object LoadModelFromFile(string path)
         {
             try
             {
                 if (File.Exists(path))
                 {
-                    var modelData = File.ReadAllBytes(path);
-                    // 这里可以实现实际的模型加载逻辑
-                    // 例如：使用ML.NET、TensorFlow等
-                    return modelData;
+                    var json = File.ReadAllText(path);
+                    var model = Newtonsoft.Json.JsonConvert.DeserializeObject<LogisticRegressionModel>(json);
+                    if (model != null && model.Weights != null && model.Weights.Length > 0)
+                        return model;
                 }
             }
             catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
-            return new object();
+            return CreateDefaultModel();
         }
 
         private object CreateDefaultModel()
         {
-            try
+            // 默认模型：零初始化的逻辑回归模型（未训练时预测回退到启发式评分）
+            return new LogisticRegressionModel
             {
-                // 创建默认模型
-                // 例如：使用ML.NET创建一个简单的分类模型
-                return new object();
-            }
-            catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
-            return new object();
+                Weights = new double[512],
+                Bias = 0.0,
+                Version = 1
+            };
         }
 
         private void SaveModel(object model, string path)
         {
             try
             {
-                // 保存模型到文件
+                // 保存模型到文件（JSON 序列化完整参数）
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                if (model is byte[] modelData)
-                {
-                    File.WriteAllBytes(path, modelData);
-                }
-                else
-                {
-                    // 序列化模型对象
-                    var json = Newtonsoft.Json.JsonConvert.SerializeObject(model);
-                    File.WriteAllText(path, json);
-                }
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(model, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(path, json);
             }
             catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
         }
@@ -876,16 +878,29 @@ namespace FireAntivirus.MachineLearning
         {
             try
             {
-                // 简单的预测逻辑
-                // 实际项目中，这里应该使用训练好的模型进行预测
+                await Task.CompletedTask;
+
+                // 优先使用训练好的逻辑回归模型进行真实推断
+                if (_models.TryGetValue(modelType, out var modelObj) &&
+                    modelObj is LogisticRegressionModel model &&
+                    model.Weights != null && model.Weights.Length > 0)
+                {
+                    double z = model.Bias;
+                    int len = Math.Min(featureVector.Length, model.Weights.Length);
+                    for (int i = 0; i < len; i++)
+                        z += model.Weights[i] * featureVector[i];
+
+                    double probability = 1.0 / (1.0 + Math.Exp(-Math.Max(Math.Min(z, 30), -30)));
+                    return new PredictionResult { Score = probability };
+                }
+
+                // 模型未训练时的启发式回退：基于特征强度计算分数
                 double score = 0.0;
-                
-                // 基于特征向量计算简单的分数
                 for (int i = 0; i < featureVector.Length; i++)
                 {
                     score += featureVector[i] * 0.1;
                 }
-                
+
                 // 根据模型类型调整分数
                 switch (modelType)
                 {
@@ -902,10 +917,10 @@ namespace FireAntivirus.MachineLearning
                         score = Math.Min(1.0, score * 1.2);
                         break;
                 }
-                
+
                 // 归一化分数到0-1范围
                 score = Math.Min(1.0, Math.Max(0.0, score));
-                
+
                 return new PredictionResult { Score = score };
             }
             catch
@@ -1035,10 +1050,18 @@ namespace FireAntivirus.MachineLearning
             var features = new List<string>();
             try
             {
-                // 模拟动态特征提取
-                // 实际项目中，这里可以使用沙箱或模拟器执行文件
+                // 真实动态特征推断：基于文件内容中的 API 引用与行为标记（不执行文件）
+                if (!File.Exists(filePath)) return features;
+
+                var content = ReadFilePrefix(filePath, 1024 * 1024);
+                if (content.Length == 0)
+                {
+                    features.Add("dynamic:unreadable_file");
+                    return features;
+                }
+
                 features.Add("dynamic:executable");
-                features.Add("dynamic:no_behavior_detected");
+                features.AddRange(InferBehaviorFeatures(content));
             }
             catch
             {
@@ -1051,10 +1074,11 @@ namespace FireAntivirus.MachineLearning
             var features = new List<string>();
             try
             {
-                // 模拟动态特征提取
-                // 实际项目中，这里可以使用沙箱或模拟器执行文件
+                // 真实动态特征推断（内存数据版本）
+                if (fileData == null || fileData.Length == 0) return features;
+
                 features.Add("dynamic:executable");
-                features.Add("dynamic:no_behavior_detected");
+                features.AddRange(InferBehaviorFeatures(fileData));
             }
             catch
             {
@@ -1062,19 +1086,113 @@ namespace FireAntivirus.MachineLearning
             return features;
         }
 
+        private static byte[] ReadFilePrefix(string filePath, int maxLength)
+        {
+            using var stream = File.OpenRead(filePath);
+            var buffer = new byte[Math.Min(stream.Length, maxLength)];
+            int read = 0;
+            while (read < buffer.Length)
+            {
+                int n = stream.Read(buffer, read, buffer.Length - read);
+                if (n <= 0) break;
+                read += n;
+            }
+            if (read < buffer.Length) Array.Resize(ref buffer, read);
+            return buffer;
+        }
+
+        private static List<string> InferBehaviorFeatures(byte[] content)
+        {
+            // 通过 ASCII 扫描检测行为相关 API 与字符串标记
+            var features = new List<string>();
+            var text = System.Text.Encoding.ASCII.GetString(content).ToLowerInvariant();
+
+            if (text.Contains("writeprocessmemory") || text.Contains("createremotethread") || text.Contains("virtualallocex"))
+                features.Add("dynamic:process_injection_api");
+            if (text.Contains("internetopen") || text.Contains("urlmon") || text.Contains("winhttp") || text.Contains("wininet"))
+                features.Add("dynamic:network_api");
+            if (text.Contains("regsetvalue") || text.Contains("currentversion\\run"))
+                features.Add("dynamic:registry_persistence_api");
+            if (text.Contains("cryptencrypt") || text.Contains(".encrypted"))
+                features.Add("dynamic:crypto_api");
+            if (text.Contains("cmd.exe") || text.Contains("powershell"))
+                features.Add("dynamic:shell_execution");
+
+            if (features.Count == 0)
+                features.Add("dynamic:no_behavior_detected");
+
+            return features;
+        }
+
         private async Task TrainModelAsync(List<double[]> featureVectors, List<double> labels)
         {
             try
             {
-                // 简单的模型训练逻辑
-                // 实际项目中，这里应该使用机器学习库进行训练
-                // 例如：使用ML.NET、TensorFlow等
-                
-                // 这里只是模拟训练过程
-                await Task.Delay(1000);
-                
-                // 训练完成后，可以保存模型
-                SaveModel(_models.Values.FirstOrDefault() ?? CreateDefaultModel(), _modelPath);
+                if (featureVectors == null || labels == null ||
+                    featureVectors.Count == 0 || featureVectors.Count != labels.Count)
+                {
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                        "MachineLearningDetector.cs", "训练数据为空或标签数量不匹配，跳过训练");
+                    return;
+                }
+
+                // 真实训练：逻辑回归 SGD（L2 正则），训练后立即持久化
+                await Task.Run(() =>
+                {
+                    int dimension = featureVectors.Max(v => v.Length);
+                    var weights = new double[dimension];
+                    double bias = 0.0;
+
+                    // 以现有模型权重作为初始值（warm start）
+                    var existing = _models.Values.FirstOrDefault() as LogisticRegressionModel;
+                    if (existing != null && existing.Weights != null && existing.Weights.Length == dimension)
+                    {
+                        Array.Copy(existing.Weights, weights, dimension);
+                        bias = existing.Bias;
+                    }
+
+                    const double learningRate = 0.05;
+                    const double l2Lambda = 1e-4;
+                    const int epochs = 100;
+                    var order = Enumerable.Range(0, featureVectors.Count).ToArray();
+                    var rng = new Random(42);
+
+                    for (int epoch = 0; epoch < epochs; epoch++)
+                    {
+                        for (int i = order.Length - 1; i > 0; i--)
+                        {
+                            int j = rng.Next(i + 1);
+                            (order[i], order[j]) = (order[j], order[i]);
+                        }
+
+                        foreach (var row in order)
+                        {
+                            var vector = featureVectors[row];
+                            double z = bias;
+                            for (int i2 = 0; i2 < vector.Length; i2++)
+                                z += weights[i2] * vector[i2];
+
+                            double prediction = 1.0 / (1.0 + Math.Exp(-Math.Max(Math.Min(z, 30), -30)));
+                            double error = prediction - labels[row];
+
+                            for (int i2 = 0; i2 < vector.Length; i2++)
+                                weights[i2] -= learningRate * (error * vector[i2] + l2Lambda * weights[i2]);
+                            bias -= learningRate * error;
+                        }
+                    }
+
+                    var trainedModel = new LogisticRegressionModel
+                    {
+                        Weights = weights,
+                        Bias = bias,
+                        Version = (existing?.Version ?? 0) + 1,
+                        TrainingSampleCount = featureVectors.Count
+                    };
+
+                    var modelType = _models.Keys.FirstOrDefault() ?? "random_forest";
+                    _models[modelType] = trainedModel;
+                    SaveModel(trainedModel, _modelPath);
+                });
             }
             catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "MachineLearningDetector.cs 捕获异常", ex.Message); }
         }

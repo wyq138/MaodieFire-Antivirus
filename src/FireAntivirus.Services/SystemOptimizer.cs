@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using Microsoft.Win32;
 
 namespace FireAntivirus.Services
 {
@@ -253,13 +254,46 @@ namespace FireAntivirus.Services
             {
                 RaiseSystemOptimizerEvent(new SystemOptimizerEventArgs(SystemOptimizerEventType.Info, "Optimizing registry..."));
 
-                // 这里可以添加注册表优化逻辑
-                // 例如：清理无效的注册表项、修复注册表错误等
+                // 真实实现：清理"卸载列表中指向已不存在文件的无效项"
+                int removed = 0;
+                await Task.Run(() =>
+                {
+                    string[] uninstallKeys =
+                    {
+                        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                        @"SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+                    };
+                    foreach (var path in uninstallKeys)
+                    {
+                        using var root = Registry.LocalMachine.OpenSubKey(path, writable: true);
+                        if (root == null) continue;
+                        foreach (var sub in root.GetSubKeyNames())
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            try
+                            {
+                                using var item = root.OpenSubKey(sub);
+                                var loc = item?.GetValue("InstallLocation") as string;
+                                var uninstall = item?.GetValue("UninstallString") as string;
+                                if (string.IsNullOrEmpty(uninstall)) continue;
 
-                // 模拟注册表优化
-                await Task.Delay(1000, cancellationToken);
+                                // 卸载程序文件不存在 -> 无效项，删除
+                                var exe = uninstall.Trim('"');
+                                int idx = exe.IndexOf(" /", StringComparison.Ordinal);
+                                if (idx > 0) exe = exe.Substring(0, idx).Trim();
+                                if (File.Exists(exe)) continue;
+                                if (!string.IsNullOrEmpty(loc) && Directory.Exists(loc)) continue;
 
-                RaiseSystemOptimizerEvent(new SystemOptimizerEventArgs(SystemOptimizerEventType.Info, "Registry optimized successfully."));
+                                root.DeleteSubKeyTree(sub, throwOnMissingSubKey: false);
+                                removed++;
+                            }
+                            catch { /* 权限或键被占用，跳过 */ }
+                        }
+                    }
+                }, cancellationToken);
+
+                RaiseSystemOptimizerEvent(new SystemOptimizerEventArgs(SystemOptimizerEventType.Info,
+                    $"Registry optimized: removed {removed} invalid uninstall entries."));
                 return true;
             }
             catch (Exception ex)

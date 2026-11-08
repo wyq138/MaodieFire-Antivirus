@@ -22,7 +22,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         public NetworkAnalyzer()
         {
-            dataManager = new DataManager();
+            dataManager = DataManager.SharedInstance;
             networkCache = new Dictionary<string, List<string>>();
             InitializeNetworkPatterns();
             InitializeNetworkSignatures();

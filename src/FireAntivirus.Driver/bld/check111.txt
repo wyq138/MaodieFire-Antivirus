@@ -1,0 +1,4 @@
+111.iso size: 18.43 GB
+mounted: F:
+launcher exists: False
+amd64 MSBuild exists: False

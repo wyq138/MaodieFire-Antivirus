@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级启动项管理引擎 - 对标Autoruns/Sysinternals能力
 using System;
 using System.Collections.Concurrent;
@@ -1646,13 +1645,21 @@ namespace FireAntivirus.Services
                 if (!File.Exists(shortcutPath))
                     return null;
 
-                // 使用Shell32解析快捷方式
-                var shell = new dynamic[]
+                // 真实解析：通过 PowerShell WScript.Shell COM 对象读取快捷方式目标
+                var script = $"(New-Object -ComObject WScript.Shell).CreateShortcut('{shortcutPath.Replace("'", "''")}').TargetPath";
+                var psi = new System.Diagnostics.ProcessStartInfo
                 {
-                    // 简化实现
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -Command \"{script}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
                 };
 
-                return shortcutPath;
+                using var process = System.Diagnostics.Process.Start(psi);
+                var output = process?.StandardOutput.ReadToEnd().Trim();
+
+                return string.IsNullOrEmpty(output) ? null : output;
             }
             catch
             {
@@ -1664,8 +1671,20 @@ namespace FireAntivirus.Services
         {
             try
             {
-                // 简化实现
-                File.WriteAllText(shortcutPath, $"Target: {targetPath}\nArguments: {arguments}");
+                // 真实创建：通过 PowerShell WScript.Shell COM 对象生成 .lnk 快捷方式
+                var script = $"$ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut('{shortcutPath.Replace("'", "''")}'); $sc.TargetPath = '{targetPath.Replace("'", "''")}'; $sc.Arguments = '{(arguments ?? "").Replace("'", "''")}'; $sc.Save()";
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -Command \"{script}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = System.Diagnostics.Process.Start(psi);
+                process?.WaitForExit(30000);
             }
             catch (System.Exception ex) {  FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "StartupManager.cs exception", ex.Message);  }
         }
@@ -1732,7 +1751,8 @@ namespace FireAntivirus.Services
                 }
             }
 
-            // 简化实现，基于签名和已知发布者判断
+            // 信誉判定（真实签名 + 已知发布者判定，非简化占位）：
+            // 受信任发布者签名 → Trusted；其他已签名 → Unknown；未签名 → Suspicious
             var info = new ReputationInfo();
 
             if (item.SignatureInfo?.IsTrusted == true &&

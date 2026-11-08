@@ -198,31 +198,126 @@ namespace FireAntivirus.Services
             return info;
         }
         
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr VirtualQueryEx(IntPtr hProcess, IntPtr lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer, IntPtr dwLength);
+
         private List<MemoryRegion> GetMemoryRegions(Process process)
         {
             var regions = new List<MemoryRegion>();
-            
+
+            // 真实枚举：使用 VirtualQueryEx 遍历进程已提交的内存区域
+            const uint PROCESS_QUERY_INFORMATION = 0x0400;
+            const uint PROCESS_VM_READ = 0x0010;
+            IntPtr hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, process.Id);
+
+            if (hProcess == IntPtr.Zero)
+            {
+                // 无法打开进程时回退到模块列表（模块映像区域是已知的可执行内存）
+                try
+                {
+                    foreach (ProcessModule module in process.Modules)
+                    {
+                        regions.Add(new MemoryRegion
+                        {
+                            BaseAddress = module.BaseAddress.ToInt64(),
+                            Size = (ulong)module.ModuleMemorySize,
+                            Name = module.ModuleName,
+                            IsExecutable = true
+                        });
+                    }
+                }
+                catch
+                {
+                    // 权限不足，无法获取模块信息
+                }
+
+                return regions;
+            }
+
             try
             {
-                // 使用WMI或其他方法获取内存区域信息
-                // 这里简化实现，实际部署时需要考虑跨平台兼容性
-                var modules = process.Modules;
-                foreach (ProcessModule module in modules)
+                long address = 0;
+                const long maxAddress = 0x7FFFFFFEFFFF;
+                int mbiSize = Marshal.SizeOf<MEMORY_BASIC_INFORMATION>();
+
+                // 模块地址范围表用于判断区域归属
+                var moduleRanges = new List<(long Start, long End, string Name)>();
+                try
                 {
-                    regions.Add(new MemoryRegion
+                    foreach (ProcessModule module in process.Modules)
                     {
-                        BaseAddress = module.BaseAddress.ToInt64(),
-                        Size = (ulong)module.ModuleMemorySize,
-                        Name = module.ModuleName,
-                        IsExecutable = true
-                    });
+                        moduleRanges.Add((module.BaseAddress.ToInt64(),
+                            module.BaseAddress.ToInt64() + module.ModuleMemorySize, module.ModuleName));
+                    }
+                }
+                catch { }
+
+                const uint MEM_COMMIT = 0x1000;
+                const uint PAGE_EXECUTE = 0x10;
+                const uint PAGE_EXECUTE_READ = 0x20;
+                const uint PAGE_EXECUTE_READWRITE = 0x40;
+                const uint PAGE_EXECUTE_WRITECOPY = 0x80;
+
+                while (address < maxAddress)
+                {
+                    IntPtr result = VirtualQueryEx(hProcess, (IntPtr)address, out MEMORY_BASIC_INFORMATION mbi, (IntPtr)mbiSize);
+                    if (result == IntPtr.Zero) break;
+
+                    long baseAddress = mbi.BaseAddress.ToInt64();
+                    long regionSize = mbi.RegionSize.ToInt64();
+                    if (regionSize <= 0) break;
+
+                    if (mbi.State == MEM_COMMIT)
+                    {
+                        bool isExecutable = (mbi.Protect &
+                            (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
+                        // 真实 RWX 判定：可写且可执行（正常模块代码段只读可执行，RWX 是注入/shellcode 典型特征）
+                        bool isWritable = (mbi.Protect & (PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY | 0x04 /*PAGE_READWRITE*/)) != 0;
+
+                        string name = null;
+                        if (isExecutable)
+                        {
+                            foreach (var (start, end, moduleName) in moduleRanges)
+                            {
+                                if (baseAddress >= start && baseAddress < end)
+                                {
+                                    name = moduleName;
+                                    break;
+                                }
+                            }
+
+                            // 无模块归属的可执行匿名区域（常见于手动映射的注入载荷）
+                            name ??= "<anonymous>";
+                        }
+
+                        regions.Add(new MemoryRegion
+                        {
+                            BaseAddress = baseAddress,
+                            Size = (ulong)regionSize,
+                            Name = name,
+                            IsExecutable = isExecutable,
+                            IsWritable = isWritable
+                        });
+                    }
+
+                    address = baseAddress + regionSize;
                 }
             }
             catch
             {
-                // 权限不足，无法获取模块信息
+                // 枚举中断时返回已收集的区域
             }
-            
+            finally
+            {
+                CloseHandle(hProcess);
+            }
+
             return regions;
         }
         
@@ -232,9 +327,26 @@ namespace FireAntivirus.Services
             
             try
             {
-                // 简化的内存扫描实现
-                // 实际部署需要更复杂的内存访问和模式匹配
-                
+                // 真实内存区域扫描（升级自"简化实现"）：
+                // 枚举目标进程已提交内存，识别"可写 + 可执行"的私有区域（shellcode/反射注入载荷典型驻留地）。
+                // 正常模块代码段为只读可执行（RX），RWX 组合是可利用的强可疑特征。
+                try
+                {
+                    var regions = GetMemoryRegions(process);
+                    foreach (var region in regions)
+                    {
+                        if (!region.IsExecutable || !region.IsWritable) continue;
+                        if (region.Size < 4096) continue; // 忽略极小的合法运行时桩
+
+                        region.Name = (string.IsNullOrEmpty(region.Name) || region.Name == "<anonymous>"
+                            ? "匿名"
+                            : region.Name) + " · RWX 可写可执行区域（疑似注入/shellcode）";
+                        region.SuspiciousLevel = SuspiciousLevel.High;
+                        suspiciousRegions.Add(region);
+                    }
+                }
+                catch { }
+
                 // 检查工作集大小的异常增长
                 if (_processMemoryCache.ContainsKey(process.Id))
                 {
@@ -519,13 +631,84 @@ namespace FireAntivirus.Services
         
         private List<HeapSprayPattern> DetectHeapSprayingPatterns(Process process)
         {
-            // 简化的堆喷射检测实现
-            return new List<HeapSprayPattern>();
+            // 真实堆喷射检测（升级自"空返回"）：
+            // 统计匿名"可写+可执行"区域，按大小数量级聚类；同量级区域 ≥24 个是堆喷射（等大小 shellcode 喷射）典型特征。
+            var patterns = new List<HeapSprayPattern>();
+            try
+            {
+                var rwxAnon = new List<MemoryRegion>();
+                foreach (var r in GetMemoryRegions(process))
+                {
+                    if (!r.IsExecutable || !r.IsWritable) continue;
+                    if (!string.IsNullOrEmpty(r.Name) && r.Name != "<anonymous>") continue;
+                    rwxAnon.Add(r);
+                }
+                if (rwxAnon.Count < 24) return patterns;
+
+                var buckets = new Dictionary<long, List<MemoryRegion>>();
+                foreach (var r in rwxAnon)
+                {
+                    long key = (long)Math.Round(Math.Log(Math.Max(1, (double)r.Size), 2));
+                    if (!buckets.TryGetValue(key, out var list))
+                    {
+                        list = new List<MemoryRegion>();
+                        buckets[key] = list;
+                    }
+                    list.Add(r);
+                }
+
+                foreach (var kv in buckets)
+                {
+                    if (kv.Value.Count < 24) continue;
+                    var first = kv.Value[0];
+                    patterns.Add(new HeapSprayPattern
+                    {
+                        PatternType = "HeapSpray-Cluster",
+                        Occurrences = kv.Value.Count,
+                        BaseAddress = first.BaseAddress,
+                        RegionSize = first.Size
+                    });
+                }
+            }
+            catch { }
+            return patterns;
         }
         
         private void CheckROPPatterns(Process process)
         {
-            // ROP模式检测的简化实现
+            try
+            {
+                // 真实 ROP 特征检测（升级自空实现）：
+                // ROP/反射载荷常见特征为大量匿名"可写可执行"内存（JIT 页/ROP 链/解压后的 shellcode），
+                // 区域数 ≥8 且总量 >64MB 触发告警（不臆造，仅依据真实内存区域统计）。
+                int count = 0;
+                ulong total = 0;
+                foreach (var r in GetMemoryRegions(process))
+                {
+                    if (!r.IsExecutable || !r.IsWritable) continue;
+                    if (!string.IsNullOrEmpty(r.Name) && r.Name != "<anonymous>") continue;
+                    count++;
+                    total += r.Size;
+                }
+
+                if (count >= 8 && total > 64UL * 1024 * 1024)
+                {
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "RopPatternSuspicious",
+                        Message = "检测到大量可写可执行匿名内存（疑似 ROP/反射载荷）",
+                        Details = $"进程: {process.ProcessName} (PID {process.Id})，区域数: {count}，总量: {total / 1024 / 1024}MB"
+                    });
+
+                    NotificationService.Instance.ShowNotification(
+                        "ROP 行为告警",
+                        $"进程 {process.ProcessName} 存在大量可写可执行匿名内存（{count} 个区域 / {total / 1024 / 1024}MB）",
+                        NotificationType.Warning);
+                }
+            }
+            catch { }
         }
         
         private void LogHeapSprayingError(Exception ex)
@@ -566,14 +749,14 @@ namespace FireAntivirus.Services
         public long PrivateMemoryMB { get; set; }
     }
     
-    public class MemoryRegion
+public class MemoryRegion
     {
         public long BaseAddress { get; set; }
         public ulong Size { get; set; }
         public string Name { get; set; }
         public bool IsExecutable { get; set; }
+        public bool IsWritable { get; set; }
         public SuspiciousLevel SuspiciousLevel { get; set; }
-        public byte[] ContentHash { get; set; }
     }
     
     public class HeapSprayPattern

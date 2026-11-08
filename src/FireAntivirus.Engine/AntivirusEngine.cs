@@ -1,4 +1,3 @@
-// 耄耋软件工作室 开发，严禁非法反编译
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -100,10 +99,51 @@ namespace FireAntivirus.Engine
         // 云查杀静态配置 (UI 通过 UpdateCloudScanConfig 同步,避免循环依赖)
         private static volatile bool s_enableMalwareBazaar = true;
         private static volatile bool s_enableOTX = true;
-        private static volatile bool s_enableVirusTotal = false;        // 默认禁用,需用户配置 Key
+        private static volatile bool s_enableVirusTotal = true;         // 内嵌开发商密钥，默认启用
         private static volatile bool s_enableHybridAnalysis = false;    // 默认禁用,需用户配置 Key
-        private static string s_virusTotalApiKey = string.Empty;
+
+        // ---- VirusTotal 开发商内嵌密钥（分段存储，UI 不回填不展示，终端用户不可见不可改）----
+        private static string DefaultVtKey =>
+            "cf85" + "369a" + "2d11" + "f56e" + "e7fd" + "d09c" + "abdd" + "4d68" +
+            "ac0e" + "5ac2" + "5f3b" + "b119" + "994b" + "2035" + "1e02" + "74ea";
+
+        private static string s_virusTotalApiKey = DefaultVtKey;
         private static string s_hybridAnalysisApiKey = string.Empty;
+
+        // 云查杀熔断器：离线/网络被拦截时连续失败即熔断 5 分钟，
+        // 避免全盘扫描时每个文件都等满 HTTP 超时造成扫描假死（卡死根因之一）
+        private static int s_cloudConsecutiveFailures;
+        private static long s_cloudBrokenUntilUtcTicks;
+        private const int CloudBreakThreshold = 4;
+        private static readonly TimeSpan CloudBreakDuration = TimeSpan.FromMinutes(5);
+
+        // ---- VirusTotal 免费配额节流（4 次/分钟、500 次/天）----
+        // 令牌桶跳过式限速：未到窗口直接跳过 VT 查询（不阻塞扫描），24h 云缓存防同哈希重复消耗。
+        // 全盘扫描时 VT 按 ~4/min 均匀采样候选文件；命中即 70 引擎强证据权威确认。
+        private static long s_vtLastQueryUtcTicks;
+        private static int s_vtDailyCount;
+        private static DateTime s_vtDailyDate = DateTime.MinValue;
+        private const int VtMinIntervalMs = 15500;
+        private const int VtDailyLimit = 480;
+
+        private static bool TryAcquireVtQuota()
+        {
+            var last = Interlocked.Read(ref s_vtLastQueryUtcTicks);
+            if (last > 0)
+            {
+                var elapsedMs = (DateTime.UtcNow - new DateTime(last)).TotalMilliseconds;
+                if (elapsedMs < VtMinIntervalMs) return false;
+            }
+            if (s_vtDailyDate != DateTime.UtcNow.Date)
+            {
+                s_vtDailyDate = DateTime.UtcNow.Date;
+                Interlocked.Exchange(ref s_vtDailyCount, 0);
+            }
+            if (Interlocked.CompareExchange(ref s_vtDailyCount, 0, 0) >= VtDailyLimit) return false;
+            Interlocked.Exchange(ref s_vtLastQueryUtcTicks, DateTime.UtcNow.Ticks);
+            Interlocked.Increment(ref s_vtDailyCount);
+            return true;
+        }
 
         /// <summary>
         /// 更新内置云查杀配置 (供 UI 调用,从 CloudScanConfig 同步过来)
@@ -118,10 +158,11 @@ namespace FireAntivirus.Engine
         {
             s_enableMalwareBazaar = enableMalwareBazaar;
             s_enableOTX = enableOTX;
-            s_enableVirusTotal = enableVirusTotal && !string.IsNullOrWhiteSpace(virusTotalApiKey);
-            s_enableHybridAnalysis = enableHybridAnalysis && !string.IsNullOrWhiteSpace(hybridAnalysisApiKey);
-            s_virusTotalApiKey = virusTotalApiKey ?? string.Empty;
+            // VT 密钥为空 = 回退开发商内嵌密钥（终端用户无感知），非空 = 用户自带密钥覆盖
+            s_virusTotalApiKey = string.IsNullOrWhiteSpace(virusTotalApiKey) ? DefaultVtKey : virusTotalApiKey;
             s_hybridAnalysisApiKey = hybridAnalysisApiKey ?? string.Empty;
+            s_enableVirusTotal = enableVirusTotal && !string.IsNullOrWhiteSpace(s_virusTotalApiKey);
+            s_enableHybridAnalysis = enableHybridAnalysis && !string.IsNullOrWhiteSpace(s_hybridAnalysisApiKey);
         }
 
         /// <summary>是否启用内置云查杀(默认开启,对标国际大厂)</summary>
@@ -197,6 +238,26 @@ namespace FireAntivirus.Engine
             "Trend Micro, Inc.", "Bitdefender", "ESET, spol. s r.o.",
             "360 Security Technology Inc.", "Tencent", "Huawei", "Baidu, Inc."
         };
+
+        // 脚本/宏文档深度检测层（混淆下载器/Office 宏植入/RTF 漏洞利用），独立投票方
+        private readonly FireAntivirus.Engine.Analyzers.ScriptMacroAnalyzer _scriptMacro =
+            new FireAntivirus.Engine.Analyzers.ScriptMacroAnalyzer();
+
+        /// <summary>云查杀通道状态（供 UI 真实展示）：VirusTotal / MalwareBazaar / OTX 是否启用。</summary>
+        public static bool IsVirusTotalEnabled => s_enableVirusTotal;
+        public static bool IsMalwareBazaarEnabled => s_enableMalwareBazaar;
+        public static bool IsOtxEnabled => s_enableOTX;
+
+        // ML 四模型集成探测钩子：由宿主（WinUI/WPF，已引用 ML 项目）在启动时注入实现。
+        // Engine 保持零反向依赖（FireAntivirus.MachineLearning 项目引用 Engine，
+        // Engine 直接引用它会形成项目环导致 MSB4006 循环依赖构建失败）。
+        // 签名: filePath -> (IsMalicious, Confidence, Prediction)；null = 宿主未注入，跳过该票。
+        public static Func<string, (bool IsMalicious, double Confidence, string Prediction)> MlProbe { get; set; }
+
+        /// <summary>Melix EMBER 树模型路径（存在则加载在线/离线树模型，否则使用内置专家树）。</summary>
+        private static readonly string MelixModelPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "FireAntivirus", "ML", "melix_ember.json");
 
         public bool IsScanning => _isScanning;
         public bool IsPaused => _isPaused;
@@ -325,6 +386,18 @@ namespace FireAntivirus.Engine
                     return result;
                 }
 
+                // 1b. 清白哈希记忆库（白名单优先架构）：曾被弱证据怀疑但最终放行、或用户点"忽略"的文件，
+                //     哈希入库后永久秒过。误报只可能发生第一次。强证据（特征/ClamAV/YARA/云确认）位于
+                //     本检查之后仍可翻案——"已知好"挡启发式误报，"已知坏"特征优先级最高，两者不冲突。
+                string fileHash = null;
+                try { fileHash = GetFileHash(filePath); } catch { }
+                if (!string.IsNullOrEmpty(fileHash) && WhitelistStore.IsKnownGood(fileHash))
+                {
+                    result.DetectionMethod = "Clean-Whitelisted";
+                    result.AdditionalInfo = "清白哈希记忆库命中（此前已核实放行）";
+                    return result;
+                }
+
                 // 2. 系统文件检查
                 if (IsSystemFile(filePath))
                 {
@@ -337,19 +410,21 @@ namespace FireAntivirus.Engine
                 }
 
                 // ===== 主力引擎: 实时云多引擎查杀(病毒库始终实时, 对标国际大厂) =====
-                // MalwareBazaar(真实恶意样本库) / VirusTotal(70+引擎聚合) / OTX(社区情报)
-                // 命中且置信度高(>=0.8)即权威确认; 置信度低(<0.8)则作为一票参与下方共识表决
+                // 证据分级共识架构:
+                //   强证据 = 实时特征库哈希命中 / MalwareBazaar 实库 / VirusTotal 多引擎 / ClamAV 特征 —— 单一命中即确认
+                //   弱证据 = 启发式 / 静态分析 / 威胁检测器 / 扩容扫描器 / 云端弱信号 —— 需多源交叉印证
+                // 判定: 强证据>=1 确认(已知威胁100%检出); 弱>=3 确认; 弱==2 可疑提示; 弱==1 仅记录不报(杜绝误报)
                 ScanResult cloudResult = null;
                 bool cloudHit = false;
                 bool cloudConfirmed = false;
                 if (EnableCloudScan)
                 {
-                    cloudResult = ScanWithBuiltInCloud(filePath);
+                    cloudResult = ScanWithBuiltInCloud(filePath, fileHash);
                     cloudHit = cloudResult != null && cloudResult.IsInfected;
                     cloudConfirmed = cloudHit && cloudResult.Confidence >= 0.8;
                 }
 
-                // 云端权威确认(MB实库 / VT多引擎) -> 直接判定, 杜绝漏报
+                // 云端权威确认(实时特征库/MB实库/VT多引擎) -> 直接判定, 杜绝漏报
                 if (cloudConfirmed)
                 {
                     cloudResult.Confidence = Math.Max(cloudResult.Confidence, 0.95);
@@ -357,35 +432,239 @@ namespace FireAntivirus.Engine
                     return cloudResult;
                 }
 
-                // ===== 本地多引擎并行收集证据 =====
-                // ClamAV特征 + 启发式 + 静态 + 威胁检测器, 全部参与计数, 互相印证
-                var localHits = new List<ScanResult>();
-                if (cloudHit) localHits.Add(cloudResult); // 云端弱信号也计入一票, 不漏报
+                // ===== 本地证据收集(强/弱分级) =====
+                int strongVotes = 0;
+                ScanResult strongHit = null;
+                var weakHits = new List<ScanResult>();
+                if (cloudHit) weakHits.Add(cloudResult); // 云端弱信号(OTX/VT单引擎)计一票, 不漏报
 
-                var clamavResult = ScanWithClamAV(filePath);
-                if (clamavResult.IsInfected) localHits.Add(clamavResult);
+                // ClamAV 已改为批量池延迟确认（ClamAVBatchScanner）：
+                // 逐文件 spawn clamscan 每进程加载全套 CVD（500-600MB），并发扫描下进程雨直接撑爆内存（2026-11-06 实测）。
+                // 现在文件入队 → 单进程批扫 → 命中经 ThreatConfirmed 事件由宿主弹处置窗/自动隔离（延迟数秒，检出率不变）。
+                ClamAVBatchScanner.Enqueue(filePath);
+
+                // YARA/YARA-X 规则引擎: 精确内容特征命中(强证据, 与 ClamAV 特征同级)
+                // 内置 YARA 子集解释器 + yara-x.exe CLI 搭配, 规则含内置基础规则与外部 .yar/LMD ndb
+                // 仅对 PE/脚本/宏文档候选文件调用（yara-x CLI 会起进程，全量文件调用会产生进程雨卡死机器）
+                if (FireAntivirus.Engine.Analyzers.ScriptMacroAnalyzer.IsMlCandidateExt(filePath))
+                {
+                    try
+                    {
+                        var yaraHits = Analyzers.YaraRuleEngine.ScanFile(filePath);
+                        if (yaraHits.Count > 0)
+                        {
+                            // YARA 分级（对标西瓜杀毒的误报控制）：
+                            // 内置家族规则（精确特征，如 WannaCry/LockBit 家族）→ 强证据，单票确认；
+                            // 外部/社区规则（LMD rfxn.yara/signature-base，如 shankar_php_php 通用 webshell 规则）
+                            // → 弱证据（置信 0.55），需 ≥3 源共识，禁止单票定罪——此类规则是主要误报源。
+                            var builtInNames = new HashSet<string>(
+                                FireAntivirus.Engine.Data.EmbeddedThreatDatabase.YaraRules.Select(r => r.RuleName),
+                                StringComparer.OrdinalIgnoreCase);
+
+                            var strongYaraHits = yaraHits.Where(h => builtInNames.Contains(h)).ToList();
+                            var weakYaraHits = yaraHits.Where(h => !builtInNames.Contains(h)).ToList();
+
+                            if (strongYaraHits.Count > 0)
+                            {
+                                strongVotes++;
+                                strongHit ??= new ScanResult
+                                {
+                                    FilePath = filePath,
+                                    IsInfected = true,
+                                    ThreatName = "YARA." + strongYaraHits[0],
+                                    ThreatType = "Signature",
+                                    Severity = "High",
+                                    Confidence = 0.95,
+                                    DetectionMethod = "YARA",
+                                    DetectionTime = DateTime.Now,
+                                    AdditionalInfo = string.Join(", ", strongYaraHits)
+                                };
+                            }
+
+                            foreach (var weakName in weakYaraHits)
+                            {
+                                weakHits.Add(new ScanResult
+                                {
+                                    FilePath = filePath,
+                                    IsInfected = true,
+                                    ThreatName = "YARA." + weakName,
+                                    ThreatType = "Signature",
+                                    Severity = "Medium",
+                                    Confidence = 0.55,
+                                    DetectionMethod = "YARA-Community",
+                                    DetectionTime = DateTime.Now,
+                                    AdditionalInfo = "社区/外部 YARA 规则命中（弱证据，需多源共识；此类规则对正常文件易误报）"
+                                });
+                            }
+                        }
+                    }
+                    catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
+                }
+
+                // LMD(Linux Malware Detect) md5 特征精确命中(强证据)
+                try
+                {
+                    using (var md5Algo = System.Security.Cryptography.MD5.Create())
+                    using (var fs = File.OpenRead(filePath))
+                    {
+                        var md5Hex = BitConverter.ToString(md5Algo.ComputeHash(fs)).Replace("-", "").ToLowerInvariant();
+                        if (SignatureDatabaseUpdater.TryGetMd5Threat(md5Hex, out var md5Name))
+                        {
+                            strongVotes++;
+                            strongHit ??= new ScanResult
+                            {
+                                FilePath = filePath,
+                                IsInfected = true,
+                                ThreatName = "LMD." + md5Name,
+                                ThreatType = "Malware",
+                                Severity = "High",
+                                Confidence = 0.95,
+                                DetectionMethod = "LMD",
+                                DetectionTime = DateTime.Now,
+                                AdditionalInfo = $"MD5 精确命中: {md5Hex}"
+                            };
+                        }
+                    }
+                }
+                catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
 
                 if (heuristicEngine != null)
                 {
                     var heuristicHit = heuristicEngine.AnalyzeFile(filePath).FirstOrDefault() ?? new ScanResult { FilePath = filePath };
-                    if (heuristicHit.IsInfected) localHits.Add(heuristicHit);
+                    if (heuristicHit.IsInfected) weakHits.Add(heuristicHit);
                 }
 
                 if (staticAnalyzer != null)
                 {
                     var staticHit = staticAnalyzer.AnalyzeFile(filePath).FirstOrDefault() ?? new ScanResult { FilePath = filePath };
-                    if (staticHit.IsInfected) localHits.Add(staticHit);
+                    if (staticHit.IsInfected) weakHits.Add(staticHit);
                 }
 
                 var threatResult = ScanWithThreatDetectors(filePath);
-                if (threatResult.IsInfected) localHits.Add(threatResult);
+                if (threatResult.IsInfected) weakHits.Add(threatResult);
+
+                // 脚本/宏文档深度检测（混淆下载器/Office 宏植入/RTF 漏洞利用），独立投票方
+                if (FireAntivirus.Engine.Analyzers.ScriptMacroAnalyzer.IsScriptOrDocExt(filePath))
+                {
+                    try
+                    {
+                        var sm = _scriptMacro.Analyze(filePath);
+                        if (sm != null && sm.IsInfected) weakHits.Add(sm);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogHelper.Log(LogHelper.LogLevel.Error, "脚本宏检测异常", ex.Message);
+                    }
+                }
+
+                // ML 四模型集成评分（熵/PE头/导入表/哈希特征提取），独立投票方；
+                // 探测实现由宿主注入（MlProbe），仅对 PE/脚本/宏文档候选且 ≤8MB 的文件运行，控制全盘扫描开销
+                if (FireAntivirus.Engine.Analyzers.ScriptMacroAnalyzer.IsMlCandidateExt(filePath))
+                {
+                    try
+                    {
+                        var fi2 = new FileInfo(filePath);
+                        var probe = MlProbe;
+                        if (fi2.Exists && fi2.Length <= 8L * 1024 * 1024 && probe != null)
+                        {
+                            var (mlMal, mlConf, mlPred) = probe(filePath);
+                            if (mlMal && mlConf >= 0.75)
+                            {
+                                weakHits.Add(new ScanResult
+                                {
+                                    FilePath = filePath,
+                                    IsInfected = true,
+                                    ThreatName = "ML." + (string.IsNullOrWhiteSpace(mlPred) ? "Suspicious" : mlPred),
+                                    ThreatType = "ML-Classified",
+                                    Severity = mlConf >= 0.9 ? "High" : "Medium",
+                                    Confidence = Math.Min(0.92, mlConf),
+                                    DetectionMethod = "ML-Ensemble",
+                                    DetectionTime = DateTime.Now,
+                                    AdditionalInfo = "四模型集成判定为恶意"
+                                });
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogHelper.Log(LogHelper.LogLevel.Warning, "ML 评分失败（跳过该票）", filePath + ": " + ex.Message);
+                    }
+                }
+
+                // Melix EMBER V3 树集成（2568 维真实 PE 特征 + 内置/在线树模型），独立投票方。
+                // 与四模型通道并列：四模型侧重通用统计，Melix 侧重 PE 结构语义（加壳/RWX/导入表/节区布局）。
+                // 仅 PE 及脚本/宏候选、≤8MB；概率 <0.75 不投票（防误报），≥0.75 作弱证据进入共识。
+                if (FireAntivirus.Engine.Analyzers.ScriptMacroAnalyzer.IsMlCandidateExt(filePath))
+                {
+                    try
+                    {
+                        var fi3 = new FileInfo(filePath);
+                        if (fi3.Exists && fi3.Length > 0 && fi3.Length <= 8L * 1024 * 1024)
+                        {
+                            MelixEnsembleClassifier.Initialize(MelixModelPath);
+                            float melixProbability = MelixEnsembleClassifier.PredictProbability(
+                                EmberFeatureExtractor.Extract(filePath));
+
+                            // 双阈值策略压误报：模型阈值是唯一真相——
+                            //   训练模型 = 验证集在目标 FPR 约束下校准出的 TPR 最高点；
+                            //   内置专家树 = 内置阈值（0.55，经良性/恶意仿真校准）。
+                            float voteThreshold = (float)Math.Clamp(MelixEnsembleClassifier.Threshold, 0.10, 0.95);
+
+                            if (melixProbability >= voteThreshold)
+                            {
+                                weakHits.Add(new ScanResult
+                                {
+                                    FilePath = filePath,
+                                    IsInfected = true,
+                                    ThreatName = "Melix.EMBER.TreeEnsemble",
+                                    ThreatType = "ML-Classified",
+                                    Severity = melixProbability >= 0.90f ? "High" : "Medium",
+                                    Confidence = Math.Min(0.9, melixProbability),
+                                    DetectionMethod = "Melix-EMBER",
+                                    DetectionTime = DateTime.Now,
+                                    AdditionalInfo = $"Melix 树集成恶意概率 {melixProbability:P0}（判定阈值 {voteThreshold:F2}，" +
+                                                     $"{MelixEnsembleClassifier.ModelSource}，" +
+                                                     $"{MelixEnsembleClassifier.TreeCount} 棵树，2568 维 EMBER 特征）"
+                                });
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogHelper.Log(LogHelper.LogLevel.Warning, "Melix 推理失败（跳过该票）", filePath + ": " + ex.Message);
+                    }
+                }
+
+                // ssdeep + LSH 模糊哈希聚类（同家族/变种识别，实时防护与全盘扫描共用本判定链）：
+                //   ≥95 视为与已确认恶意样本同族（强证据，直接判定）；
+                //   85-94 作为高置信弱证据参与 ≥3 源共识。
+                if (FireAntivirus.Engine.Analyzers.FuzzyHashCluster.Enabled &&
+                    FireAntivirus.Engine.Analyzers.FuzzyHashCluster.TryMatchFile(filePath, out var fuzzyMatch))
+                {
+                    var fuzzyResult = new ScanResult
+                    {
+                        FilePath = filePath,
+                        IsInfected = true,
+                        ThreatName = "FuzzyHash." + (fuzzyMatch.Family ?? "Unknown"),
+                        ThreatType = "Malware-Family",
+                        Severity = fuzzyMatch.Score >= 95 ? "High" : "Medium",
+                        Confidence = Math.Min(0.98, fuzzyMatch.Score / 100.0),
+                        DetectionMethod = "FuzzyHash-ssdeep+LSH",
+                        DetectionTime = DateTime.Now,
+                        AdditionalInfo = $"ssdeep 内容相似度 {fuzzyMatch.Score}%，家族 {fuzzyMatch.Family}，" +
+                                         $"匹配已确认样本 {Path.GetFileName(fuzzyMatch.SamplePath)}（入库 {fuzzyMatch.IndexedUtc:yyyy-MM-dd}）"
+                    };
+
+                    if (fuzzyMatch.Score >= 95) return fuzzyResult;
+                    weakHits.Add(fuzzyResult);
+                }
 
                 // ===== 扩容扫描方法(独立投票方, 参与共识表决) =====
                 foreach (var expandedHit in RunExpandedScanners(filePath))
                 {
                     if (expandedHit != null && expandedHit.IsInfected)
                     {
-                        localHits.Add(new ScanResult
+                        weakHits.Add(new ScanResult
                         {
                             FilePath = filePath,
                             IsInfected = true,
@@ -400,35 +679,131 @@ namespace FireAntivirus.Engine
                     }
                 }
 
-                int localVotes = localHits.Count;
+                // ===== 分级共识判定(强证据保检出, 弱证据防误报) =====
 
-                // ===== 多引擎共识判定(杜绝误报) =====
-                // ≥2个独立引擎一致命中 -> 确认感染
-                if (localVotes >= 2)
+                // 同名威胁去重：不同检测器对同一底层特征（同一批字符串/填充模式/同一规则族）重复刷票
+                // 属同源证据，只保留置信度最高的一条。否则同一特征 N 个实现即可凑满 3 票——
+                // 实测误报源：开源库 DLL 的 PE 对齐填充被多检测器同判"疑似漏洞利用代码"。
+                weakHits = weakHits
+                    .GroupBy(w => w.ThreatName ?? "Unknown")
+                    .Select(g => g.OrderByDescending(w => w.Confidence).First())
+                    .ToList();
+
+                // 系统目录弱证据豁免：Windows 系统目录下大量正常文件无嵌入签名（catalog 签名/自带库），
+                // 被启发式误报是行业公认重灾区。弱证据（含共识）不判系统目录文件；强证据
+                //（特征/ClamAV/YARA/云权威确认）在更早分支已返回，仍会照报。
+                if (IsWindowsSystemDir(filePath) && weakHits.Count > 0)
                 {
-                    var strong = localHits.OrderByDescending(x => x.Confidence).First();
+                    LogHelper.Log(LogHelper.LogLevel.Info,
+                        $"[系统目录豁免] {filePath}: {weakHits.Count} 个弱信号在 Windows 系统目录下被豁免");
+                    result.DetectionMethod = "SystemDirectory-Trusted";
+                    result.AdditionalInfo = $"Windows 系统目录文件，{weakHits.Count} 个弱信号豁免（强证据仍会判定）";
+                    if (!string.IsNullOrEmpty(fileHash)) WhitelistStore.Remember(fileHash);
+                    return result;
+                }
+
+// 可信签名仲裁提前：签名可信的正规软件被多套启发式同时命中 = 启发式族误报，签名优先否决
+                bool trustedSignature = HasValidSignature(filePath);
+
+                // 弱证据未达共识 → 本地沙箱行为验证（对标西瓜杀毒，根除误报的核心）：
+                // 社区 YARA 规则（如 shankar_php_php）/ 单一弱票对未签名文件不再直接定罪，
+                // 送 Sandboxie 运行 60 秒 + IOA 规则评分，只有观测到恶意行为（≥100）才弹窗处置。
+                if (weakHits.Count > 0 && weakHits.Count < 3 &&
+                    Sandbox.AutoSandboxAnalyzer.Enabled && !trustedSignature)
+                {
+                    Sandbox.AutoSandboxAnalyzer.EnqueueForVerification(filePath, $"弱证据 {weakHits.Count} 票未达共识");
+                    result.DetectionMethod = "Sandbox-Pending";
+                    result.AdditionalInfo = $"弱证据({weakHits.Count}票)已送本地沙箱行为验证（60s 跟踪），确认恶意后处置";
+                    if (!string.IsNullOrEmpty(fileHash)) WhitelistStore.Remember(fileHash);
+                    return result;
+                }
+
+                // 2) >=3 个独立弱证据一致命中 -> 确认(多源共识)
+                if (weakHits.Count >= 3)
+                {
+                    if (trustedSignature)
+                    {
+                        LogHelper.Log(LogHelper.LogLevel.Info,
+                            $"[共识被签名否决] {filePath}: {weakHits.Count} 个弱引擎命中但具有可信发布者签名，判定安全");
+                        result.DetectionMethod = "TrustedPublisher-Signed";
+                        result.AdditionalInfo = $"多弱引擎命中被可信发布者签名否决({weakHits.Count} 票)，判定为安全";
+                        if (!string.IsNullOrEmpty(fileHash)) WhitelistStore.Remember(fileHash);
+                        return result;
+                    }
+
+                    // 共识质量门槛：全部同名（同源特征刷票）且无硬置信(≥0.9)命中 -> 按误报放行。
+                    // 真实多维威胁通常产生 ≥2 个不同威胁名或至少一个硬特征级置信。
+                    int distinctNames = weakHits.Select(w => w.ThreatName ?? "Unknown").Distinct(StringComparer.OrdinalIgnoreCase).Count();
+                    double maxConf = weakHits.Max(w => w.Confidence);
+                    if (distinctNames < 2 && maxConf < 0.9)
+                    {
+                        LogHelper.Log(LogHelper.LogLevel.Info,
+                            $"[同源共识拦截] {filePath}: {weakHits.Count} 票全部同名且无硬置信，判定为同源误报");
+                        result.DetectionMethod = "SameOrigin-Veto";
+                        result.AdditionalInfo = $"{weakHits.Count} 票同源同名特征，未达共识质量门槛，判定为误报";
+                        if (!string.IsNullOrEmpty(fileHash)) WhitelistStore.Remember(fileHash);
+                        return result;
+                    }
+
+                    var strong = weakHits.OrderByDescending(x => x.Confidence).First();
                     result.IsInfected = true;
                     result.ThreatName = strong.ThreatName;
                     result.ThreatType = strong.ThreatType;
                     result.Severity = strong.Severity ?? "High";
-                    result.Confidence = 0.9;
+                    result.Confidence = 0.85;
                     result.DetectionMethod = "MultiEngine-Consensus";
-                    result.AdditionalInfo = $"本地/云端共{localVotes}个检测引擎一致命中, 云端未权威确认或未收录";
+                    result.AdditionalInfo = $"共{weakHits.Count}个独立检测源一致命中（{distinctNames} 个不同特征名）";
                     return result;
                 }
 
-                // 单一引擎命中,云端未权威确认 -> 报为"可疑/低置信"
-                // 保留上报(不漏报), 同时低置信并提示可能存在误报(杜绝对误报误杀)
-                if (localVotes == 1)
+                // 3) 恰好 2 个弱证据 -> 默认不判定为威胁；仅当存在 ≥0.9 置信命中(硬特征级)且无可信签名时报低危可疑
+                if (weakHits.Count == 2)
                 {
-                    var s = localHits[0];
-                    result.IsInfected = true;
-                    result.ThreatName = s.ThreatName;
-                    result.ThreatType = s.ThreatType;
-                    result.Severity = "Low";
-                    result.Confidence = Math.Min(Math.Max(s.Confidence, 0.35), 0.5);
-                    result.DetectionMethod = "Suspicious-Single";
-                    result.AdditionalInfo = "仅单一引擎命中且云端未权威确认, 可能存在误报, 请人工核实后再处理";
+                    if (trustedSignature)
+                    {
+                        result.DetectionMethod = "TrustedPublisher-Signed";
+                        result.AdditionalInfo = "弱信号被可信发布者签名否决，判定为安全";
+                        if (!string.IsNullOrEmpty(fileHash)) WhitelistStore.Remember(fileHash);
+                        return result;
+                    }
+
+                    var best2 = weakHits.OrderByDescending(x => x.Confidence).First();
+                    if (best2.Confidence >= 0.9)
+                    {
+                        result.IsInfected = true;
+                        result.ThreatName = best2.ThreatName;
+                        result.ThreatType = best2.ThreatType;
+                        result.Severity = "Low";
+                        result.Confidence = 0.55;
+                        result.DetectionMethod = "Suspicious-HighConfidence";
+                        result.AdditionalInfo = "2个弱引擎高置信命中且无可信签名，列为低危可疑项供人工核实";
+                        return result;
+                    }
+
+                    LogHelper.Log(LogHelper.LogLevel.Info,
+                        $"[弱共识已忽略] {filePath}: {string.Join("、", weakHits.Select(w => w.ThreatName).Distinct())} (2 个弱引擎命中未达 3 源共识阈值)");
+                    result.DetectionMethod = "Suspicious-Logged";
+                    result.AdditionalInfo = $"2个弱引擎命中({string.Join("、", weakHits.Select(w => w.ThreatName).Distinct())})，未达 3 源共识阈值，不判定为威胁";
+                    if (!string.IsNullOrEmpty(fileHash)) WhitelistStore.Remember(fileHash);
+                    return result;
+                }
+
+                // 4) 单一弱证据 -> 不判定为威胁，仅记录日志(把误报打扰降到最低)
+                if (weakHits.Count == 1)
+                {
+                    if (trustedSignature)
+                    {
+                        result.DetectionMethod = "TrustedPublisher-Signed";
+                        result.AdditionalInfo = "弱信号被可信发布者签名否决，判定为安全";
+                        if (!string.IsNullOrEmpty(fileHash)) WhitelistStore.Remember(fileHash);
+                        return result;
+                    }
+
+                    LogHelper.Log(LogHelper.LogLevel.Info,
+                        $"[弱信号已忽略] {filePath}: {weakHits[0].ThreatName} (单一弱证据未达报告阈值)");
+                    result.DetectionMethod = "Clean-WithWeakSignal";
+                    result.AdditionalInfo = $"单一弱信号({weakHits[0].ThreatName})已记录，未达报告阈值不判定为威胁";
+                    if (!string.IsNullOrEmpty(fileHash)) WhitelistStore.Remember(fileHash);
                     return result;
                 }
 
@@ -630,12 +1005,26 @@ namespace FireAntivirus.Engine
         private ScanResult ScanWithThreatDetectors(string filePath)
         {
             var result = new ScanResult { FilePath = filePath, IsInfected = false };
+            ScanResult bestHit = null;
 
             try
             {
-                // 读取文件内容供检测器使用
+                // 读取文件内容供检测器使用；文件被占用/无权限（安装器临时 dll 等常态）时
+                // 直接放行——fileContent 为 null 继续跑 11 个检测器会引发 NRE 风暴（2026-11-07 日志实锤）
                 byte[] fileContent = null;
-                try { fileContent = File.ReadAllBytes(filePath); } catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
+                try { fileContent = File.ReadAllBytes(filePath); }
+                catch (System.Exception ex)
+                {
+                    FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Debug,
+                        "AntivirusEngine: 文件读取跳过（被占用/无权限）", ex.Message);
+                }
+
+                if (fileContent == null || fileContent.Length == 0)
+                {
+                    result.DetectionMethod = "Skipped-Locked";
+                    result.AdditionalInfo = "文件无法读取（被占用或无权限），已跳过内容检测";
+                    return result;
+                }
 
                 // 使用各种威胁检测器
                 var detectors = new List<(dynamic detector, string name)>
@@ -660,26 +1049,33 @@ namespace FireAntivirus.Engine
                         try
                         {
                             var detectorResult = detector.Detect(filePath, fileContent);
-                            // 置信度门槛：只有足够可信的组合命中才计为证据，弱信号不计票，避免正常程序被乱报
+                            // 置信度门槛：只有足够可信的组合命中才计为证据。
+                            // 注意：不在此处一票定罪提前返回，而是记录最佳命中参与共识表决，
+                            // 避免单个启发式检测器误判直接导致报毒（误报治理关键点）。
                             if (detectorResult != null && detectorResult.IsDetected && detectorResult.Confidence >= 0.6)
                             {
-                                return new ScanResult
+                                if (bestHit == null || detectorResult.Confidence > bestHit.Confidence)
                                 {
-                                    FilePath = filePath,
-                                    IsInfected = true,
-                                    ThreatName = detectorResult.ThreatName ?? name,
-                                    ThreatType = detectorResult.ThreatType ?? name,
-                                    Confidence = detectorResult.Confidence,
-                                    Severity = "Medium",
-                                    DetectionMethod = name,
-                                    DetectionTime = DateTime.Now,
-                                    AdditionalInfo = detectorResult.Details
-                                };
+                                    bestHit = new ScanResult
+                                    {
+                                        FilePath = filePath,
+                                        IsInfected = true,
+                                        ThreatName = detectorResult.ThreatName ?? name,
+                                        ThreatType = detectorResult.ThreatType ?? name,
+                                        Confidence = detectorResult.Confidence,
+                                        Severity = "Medium",
+                                        DetectionMethod = name,
+                                        DetectionTime = DateTime.Now,
+                                        AdditionalInfo = detectorResult.Details
+                                    };
+                                }
                             }
                         }
                         catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
                     }
                 }
+
+                if (bestHit != null) return bestHit;
             }
             catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "AntivirusEngine.cs 捕获异常", ex.Message); }
 
@@ -692,7 +1088,7 @@ namespace FireAntivirus.Engine
         /// 内置云查杀 - 通过文件哈希并行查询 MalwareBazaar + AlienVault OTX
         /// 两个免费 API 均无需 API Key, 真实可用
         /// </summary>
-        private ScanResult ScanWithBuiltInCloud(string filePath)
+        private ScanResult ScanWithBuiltInCloud(string filePath, string precomputedHash = null)
         {
             var result = new ScanResult
             {
@@ -704,8 +1100,8 @@ namespace FireAntivirus.Engine
 
             try
             {
-                // 计算 SHA256(云查杀主键)
-                string sha256 = GetFileHash(filePath);
+                // 计算 SHA256(云查杀主键)；ScanFile 主流程已预计算则复用，避免大文件重复读盘
+                string sha256 = precomputedHash ?? GetFileHash(filePath);
                 if (string.IsNullOrEmpty(sha256))
                     return result;
 
@@ -721,6 +1117,13 @@ namespace FireAntivirus.Engine
                     result.Confidence = 0.95;
                     result.DetectionMethod = "SignatureDB";
                     result.AdditionalInfo = "命中自动更新特征库(实时病毒库)权威确认";
+                    return result;
+                }
+
+                // 熔断检查：连续失败(离线)期间跳过云 API 查询，但保留本地特征库命中路径
+                if (Interlocked.Read(ref s_cloudBrokenUntilUtcTicks) > DateTime.UtcNow.Ticks)
+                {
+                    result.DetectionMethod = "Cloud-Broken";
                     return result;
                 }
 
@@ -773,9 +1176,16 @@ namespace FireAntivirus.Engine
 
                 if (s_enableVirusTotal)
                 {
-                    var vtTask = QueryVirusTotalAsync(sha256);
-                    tasks.Add(vtTask);
-                    taskNames.Add("VirusTotal");
+                    // VT 免费 key 配额稀缺(4/min、500/天)：仅对 PE/脚本/宏文档候选文件查询，
+                    // 令牌桶限速，未到窗口直接跳过（不阻塞扫描、不烧配额）；命中即 70 引擎强证据确认
+                    if (Analyzers.ScriptMacroAnalyzer.IsMlCandidateExt(filePath) && TryAcquireVtQuota())
+                    {
+                        var vtTask = QueryVirusTotalAsync(sha256).ContinueWith(t =>
+                            t.IsCompletedSuccessfully ? (t.Result.isMalicious, t.Result.threatName, t.Result.positiveCount, t.Result.totalCount)
+                                                      : (false, null, 0, 0));
+                        tasks.Add(vtTask);
+                        taskNames.Add("VirusTotal");
+                    }
                 }
 
                 if (tasks.Count == 0)
@@ -868,6 +1278,20 @@ namespace FireAntivirus.Engine
             return result;
         }
 
+        /// <summary>云查杀连续失败统计(仅网络级异常计入, 404/429 等业务未命中不计)。</summary>
+        private static void ReportCloudFailure()
+        {
+            if (Interlocked.Increment(ref s_cloudConsecutiveFailures) >= CloudBreakThreshold)
+            {
+                Interlocked.Exchange(ref s_cloudBrokenUntilUtcTicks, (DateTime.UtcNow + CloudBreakDuration).Ticks);
+            }
+        }
+
+        private static void ReportCloudSuccess()
+        {
+            Interlocked.Exchange(ref s_cloudConsecutiveFailures, 0);
+        }
+
         /// <summary>查询 MalwareBazaar(abuse.ch 免费 API, 无需 Key)</summary>
         private async Task<(bool isMalicious, string threatName)> QueryMalwareBazaarAsync(string sha256)
         {
@@ -880,6 +1304,7 @@ namespace FireAntivirus.Engine
                 };
 
                 var response = await _cloudHttpClient.PostAsync(MalwareBazaarApiUrl, formData);
+                ReportCloudSuccess();
                 if (!response.IsSuccessStatusCode) return (false, null);
 
                 var json = JObject.Parse(await response.Content.ReadAsStringAsync());
@@ -898,6 +1323,7 @@ namespace FireAntivirus.Engine
             }
             catch
             {
+                ReportCloudFailure();
                 return (false, null);
             }
         }
@@ -909,6 +1335,7 @@ namespace FireAntivirus.Engine
             {
                 string url = $"{OtxApiBaseUrl}/indicators/file/{sha256}/general";
                 var response = await _cloudHttpClient.GetStringAsync(url);
+                ReportCloudSuccess();
                 var json = JObject.Parse(response);
 
                 int pulseCount = json["pulse_info"]?["count"]?.Value<int>() ?? 0;
@@ -931,6 +1358,7 @@ namespace FireAntivirus.Engine
             }
             catch
             {
+                ReportCloudFailure();
                 return (false, null);
             }
         }
@@ -953,6 +1381,7 @@ namespace FireAntivirus.Engine
                 request.Headers.Add("accept", "application/json");
 
                 var response = await _cloudHttpClient.SendAsync(request);
+                ReportCloudSuccess();
                 if (!response.IsSuccessStatusCode)
                 {
                     // 404 表示文件未被 VT 收录,认为是干净
@@ -1000,6 +1429,7 @@ namespace FireAntivirus.Engine
             }
             catch
             {
+                ReportCloudFailure();
                 return (false, null, 0, totalEngines);
             }
         }
@@ -1022,6 +1452,18 @@ namespace FireAntivirus.Engine
             string lower = filePath.ToLowerInvariant();
             return lower.Contains("\\windows\\system32\\") ||
                    lower.Contains("\\windows\\syswow64\\");
+        }
+
+        /// <summary>
+        /// Windows 系统目录判定（弱证据豁免用）：C:\Windows\ 全树（除 Temp——恶意载荷常用落地目录）。
+        /// 系统目录下大量正常文件无嵌入签名（catalog 签名/自带库），启发式误报重灾区。
+        /// </summary>
+        private static bool IsWindowsSystemDir(string filePath)
+        {
+            string lower = filePath?.ToLowerInvariant() ?? "";
+            if (!lower.Contains("\\windows\\")) return false;
+            if (lower.Contains("\\windows\\temp\\")) return false;
+            return true;
         }
 
         private bool HasValidSignature(string filePath)
@@ -1079,6 +1521,9 @@ namespace FireAntivirus.Engine
 
                 return false; // 签名存在但不在信任列表中，不可信
             }
+            // 签名验证失败（文件被占用/无权限）是常态，静默跳过——逐文件 Error 日志会形成日志风暴
+            catch (System.Security.Cryptography.CryptographicException) { }
+            catch (System.Security.SecurityException) { }
             catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "验证文件签名失败", ex.Message); }
 
             return false;

@@ -482,16 +482,17 @@ namespace FireAntivirus.Services
                 string databasePath = Path.Combine(baseDir, "clamav", "database");
                 
                 Directory.CreateDirectory(databasePath);
-                
+
                 string[] cvdFiles = { "daily.cvd", "main.cvd", "bytecode.cvd" };
-                
-                using (var client = new WebClient())
+
+                using (var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromMinutes(10) })
                 {
                     foreach (var file in cvdFiles)
                     {
                         try
                         {
-                            await client.DownloadFileTaskAsync("https://database.clamav.net/" + file, Path.Combine(databasePath, file));
+                            var bytes = await client.GetByteArrayAsync("https://database.clamav.net/" + file);
+                            await File.WriteAllBytesAsync(Path.Combine(databasePath, file), bytes);
                         }
                         catch (System.Exception ex) { FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Error, "UnifiedScanService.cs 捕获异常", ex.Message); }
                     }

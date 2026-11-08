@@ -1,4 +1,3 @@
-﻿// 耄耋软件工作室 开发，严禁非法反编译
 // 专业级移动设备安全引擎 - 对标企业MDM安全能力
 using System;
 using System.Collections.Concurrent;
