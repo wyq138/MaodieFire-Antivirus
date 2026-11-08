@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="MaodieFire Antivirus" width="200"/>
+</p>
+
 # 耄耋安全软件 (MaodieFire Antivirus)
 
 > 🐱 一款以猫为灵感的 Windows 综合性安全防护软件：病毒扫描、实时防护、内核驱动、网络阻断、行为分析、沙箱验证与系统工具的全栈安全能力。
