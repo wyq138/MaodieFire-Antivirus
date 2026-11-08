@@ -47,6 +47,7 @@ src/FireAntivirus.Host/
 # 构建输出目录
 build2/
 build2ClamAV/
+build-release/
 bld/x64/
 # 病毒库（运行时由 freshclam 下载）
 src/FireAntivirus.ClamAV/ClamAV/db/

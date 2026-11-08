@@ -1,5 +1,6 @@
 param([switch]$ProbeOnly)
 $ErrorActionPreference = "Continue"
+New-Item -ItemType Directory -Path "D:\fa-build" -Force | Out-Null
 
 # One-click driver build using the mounted EWDK ISO (CD-ROM with LaunchBuildEnv.cmd).
 # Builds ONLY FireAntivirusKrn.sys. Quoting: space-bearing /p: switches go through an
@@ -50,7 +51,7 @@ $proj      = Join-Path $projDir 'FireAntivirusKrn.vcxproj'
 $srcDriver = Join-Path $PSScriptRoot 'FireAntivirus.Driver'
 if (-not (Test-Path $proj)) { Write-Output "FATAL: project missing at $proj"; exit 1 }
 
-$stage  = Join-Path $env:TEMP 'fabuild'
+$stage  = Join-Path 'D:\fa-build' 'fabuild'
 $outDir = (Join-Path $stage 'out') + '\'
 $intDir = (Join-Path $stage 'int') + '\'
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null

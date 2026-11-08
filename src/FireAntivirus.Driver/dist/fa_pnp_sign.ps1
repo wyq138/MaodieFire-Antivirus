@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Continue"
-$out = "$env:TEMP\fa_pnp_sign_result.txt"
+New-Item -ItemType Directory -Path "D:\fa-build" -Force | Out-Null
+$out = "D:\fa-build\fa_pnp_sign_result.txt"
 $log = @()
 $cat = "C:\ProgramData\FireAntivirus\pnp\FireAntivirusKrn.cat"
 $inf = "C:\ProgramData\FireAntivirus\pnp\fa_pnp.inf"
@@ -15,7 +16,7 @@ if (-not $signtool) {
 if (-not $signtool) { $log += "FATAL: signtool not found"; $log | Out-File $out -Encoding UTF8; exit 1 }
 $log += "signtool: $signtool"
 
-$stage = Join-Path $env:TEMP "fapnp"
+$stage = Join-Path D:\fa-build "fapnp"
 if (Test-Path (Join-Path $stage "fa_pnp.inf")) {
     Copy-Item (Join-Path $stage "FireAntivirusKrn.cat") $cat -Force
     Copy-Item (Join-Path $stage "FireAntivirusKrn.sys") "C:\ProgramData\FireAntivirus\pnp\FireAntivirusKrn.sys" -Force
@@ -30,7 +31,7 @@ if (-not $c) { $log += "FATAL: cert not found"; $log | Out-File $out -Encoding U
 $log += "cert: " + $c.Thumbprint
 
 $pw = ConvertTo-SecureString -String "fav" -Force -AsPlainText
-$pfx = Join-Path $env:TEMP "fav_sign.pfx"
+$pfx = Join-Path D:\fa-build "fav_sign.pfx"
 Remove-Item $pfx -Force -ErrorAction SilentlyContinue
 Export-PfxCertificate -Cert $c -FilePath $pfx -Password $pw | Out-Null
 if (-not (Test-Path $pfx)) { $log += "FATAL: pfx export failed"; $log | Out-File $out -Encoding UTF8; exit 1 }

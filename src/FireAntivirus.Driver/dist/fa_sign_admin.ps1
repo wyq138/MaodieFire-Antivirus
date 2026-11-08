@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Continue"
-$out = "$env:TEMP\fa_sign_admin_result.txt"
+New-Item -ItemType Directory -Path "D:\fa-build" -Force | Out-Null
+$out = "D:\fa-build\fa_sign_admin_result.txt"
 $log = @()
 $dist = $PSScriptRoot
 $sys = Join-Path $dist "FireAntivirusKrn.sys"
@@ -29,7 +30,7 @@ $c = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.Subject -eq "CN=$ce
 if ($c) { $log += "existing cert: " + $c.Thumbprint } else { $log += "no existing cert" }
 
 $pw = ConvertTo-SecureString -String "fav" -Force -AsPlainText
-$pfx = Join-Path $env:TEMP "fav_sign.pfx"
+$pfx = Join-Path D:\fa-build "fav_sign.pfx"
 Remove-Item $pfx -Force -ErrorAction SilentlyContinue
 
 if ($c) {

@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Continue"
+New-Item -ItemType Directory -Path "D:\fa-build" -Force | Out-Null
 $sys = Join-Path $PSScriptRoot "FireAntivirusKrn.sys"
 $certName = "FireAntivirus Driver"
 
@@ -14,7 +15,7 @@ if (-not $c) {
     Write-Host ("  already exists: " + $c.Thumbprint)
 }
 
-$pfx = Join-Path $env:TEMP "fav_sign.pfx"
+$pfx = Join-Path D:\fa-build "fav_sign.pfx"
 $pw = ConvertTo-SecureString -String "fav" -Force -AsPlainText
 Export-PfxCertificate -Cert $c -FilePath $pfx -Password $pw | Out-Null
 Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\LocalMachine\Root -Password $pw | Out-Null
