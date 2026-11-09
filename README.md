@@ -127,11 +127,24 @@ msbuild FireAntivirusKrn.vcxproj /p:Configuration=Release /p:Platform=x64 /p:Tar
 - `tools\yara-x.exe`：YARA-X 扫描器二进制，运行时自动下载或自备放入输出目录。
 - `ML\model_*.bin / melix_ember.json`：EMBER V3 模型由 `MelixTrainer` 本地训练生成，支持运行期热更新。
 
-### 驱动部署
+### 驱动签名与部署（需自备代码签名证书）
 
-1. 管理员运行 `fa_sign_admin.ps1`（签名 sys）
-2. 管理员运行 `fa_pnp_sign.ps1`（打包含签 cat + pnputil 自动部署）
-3. `sc query FireAntivirusKrn` 应显示 `RUNNING`
+按顺序执行（工具路径按你的 WDK 安装位置调整；重新部署前请先在 `fa_pnp.inf` 中递增 `DriverVer` 版本号，否则 pnputil 拒绝同版本导入）：
+
+```bat
+:: 1. 签名 sys（替换 /n 为你的证书主题名）
+signtool sign /fd SHA256 /n "你的代码签名证书" FireAntivirusKrn.sys
+
+:: 2. 打包 catalog（inf2cat 要求目录纯净：仅 inf/sys/cat）
+Inf2Cat /driver:.\ /os:10_X64
+
+:: 3. 签名 catalog
+signtool sign /fd SHA256 /n "你的代码签名证书" FireAntivirusKrn.cat
+
+:: 4. 部署（管理员）
+pnputil /add-driver fa_pnp.inf /install
+sc query FireAntivirusKrn    :: 应显示 RUNNING
+```
 
 ## 运行
 
