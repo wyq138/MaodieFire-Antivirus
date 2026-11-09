@@ -1,4 +1,4 @@
-## Build results
+﻿## Build results
 bin/
 obj/
 [Bb]in/
@@ -68,6 +68,7 @@ src/FireAntivirus.StartupManager/
 build2/
 build2ClamAV/
 build-release/
+build-releaseClamAV/
 bld/x64/
 # 病毒库（运行时由 freshclam 下载）
 src/FireAntivirus.ClamAV/ClamAV/db/
