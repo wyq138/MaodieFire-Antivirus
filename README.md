@@ -2,8 +2,6 @@
   <img src="docs/logo.png" alt="MaodieFire Antivirus" width="200"/>
 </p>
 
-dotnet build "D:\桌面\All-files\Item file\耄耋安全软件\src\FireAntivirus.Host.WinUI\FireAntivirus.Host.WinUI.csproj" -c Release -p:Platform=x64 -o "D:\桌面\All-files\Item file\耄耋安全软件\src\FireAntivirus.Host.WinUI\build-release"# 耄耋安全软件 (MaodieFire Antivirus)
-
 > 🐱 一款以猫为灵感的 Windows 综合性安全防护软件：病毒扫描、实时防护、内核驱动、网络阻断、行为分析、沙箱验证与系统工具的全栈安全能力。
 
 ![License](https://img.shields.io/badge/License-MIT-blue) ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue) ![Framework](https://img.shields.io/badge/.NET-10.0-purple) ![Kernel](https://img.shields.io/badge/Kernel_Driver-WDM%20%2B%20Minifilter-orange)
