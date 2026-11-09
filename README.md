@@ -2,7 +2,7 @@
   <img src="docs/logo.png" alt="MaodieFire Antivirus" width="200"/>
 </p>
 
-# 耄耋安全软件 (MaodieFire Antivirus)
+dotnet build "D:\桌面\All-files\Item file\耄耋安全软件\src\FireAntivirus.Host.WinUI\FireAntivirus.Host.WinUI.csproj" -c Release -p:Platform=x64 -o "D:\桌面\All-files\Item file\耄耋安全软件\src\FireAntivirus.Host.WinUI\build-release"# 耄耋安全软件 (MaodieFire Antivirus)
 
 > 🐱 一款以猫为灵感的 Windows 综合性安全防护软件：病毒扫描、实时防护、内核驱动、网络阻断、行为分析、沙箱验证与系统工具的全栈安全能力。
 
@@ -146,11 +146,15 @@ FireAntivirus.ServiceHost.exe   后台防护（服务模式随系统启动）
 
 本项目采用 **MIT** 许可证，详见 [LICENSE](LICENSE)。**明确允许随安装包（setup 包）与绿色运行包（zip）自由分发**，无需额外授权。
 
-### 第三方组件声明
+### 第三方组件声明（随包分发合规说明）
 
-- **Sandboxie-Plus**（`Sandbox\` 目录随包分发的沙箱运行组件）：遵循 **GPLv3** 许可证，版权归其原作者所有，源码见 [Sandboxie-Plus 官方仓库](https://github.com/sandboxie-plus/Sandboxie)。MIT 主程序调用 GPL 组件不影响各自许可证的独立性。
-- **ClamAV**（病毒扫描引擎）：Apache-2.0/GPL 兼容，版权归 Cisco Talos 社区。
-- **YARA / YARA-X**：BSD-3-Clause，版权归 VirusTotal 社区。
+本软件主体以 **MIT** 许可证发布；随包分发的第三方组件遵循各自的开源许可证，均允许再分发：
+
+- **Sandboxie-Plus**（`Sandbox\` 目录随包分发的沙箱运行组件）：遵循 **GPLv3** 许可证（非 MIT），版权归 Sandboxie-Plus 项目原作者所有，源码见 [Sandboxie-Plus 官方仓库](https://github.com/sandboxie-plus/Sandboxie)。随包分发符合 GPLv3 再分发条款（保留版权与许可声明，分发包内已附 `Sandbox\LICENSE-Sandboxie.txt`）。MIT 主程序调用 GPL 组件不影响各自许可证的独立性。
+- **ClamAV**（病毒扫描引擎）：遵循 **GPLv2** 许可证，由 Cisco Talos 社区维护。
+- **YARA / YARA-X**：BSD-3-Clause / MIT，版权归 VirusTotal 社区。
+
+依据上述第三方许可证条款，本软件的安装包与绿色运行包**均可自由再分发**，前提是保留各组件的许可声明与版权信息（分发包内已包含）。
 
 ## 开发者
 

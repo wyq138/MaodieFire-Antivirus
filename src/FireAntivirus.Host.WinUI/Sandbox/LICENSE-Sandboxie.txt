@@ -1,0 +1,19 @@
+==========================================================================
+Sandboxie-Plus 运行组件 — 随包分发声明
+==========================================================================
+
+本目录内的文件（Start.exe / SbieIni.exe / SbieDll.dll / SbieSvc.exe / SbieDrv.sys
+等）来自 Sandboxie-Plus 开源项目。
+
+  项目主页 : https://github.com/sandboxie-plus/Sandboxie
+  许可证   : GNU General Public License v3.0 (GPLv3)
+  版权归属 : Sandboxie-Plus 项目原作者及贡献者
+             (原始 Sandboxie 由 Ronen Tzur 创建, 后由 David Xanatos 等续维)
+
+本软件以 MIT 许可证发布的主体程序调用上述 GPL 组件, 两者许可证各自独立。
+随包分发符合 GPLv3 再分发条款: 本声明与版权信息随分发包一并提供,
+组件源码可在上述项目主页获取。
+
+如需查看 Sandboxie-Plus 的完整 GPLv3 许可证文本,
+请访问: https://www.gnu.org/licenses/gpl-3.0.txt
+==========================================================================
