@@ -98,3 +98,7 @@ website/
 157wm-98oc7-001.ico
 resized-*.png
 收款码.jpg
+
+# 签名与部署脚本（用户私人工具，不入库）
+src/FireAntivirus.Driver/dist/*.ps1
+src/FireAntivirus.Driver/dist/*.cmd

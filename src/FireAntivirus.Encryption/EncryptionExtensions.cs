@@ -40,17 +40,32 @@ namespace FireAntivirus.Encryption
                 aes.Mode = CipherMode.CBC;
                 aes.Padding = PaddingMode.PKCS7;
 
-                // 从密码派生密钥
-                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt2024"), 100000, HashAlgorithmName.SHA256, 48);
-                aes.Key = derived[..32];
-                aes.IV = derived[32..48];
+                // 随机盐 + PBKDF2-SHA256 派生, 随机 IV（文件头 "FAVX2" magic + salt + iv, 告别静态盐/固定IV）
+                byte[] salt = RandomNumberGenerator.GetBytes(16);
+                byte[] iv;
+                byte[] keyBytes;
+                using (var derive = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA256))
+                {
+                    keyBytes = derive.GetBytes(32);
+                    iv = derive.GetBytes(16);
+                }
+                aes.Key = keyBytes;
+                aes.IV = iv;
 
                 // 加密文件
                 using (var inputStream = File.OpenRead(inputPath))
                 using (var outputStream = File.Create(outputPath))
-                using (var cryptoStream = new CryptoStream(outputStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
                 {
-                    await inputStream.CopyToAsync(cryptoStream);
+                    byte[] header = new byte[5 + 16 + 16];
+                    Encoding.ASCII.GetBytes("FAVX2").CopyTo(header, 0);
+                    salt.CopyTo(header, 5);
+                    iv.CopyTo(header, 21);
+                    await outputStream.WriteAsync(header, 0, header.Length);
+
+                    using (var cryptoStream = new CryptoStream(outputStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
+                    {
+                        await inputStream.CopyToAsync(cryptoStream);
+                    }
                 }
 
                 result.Success = true;
@@ -83,15 +98,37 @@ namespace FireAntivirus.Encryption
                 aes.Mode = CipherMode.CBC;
                 aes.Padding = PaddingMode.PKCS7;
 
-                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt2024"), 100000, HashAlgorithmName.SHA256, 48);
-                aes.Key = derived[..32];
-                aes.IV = derived[32..48];
-
                 using (var inputStream = File.OpenRead(inputPath))
-                using (var outputStream = File.Create(outputPath))
-                using (var cryptoStream = new CryptoStream(outputStream, aes.CreateDecryptor(), CryptoStreamMode.Write))
                 {
-                    await inputStream.CopyToAsync(cryptoStream);
+                    // 按 "FAVX2" magic 分流: 新格式读 salt+iv; 旧格式文件头裸 IV + 静态盐兼容
+                    byte[] magic = new byte[5];
+                    await inputStream.ReadExactlyAsync(magic, 0, 5);
+                    if (Encoding.ASCII.GetString(magic) == "FAVX2")
+                    {
+                        byte[] salt = new byte[16];
+                        await inputStream.ReadExactlyAsync(salt, 0, 16);
+                        byte[] iv = new byte[16];
+                        await inputStream.ReadExactlyAsync(iv, 0, 16);
+                        aes.IV = iv;
+                        using (var derive = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA256))
+                        {
+                            aes.Key = derive.GetBytes(32);
+                        }
+                    }
+                    else
+                    {
+                        byte[] iv = new byte[16];
+                        Array.Copy(magic, iv, 5);
+                        await inputStream.ReadExactlyAsync(iv, 5, 11);
+                        aes.IV = iv;
+                        aes.Key = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt2024"), 100000, HashAlgorithmName.SHA256, 32);
+                    }
+
+                    using (var outputStream = File.Create(outputPath))
+                    using (var cryptoStream = new CryptoStream(outputStream, aes.CreateDecryptor(), CryptoStreamMode.Write))
+                    {
+                        await inputStream.CopyToAsync(cryptoStream);
+                    }
                 }
 
                 result.Success = true;

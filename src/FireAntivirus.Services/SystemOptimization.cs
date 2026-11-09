@@ -1107,7 +1107,7 @@ namespace FireAntivirus.Services
                                         });
                                     }
                                 }
-                                catch { }
+                                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                             }
                         }
                     }
@@ -1163,7 +1163,7 @@ namespace FireAntivirus.Services
                                     System.IO.File.Delete(lnk);
                                     Logger.Info($"Removed invalid start menu shortcut: {lnk} -> {target}");
                                 }
-                                catch { }
+                                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                             }
                         }
                     }

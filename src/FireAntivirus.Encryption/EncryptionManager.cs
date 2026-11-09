@@ -7,15 +7,22 @@ namespace FireAntivirus.Encryption
 {
     public class EncryptionManager
     {
-        // AES加密 - 使用更安全的实现
+        // AES加密 - 随机盐 + PBKDF2-SHA256 + 随机 IV（密文前缀 FAVE2$ 标识新格式）
         public string EncryptAes(string plaintext, string key)
         {
+            byte[] salt = RandomNumberGenerator.GetBytes(16);
+            byte[] iv;
+            byte[] keyBytes;
+            using (var derive = new Rfc2898DeriveBytes(key, salt, 100000, HashAlgorithmName.SHA256))
+            {
+                keyBytes = derive.GetBytes(32);
+                iv = derive.GetBytes(16);
+            }
+
             using (Aes aes = Aes.Create())
             {
-                // 从密码派生密钥（Pbkdf2 静态方法；SHA1 与旧 Rfc2898DeriveBytes 默认等价，保持旧密文可解）
-                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 48);
-                aes.Key = derived[..32];
-                aes.IV = derived[32..48];
+                aes.Key = keyBytes;
+                aes.IV = iv;
 
                 using (MemoryStream ms = new MemoryStream())
                 {
@@ -25,21 +32,36 @@ namespace FireAntivirus.Encryption
                         cs.Write(plaintextBytes, 0, plaintextBytes.Length);
                         cs.FlushFinalBlock();
                     }
-                    return Convert.ToBase64String(ms.ToArray());
+                    // FAVE2$ + base64(salt[16] + iv[16] + ciphertext)
+                    string payload = Convert.ToBase64String(salt) + ":" + Convert.ToBase64String(iv) + ":" + Convert.ToBase64String(ms.ToArray());
+                    return "FAVE2$" + Convert.ToBase64String(Encoding.UTF8.GetBytes(payload));
                 }
             }
         }
 
-        // AES解密
+        // AES解密 - 按 FAVE2$ 前缀分流：新格式随机盐/IV 解密；旧格式（静态盐+固定IV）兼容解密
         public string DecryptAes(string ciphertext, string key)
         {
+            byte[][] parts;
+            if (ciphertext.StartsWith("FAVE2$", StringComparison.Ordinal))
+            {
+                string payload = Encoding.UTF8.GetString(Convert.FromBase64String(ciphertext.Substring(6)));
+                var seg = payload.Split(':');
+                parts = new[] { Convert.FromBase64String(seg[0]), Convert.FromBase64String(seg[1]), Convert.FromBase64String(seg[2]) };
+            }
+            else
+            {
+                // 旧格式: 静态盐 "FireAntivirusSalt" + 固定 IV（存量密文兼容, 新写入一律 FAVE2$）
+                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 48);
+                parts = new[] { derived[..32], derived[32..48], Convert.FromBase64String(ciphertext) };
+            }
+
             using (Aes aes = Aes.Create())
             {
-                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 48);
-                aes.Key = derived[..32];
-                aes.IV = derived[32..48];
+                aes.Key = parts[0];
+                aes.IV = parts[1];
 
-                using (MemoryStream ms = new MemoryStream(Convert.FromBase64String(ciphertext)))
+                using (MemoryStream ms = new MemoryStream(parts[2]))
                 {
                     using (CryptoStream cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read))
                     {
@@ -52,20 +74,32 @@ namespace FireAntivirus.Encryption
             }
         }
 
-        // 文件加密
+        // 文件加密 - 新格式文件头: "FAVE2" magic + salt[16] + iv[16] + 密文
         public void EncryptFile(string inputFile, string outputFile, string key)
         {
+            byte[] salt = RandomNumberGenerator.GetBytes(16);
+            byte[] iv;
+            byte[] keyBytes;
+            using (var derive = new Rfc2898DeriveBytes(key, salt, 100000, HashAlgorithmName.SHA256))
+            {
+                keyBytes = derive.GetBytes(32);
+                iv = derive.GetBytes(16);
+            }
+
             using (Aes aes = Aes.Create())
             {
-                byte[] derived = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 48);
-                aes.Key = derived[..32];
-                aes.IV = derived[32..48];
+                aes.Key = keyBytes;
+                aes.IV = iv;
 
                 using (FileStream inputStream = new FileStream(inputFile, FileMode.Open))
                 using (FileStream outputStream = new FileStream(outputFile, FileMode.Create))
                 {
-                    // 写入IV到文件开头
-                    outputStream.Write(aes.IV, 0, aes.IV.Length);
+                    // 写入新格式文件头
+                    byte[] header = new byte[5 + 16 + 16];
+                    Encoding.ASCII.GetBytes("FAVE2").CopyTo(header, 0);
+                    salt.CopyTo(header, 5);
+                    iv.CopyTo(header, 21);
+                    outputStream.Write(header, 0, header.Length);
 
                     using (CryptoStream cryptoStream = new CryptoStream(outputStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
                     {
@@ -80,20 +114,38 @@ namespace FireAntivirus.Encryption
             }
         }
 
-        // 文件解密
+        // 文件解密 - 按 "FAVE2" magic 分流：新格式读 salt+iv；旧格式文件头裸 IV 兼容
         public void DecryptFile(string inputFile, string outputFile, string key)
         {
             using (Aes aes = Aes.Create())
             {
                 using (FileStream inputStream = new FileStream(inputFile, FileMode.Open))
                 {
-                    // 从文件开头读取IV
-                    byte[] iv = new byte[16];
-                    inputStream.ReadExactly(iv, 0, iv.Length);
-                    aes.IV = iv;
+                    byte[] magic = new byte[5];
+                    inputStream.ReadExactly(magic, 0, 5);
 
-                    // 从密码派生密钥
-                    aes.Key = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
+                    if (Encoding.ASCII.GetString(magic) == "FAVE2")
+                    {
+                        // 新格式: salt[16] + iv[16]
+                        byte[] salt = new byte[16];
+                        inputStream.ReadExactly(salt, 0, 16);
+                        byte[] iv = new byte[16];
+                        inputStream.ReadExactly(iv, 0, 16);
+                        aes.IV = iv;
+                        using (var derive = new Rfc2898DeriveBytes(key, salt, 100000, HashAlgorithmName.SHA256))
+                        {
+                            aes.Key = derive.GetBytes(32);
+                        }
+                    }
+                    else
+                    {
+                        // 旧格式: 文件头裸 IV + 静态盐派生密钥（存量文件兼容）
+                        byte[] iv = new byte[16];
+                        Array.Copy(magic, iv, 5);
+                        inputStream.ReadExactly(iv, 5, 11);
+                        aes.IV = iv;
+                        aes.Key = Rfc2898DeriveBytes.Pbkdf2(key, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
+                    }
 
                     using (FileStream outputStream = new FileStream(outputFile, FileMode.Create))
                     using (CryptoStream cryptoStream = new CryptoStream(inputStream, aes.CreateDecryptor(), CryptoStreamMode.Read))

@@ -62,6 +62,8 @@ FavCancelPendingEventIrp(
     /* 锁序统一: 先释放 cancel 自旋锁, 再拿 PendingLock（与完成路径同序, 防死锁） */
     IoReleaseCancelSpinLock(Irp->CancelIrql);
 
+    /* 摘出即裁决: PendingLock 保护下, 谁把 PendingEventIrp 摘走谁负责完成 IRP。
+       取消例程与完成路径的摘出动作互斥 → 恰好一方摘到 → 恰好一方完成, 无双弃窗口 */
     KeAcquireSpinLock(&g_Fav.PendingLock, &oldIrql);
     ours = (g_Fav.PendingEventIrp == Irp);
     if (ours) {
@@ -69,8 +71,8 @@ FavCancelPendingEventIrp(
     }
     KeReleaseSpinLock(&g_Fav.PendingLock, oldIrql);
 
-    /* 已被完成路径取走（IoSetCancelRoutine 清除成功）则不得再次完成, 防双重完成 */
     if (!ours) {
+        /* 指针已被完成路径摘走 → 由完成路径完成 */
         return;
     }
 
@@ -91,13 +93,26 @@ FavTryCompletePendingEventIrp(VOID)
 
     KeAcquireSpinLock(&g_Fav.PendingLock, &oldIrql);
     pending = g_Fav.PendingEventIrp;
+    if (pending == NULL) {
+        KeReleaseSpinLock(&g_Fav.PendingLock, oldIrql);
+        return;
+    }
+
+    /* 先裁决后摘指针的反例已堵死: 摘出在 PendingLock 下完成, 是唯一裁决点。
+       此处仅在持锁状态下清 cancel 例程字段（IRQL=DISPATCH 满足 IoSetCancelRoutine 要求）,
+       防止 IRP 完成后 IoCancelIrp 再次触发取消例程; 返回值不参与裁决 */
+    (VOID)IoSetCancelRoutine(pending, NULL);
+
     g_Fav.PendingEventIrp = NULL;
     KeReleaseSpinLock(&g_Fav.PendingLock, oldIrql);
 
-    if (pending == NULL) return;
-
-    /* 已被取消：取消例程负责完成 */
-    if (IoSetCancelRoutine(pending, NULL) == NULL) return;
+    /* 若取消请求已置位（IoCancelIrp 早于本次摘出）: 本路径赢得摘出, 以 CANCELLED 收尾 */
+    if (pending->Cancel) {
+        pending->IoStatus.Status = STATUS_CANCELLED;
+        pending->IoStatus.Information = 0;
+        IoCompleteRequest(pending, IO_NO_INCREMENT);
+        return;
+    }
 
     outputLength = IoGetCurrentIrpStackLocation(pending)->
                        Parameters.DeviceIoControl.OutputBufferLength;

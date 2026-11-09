@@ -19,10 +19,10 @@
 | 多引擎加权评分 | 强证据（签名/驱动级确认）单票定罪；弱证据须 ≥3 源共识，未共识送沙箱验证 |
 | 病毒签名库 | 多数据源聚合哈希签名，支持在线更新与镜像回退 |
 | ClamAV 引擎 | 集成 ClamAV（freshclam 特征库更新 / libclamav 扫描核心） |
-| YARA + YARA-X | 双 YARA 引擎规则扫描，叠加 LMD 规则集；社区规则降级为弱证据防误报 |
+| YARA 规则引擎 | YARA 规则扫描（YARA-X 扫描器可选接入，二进制运行时自备），叠加 LMD 规则集；社区规则降级为弱证据防误报 |
 | PE 结构解析 | 导入表 / 节区 / 熵 / 数字签名证书链完整验证（有效期 + 链 + 吊销） |
-| EMBER V3 机器学习 | 2568 维特征 CART 随机森林集成，按目标误报率校准阈值，模型热更新 |
-| 四模型集成推理 | 独立 ML 项目，四模型投票并入扫描主判定链 |
+| EMBER V3 机器学习 | 2568 维特征 CART 随机森林集成，按目标误报率校准阈值（模型经 MelixTrainer 本地训练生成，支持热更新） |
+| 四模型集成推理 | 独立 ML 项目，四模型投票并入扫描主判定链（模型文件就位后生效） |
 | 模糊哈希聚类 | ssdeep + TLSH 相似度聚类，识别变种与同族样本 |
 | 文件 I/O 熵变时序 | 运行期文件熵变化时序分析，识别加壳/加密行为 |
 | 启发式分析 | 可疑结构特征启发式评分 |
@@ -60,7 +60,7 @@
 - **进程监控**：WMI 进程启动事件订阅（SeSecurityPrivilege 特权）
 - **注册表监控**：关键 Run 键 / 服务键变更实时告警
 - **USB 设备控制**：WMI BlockDevice 真实禁用 U 盘等存储设备，含解除入口
-- **网页与邮件防护**：下载与邮件附件落盘即扫
+- **网页与邮件附件防护**：网页下载与邮件附件落盘即扫（附件落盘检测，不挂接邮件收发通道）
 - **WFP 网络阻断**：Windows Filtering Platform 策略层动态规则，按远端 IP 双向阻断，TTL 到期自动撤销
 - **看门狗自恢复**：防护进程被病毒杀灭后自动拉起（Windows 计划任务 + Mutex 零常驻），正常退出不误拉
 
@@ -115,11 +115,11 @@ dotnet build src\FireAntivirus.Host.WinUI\FireAntivirus.Host.WinUI.csproj -c Rel
 
 ### 构建内核驱动
 
-```powershell
-powershell -ExecutionPolicy Bypass -File src\build_final3.ps1
-```
+仓库已包含编译产物 `src\FireAntivirus.Driver\dist\FireAntivirusKrn.sys`，可直接部署使用。自行构建需准备 EWDK（或 WDK 10.0.28000.0 + VS BuildTools）环境，然后在 `src\FireAntivirus.Driver\bld\` 下执行：
 
-产物 `FireAntivirusKrn.sys` 输出至 `src\FireAntivirus.Driver\dist\`，签名与部署工具同目录（需管理员运行）。
+```
+msbuild FireAntivirusKrn.vcxproj /p:Configuration=Release /p:Platform=x64 /p:TargetVersion=Windows10 /p:Inf2Cat=false /p:SignMode=Off
+```
 
 ### 运行时资产（不入库，运行时生成/自备）
 
