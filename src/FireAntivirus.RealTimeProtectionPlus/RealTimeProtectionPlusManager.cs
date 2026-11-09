@@ -35,7 +35,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
                 FireAntivirus.Engine.Analyzers.DetectionTimeline.Record(
                     "实时防护", title, severity, "", 0, "", detail, detail);
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             ThreatDetected?.Invoke(title, detail, severity);
         }
 
@@ -364,7 +364,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
                 _lsassScanTimer?.Dispose();
                 _lsassScanTimer = null;
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void OnHandleFinding(FireAntivirus.Engine.Analyzers.HandleAuditEntry finding)
@@ -477,7 +477,7 @@ namespace FireAntivirus.RealTimeProtectionPlus
                         using var lp = Process.GetProcessById(lineagePid);
                         lineagePath = lp.MainModule?.FileName ?? "";
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                     FireAntivirus.Engine.Analyzers.ProcessLineageGraph.Register(
                         lineagePid, lineageParentPid, processName, lineagePath, lineageCmd);

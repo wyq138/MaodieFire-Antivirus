@@ -151,9 +151,9 @@ namespace FireAntivirus.Engine.Analyzers
 
                 foreach (var old in Directory.EnumerateFiles(DirectoryPath, "timeline_*.jsonl")
                                               .OrderByDescending(f => f).Skip(KeepFiles).ToList())
-                    try { File.Delete(old); } catch { }
+                    try { File.Delete(old); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static string Export(DateTime? fromUtc, DateTime? toUtc, string outputPath)

@@ -13,6 +13,15 @@
             SelectionChanged="Nav_SelectionChanged"
             IsSettingsVisible="False">
 
+            <NavigationView.Resources>
+                <ResourceDictionary>
+                    <!-- 顶栏 Header 已移除, 清零模板为 Header 区保留的默认间距（否则内容区顶部空白过高） -->
+                    <Thickness x:Key="NavigationViewHeaderMargin">0,0,0,0</Thickness>
+                    <Thickness x:Key="NavigationViewMinimalHeaderMargin">0,0,0,0</Thickness>
+                    <Thickness x:Key="NavigationViewHeaderSeparatorMargin">0,0,0,0</Thickness>
+                </ResourceDictionary>
+            </NavigationView.Resources>
+
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="首页" Tag="home">
                     <NavigationViewItem.Icon>
@@ -105,12 +114,6 @@
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
-            <NavigationView.Header>
-                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,20,0,4">
-                    <Image x:Name="HeaderCatImage" Width="30" Height="30" Stretch="Uniform"/>
-                    <TextBlock Text="耄耋安全" Style="{StaticResource PageTitle}" VerticalAlignment="Center"/>
-                </StackPanel>
-            </NavigationView.Header>
 
             <!-- 内容区 + 右下角威胁浮层 -->
             <Grid>

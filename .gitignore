@@ -44,6 +44,26 @@ src/XIGUASecurity10x/
 # 旧版 UI（WPF / WinForms）
 src/FireAntivirus.Host.WPF/
 src/FireAntivirus.Host/
+# 无引用死代码项目（引用闭包分析确认, 本地保留不入库）
+src/FireAntivirus.MobileSecurity/
+src/FireAntivirus.SecureBrowser/
+src/FireAntivirus.Firewall/
+src/FireAntivirus.Launcher/
+src/FireAntivirus.NativeIntegration/
+src/FireAntivirus.NewHost/
+src/FireAntivirus.Tests/
+src/SelfTestHarness/
+src/FireAntivirus.ClamAV.Build/
+src/FireAntivirus.AI/
+src/FireAntivirus.Business/
+src/FireAntivirus.CloudAV/
+src/FireAntivirus.CloudSecurity/
+src/FireAntivirus.Mobile/
+src/FireAntivirus.PEAnalyzer/
+src/FireAntivirus.Security/
+src/FireAntivirus.SystemMonitor/
+src/FireAntivirus.Kernel/
+src/FireAntivirus.StartupManager/
 # 构建输出目录
 build2/
 build2ClamAV/
@@ -63,6 +83,9 @@ src/构建警告.txt
 msix/
 # 签名私钥与敏感文件（绝不公开）
 *.pfx
+sign_password.txt
+# 私人构建脚本（不入库, 仅本地使用）
+build_final3.ps1
 # 无关试验与杂物
 FireAntivirus.CPP/
 _cs_extract/

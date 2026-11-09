@@ -304,4 +304,42 @@ namespace FireAntivirus.Services
         public List<NetworkStatistics> Statistics { get; set; }
         public List<NetworkAlert> Alerts { get; set; }
     }
+
+    // 网络连接（原 NetworkSecurity.cs 定义, 该文件已并入删除, 类型迁移至共享层）
+    public class NetworkConnection
+    {
+        public string Id { get; set; }
+        public string LocalEndPoint { get; set; }
+        public string RemoteEndPoint { get; set; }
+        public System.Net.Sockets.ProtocolType Protocol { get; set; }
+        public string State { get; set; }
+        public long BytesSent { get; set; }
+        public long BytesReceived { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime LastActivity { get; set; }
+        public TimeSpan Duration => LastActivity - CreatedAt;
+        public int ProcessId { get; set; }
+        public string ProcessName { get; set; }
+        public DateTime Timestamp { get; set; }
+    }
+
+    // 优化结果（原 SystemOptimizer.cs 定义, 该文件已并入删除, 类型迁移至共享层）
+    public class OptimizationResult
+    {
+        public bool Success { get; set; }
+        public string ErrorMessage { get; set; }
+        public string Category { get; set; }
+        public string Message { get; set; }
+        public long TotalCleanedBytes { get; set; }
+        public long TemporaryFilesCleaned { get; set; }
+        public long BrowserCacheCleaned { get; set; }
+        public long LogFilesCleaned { get; set; }
+        public long JunkFilesCleaned { get; set; }
+        public bool RecycleBinCleaned { get; set; }
+        public bool RegistryOptimized { get; set; }
+        public bool StartupOptimized { get; set; }
+        public bool ServicesOptimized { get; set; }
+        public bool DiskOptimized { get; set; }
+        public DateTime OptimizationTime { get; set; } = DateTime.Now;
+    }
 }

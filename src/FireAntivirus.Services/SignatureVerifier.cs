@@ -184,7 +184,7 @@ namespace FireAntivirus.Services
                         chainValid = chain.Build(cert);
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 info.IsValidCertificate = timeValid && chainValid;
 
                 return info;

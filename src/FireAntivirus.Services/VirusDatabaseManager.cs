@@ -333,9 +333,7 @@ namespace FireAntivirus.Services
                         File.Delete(oldFile);
                         dataManager.LogInfo($"已清理旧病毒库文件: {oldFile}");
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 // 清理超过30天的病毒库文件
@@ -352,9 +350,7 @@ namespace FireAntivirus.Services
                             dataManager.LogInfo($"已清理过期病毒库文件: {file}");
                         }
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -412,9 +408,7 @@ namespace FireAntivirus.Services
                         FileInfo fileInfo = new FileInfo(file);
                         totalSize += fileInfo.Length;
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 return totalSize;
@@ -488,9 +482,7 @@ namespace FireAntivirus.Services
                         info.AppendLine("      ,\"modified\": \"" + fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss") + "\"");
                         info.AppendLine("    }" + (i < files.Length - 1 ? "," : ""));
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 info.AppendLine("  ]");

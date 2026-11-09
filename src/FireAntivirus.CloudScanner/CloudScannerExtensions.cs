@@ -128,7 +128,7 @@ namespace FireAntivirus.CloudScanner
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return indicators;
         }
@@ -141,7 +141,7 @@ namespace FireAntivirus.CloudScanner
                 var response = await _httpClient.GetStringAsync(feed.Url);
                 // 解析JSON响应
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return indicators;
         }
@@ -180,7 +180,7 @@ namespace FireAntivirus.CloudScanner
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return indicators;
         }

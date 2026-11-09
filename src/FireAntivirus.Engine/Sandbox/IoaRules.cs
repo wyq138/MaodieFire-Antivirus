@@ -1,5 +1,5 @@
-// IOA（Indicators of Attack）行为评分规则集 —— 照搬 XIGUASecurity 10x 的沙箱行为评分体系：
-//   行为证据文本化后按规则累加得分，总分 >= 100 判定恶意（MALICIOUS_THRESHOLD 与西瓜一致）。
+// IOA（Indicators of Attack）行为评分规则集 —— 沙箱行为评分体系：
+//   行为证据文本化后按规则累加得分，总分 >= 100 判定恶意（阈值 100）。
 //   规则覆盖：持久化/提权/注入/防御规避/凭据访问/勒索/下载器/网络/进程链六大类，共 60+ 条。
 using System;
 using System.Collections.Generic;

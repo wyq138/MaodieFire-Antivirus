@@ -248,9 +248,7 @@ namespace FireAntivirus.Services
                                 ModifiedDate = fileInfo.LastWriteTime
                             });
                         }
-                        catch
-                        {
-                        }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
             }
@@ -349,9 +347,7 @@ namespace FireAntivirus.Services
                                 });
                             }
                         }
-                        catch
-                        {
-                        }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
             }
@@ -383,9 +379,7 @@ namespace FireAntivirus.Services
                             ModifiedDate = fileInfo.LastWriteTime
                         });
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
             catch (Exception ex)

@@ -42,7 +42,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             _loaded = true;
         }
 
@@ -103,7 +103,7 @@ namespace FireAntivirus.Engine
                         JsonSerializer.Serialize(new Dictionary<string, DateTime>(_knownGood),
                             new JsonSerializerOptions { WriteIndented = false }));
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 

@@ -58,9 +58,7 @@ namespace FireAntivirus.Common
                     File.Delete(filePath);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void SafeCopy(string source, string destination)
@@ -73,9 +71,7 @@ namespace FireAntivirus.Common
                     File.Copy(source, destination, true);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 
@@ -200,41 +196,84 @@ namespace FireAntivirus.Common
 
     public static class CryptoHelper
     {
-        private static readonly string EncryptionKey = "FireAntivirusEncryptionKey2024";
+        // 本机主密钥：首次随机生成, 以 DPAPI(LocalMachine) 保护后落盘（ProgramData\FireAntivirus\machine.key）,
+        // 运行时 Unprotect 取回 —— 不再硬编码明文密钥, 也不再使用全零 IV（CBC 随机 IV 前置于密文）。
+        private static readonly object _keyLock = new object();
+        private static byte[] _machineKey;
+
+        private static byte[] GetMachineKey()
+        {
+            if (_machineKey != null) return _machineKey;
+            lock (_keyLock)
+            {
+                if (_machineKey != null) return _machineKey;
+
+                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "FireAntivirus");
+                Directory.CreateDirectory(dir);
+                string path = Path.Combine(dir, "machine.key");
+
+                if (File.Exists(path))
+                {
+                    try
+                    {
+                        var loaded = System.Security.Cryptography.ProtectedData.Unprotect(
+                            File.ReadAllBytes(path), null, System.Security.Cryptography.DataProtectionScope.LocalMachine);
+                        if (loaded != null && loaded.Length == 32)
+                        {
+                            _machineKey = loaded;
+                            return _machineKey;
+                        }
+                    }
+                    catch { /* 损坏/换机: 走重新生成 */ }
+                }
+
+                var key = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+                File.WriteAllBytes(path, System.Security.Cryptography.ProtectedData.Protect(
+                    key, null, System.Security.Cryptography.DataProtectionScope.LocalMachine));
+                _machineKey = key;
+                return key;
+            }
+        }
 
         public static string Encrypt(string plainText)
         {
+            if (plainText == null) return null;
             using (var aes = Aes.Create())
             {
-                aes.Key = Encoding.UTF8.GetBytes(EncryptionKey.PadRight(32).Substring(0, 32));
-                aes.IV = new byte[16];
-
+                aes.Key = GetMachineKey();
+                aes.GenerateIV();
                 using (var encryptor = aes.CreateEncryptor())
-                using (var msEncrypt = new MemoryStream())
-                using (var csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                using (var swEncrypt = new System.IO.StreamWriter(csEncrypt))
+                using (var ms = new MemoryStream())
                 {
-                    swEncrypt.Write(plainText);
-                    swEncrypt.Flush();
-                    csEncrypt.FlushFinalBlock();
-                    return Convert.ToBase64String(msEncrypt.ToArray());
+                    ms.Write(aes.IV, 0, aes.IV.Length);
+                    using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                    using (var sw = new System.IO.StreamWriter(cs))
+                    {
+                        sw.Write(plainText);
+                    }
+                    return Convert.ToBase64String(ms.ToArray());
                 }
             }
         }
 
         public static string Decrypt(string cipherText)
         {
+            if (cipherText == null) return null;
+            var all = Convert.FromBase64String(cipherText);
             using (var aes = Aes.Create())
             {
-                aes.Key = Encoding.UTF8.GetBytes(EncryptionKey.PadRight(32).Substring(0, 32));
-                aes.IV = new byte[16];
-
+                aes.Key = GetMachineKey();
+                int ivLen = aes.BlockSize / 8;
+                if (all.Length <= ivLen) throw new System.Security.Cryptography.CryptographicException("密文过短");
+                byte[] iv = new byte[ivLen];
+                Array.Copy(all, iv, ivLen);
+                aes.IV = iv;
                 using (var decryptor = aes.CreateDecryptor())
-                using (var msDecrypt = new MemoryStream(Convert.FromBase64String(cipherText)))
-                using (var csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
-                using (var srDecrypt = new System.IO.StreamReader(csDecrypt))
+                using (var ms = new MemoryStream(all, ivLen, all.Length - ivLen))
+                using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                using (var sr = new System.IO.StreamReader(cs))
                 {
-                    return srDecrypt.ReadToEnd();
+                    return sr.ReadToEnd();
                 }
             }
         }
@@ -243,6 +282,56 @@ namespace FireAntivirus.Common
         {
             var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(length);
             return BitConverter.ToString(bytes).Replace("-", "").Substring(0, length);
+        }
+
+        /// <summary>
+        /// 文件级加密（隔离区样本用）：AES-CBC + 随机 IV（前置于密文） + 本机主密钥。
+        /// </summary>
+        public static void EncryptFile(string srcPath, string dstPath)
+        {
+            using (var aes = Aes.Create())
+            {
+                aes.Key = GetMachineKey();
+                aes.GenerateIV();
+                using (var encryptor = aes.CreateEncryptor())
+                using (var src = new FileStream(srcPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (var dst = new FileStream(dstPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    dst.Write(aes.IV, 0, aes.IV.Length);
+                    using (var cs = new CryptoStream(dst, encryptor, CryptoStreamMode.Write))
+                    {
+                        src.CopyTo(cs, 1024 * 1024);
+                    }
+                }
+            }
+        }
+
+        /// <summary>文件级解密（隔离区恢复用），与 EncryptFile 配套。</summary>
+        public static void DecryptFile(string srcPath, string dstPath)
+        {
+            using (var aes = Aes.Create())
+            {
+                aes.Key = GetMachineKey();
+                int ivLen = aes.BlockSize / 8;
+                using (var src = new FileStream(srcPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    var iv = new byte[ivLen];
+                    int read = 0;
+                    while (read < ivLen)
+                    {
+                        int n = src.Read(iv, read, ivLen - read);
+                        if (n <= 0) throw new System.Security.Cryptography.CryptographicException("隔离文件损坏（IV 缺失）");
+                        read += n;
+                    }
+                    aes.IV = iv;
+                    using (var decryptor = aes.CreateDecryptor())
+                    using (var dst = new FileStream(dstPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (var cs = new CryptoStream(src, decryptor, CryptoStreamMode.Read))
+                    {
+                        cs.CopyTo(dst, 1024 * 1024);
+                    }
+                }
+            }
         }
     }
 
@@ -256,7 +345,7 @@ namespace FireAntivirus.Common
 
         static NetworkHelper()
         {
-            try { _http.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus/1.0"); } catch { }
+            try { _http.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus/1.0"); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static bool IsInternetAvailable()
@@ -484,9 +573,7 @@ namespace FireAntivirus.Common
                     }
                     File.AppendAllText(logFile, logEntry + "\n");
                 }
-                catch
-                {
-                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 
@@ -553,9 +640,7 @@ namespace FireAntivirus.Common
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 
@@ -604,9 +689,7 @@ namespace FireAntivirus.Common
                     string json = Newtonsoft.Json.JsonConvert.SerializeObject(configCache, Newtonsoft.Json.Formatting.Indented);
                     File.WriteAllText(ConfigFile, json);
                 }
-                catch
-                {
-                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 
@@ -700,9 +783,7 @@ namespace FireAntivirus.Common
                 {
                     return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(value);
                 }
-                catch
-                {
-                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             return defaultValue;
         }
@@ -714,9 +795,7 @@ namespace FireAntivirus.Common
                 string json = Newtonsoft.Json.JsonConvert.SerializeObject(value);
                 Set(key, json);
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void Remove(string key)
@@ -930,9 +1009,7 @@ namespace FireAntivirus.Common
                 Directory.CreateDirectory(Path.GetDirectoryName(filePath));
                 File.WriteAllText(filePath, json);
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static T DeserializeFromFile<T>(string filePath)
@@ -2211,9 +2288,7 @@ namespace FireAntivirus.Common
                     File.Delete(filePath);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void RemoveDirectory(string directoryPath)
@@ -2225,9 +2300,7 @@ namespace FireAntivirus.Common
                     Directory.Delete(directoryPath, true);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void RemoveRegistryKey(string keyPath)
@@ -2242,9 +2315,7 @@ namespace FireAntivirus.Common
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void RemoveRegistryValue(string keyPath, string valueName)
@@ -2259,9 +2330,7 @@ namespace FireAntivirus.Common
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void RemoveService(string serviceName)
@@ -2282,9 +2351,7 @@ namespace FireAntivirus.Common
                 });
                 process?.WaitForExit();
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 
@@ -2302,9 +2369,7 @@ namespace FireAntivirus.Common
                     return new Version(latestVersion) > new Version(currentVersion);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             latestVersion = string.Empty;
             downloadUrl = string.Empty;
             return false;
@@ -2371,9 +2436,7 @@ namespace FireAntivirus.Common
                     File.Copy(sourceFile, backupFile, true);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void BackupDirectory(string sourceDirectory, string backupDirectory)
@@ -2387,9 +2450,7 @@ namespace FireAntivirus.Common
                     CompressionHelper.CompressDirectory(sourceDirectory, backupFile);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void BackupRegistry(string keyPath, string backupFile)
@@ -2405,9 +2466,7 @@ namespace FireAntivirus.Common
                 });
                 process?.WaitForExit();
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void BackupDatabase(string connectionString, string backupFile)
@@ -2422,9 +2481,7 @@ namespace FireAntivirus.Common
                     DatabaseHelper.ExecuteNonQuery(connection, sql);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static string[] GetBackupFiles(string backupDirectory, string pattern = "*")
@@ -2453,9 +2510,7 @@ namespace FireAntivirus.Common
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 
@@ -2565,9 +2620,7 @@ namespace FireAntivirus.Common
                             {
                                 File.Delete(file);
                             }
-                            catch
-                            {
-                            }
+                            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         }
                         foreach (var subDir in Directory.GetDirectories(directory))
                         {
@@ -2575,16 +2628,12 @@ namespace FireAntivirus.Common
                             {
                                 Directory.Delete(subDir, true);
                             }
-                            catch
-                            {
-                            }
+                            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         }
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void CleanupLogFiles(string logDirectory, int daysToKeep = 7)
@@ -2604,9 +2653,7 @@ namespace FireAntivirus.Common
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void CleanupBackupFiles(string backupDirectory, int daysToKeep = 30)
@@ -2628,16 +2675,12 @@ namespace FireAntivirus.Common
                             {
                                 key.DeleteValue(valueName);
                             }
-                            catch
-                            {
-                            }
+                            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         }
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public static void CleanupInternetCache()
@@ -2653,15 +2696,11 @@ namespace FireAntivirus.Common
                         {
                             File.Delete(file);
                         }
-                        catch
-                        {
-                        }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 

@@ -101,7 +101,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                     cpu = Math.Round(cpuCounter.NextValue(), 1);
                     cpuCounter.Dispose();
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 if (cpu < 0)
                 {
                     // 降级：真实 ProcessorCount + 进程总 CPU 时间估算不可靠，标记未知
@@ -114,7 +114,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                     memAvailMB = Math.Round(memCounter.NextValue(), 0);
                     memCounter.Dispose();
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 try
                 {
@@ -124,7 +124,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                     disk = Math.Round(diskCounter.NextValue(), 1);
                     diskCounter.Dispose();
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 try
                 {
@@ -140,7 +140,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                             rx1 += st.BytesReceived;
                             tx1 += st.BytesSent;
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                     System.Threading.Thread.Sleep(1000);
                     long rx2 = 0, tx2 = 0;
@@ -154,12 +154,12 @@ namespace FireAntivirus.Host.WinUI.Pages
                             rx2 += st.BytesReceived;
                             tx2 += st.BytesSent;
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                     netRx = Math.Max(0, rx2 - rx1);
                     netTx = Math.Max(0, tx2 - tx1);
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 DispatcherQueue.TryEnqueue(() => Fill(cpu, memAvailMB, disk, netRx, netTx, error));
             });

@@ -118,9 +118,7 @@ namespace FireAntivirus.Services
                                     directoriesDeleted++;
                                 }
                             }
-                            catch
-                            {
-                            }
+                            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         }
                     }
 
@@ -132,9 +130,7 @@ namespace FireAntivirus.Services
                             directoriesDeleted++;
                         }
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 LogInfo($"目录粉碎完成: {directoryPath}, 文件数: {filesShredded}, 目录数: {directoriesDeleted}");
@@ -353,14 +349,10 @@ namespace FireAntivirus.Services
                     {
                         totalSize += new FileInfo(file).Length;
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return totalSize;
         }

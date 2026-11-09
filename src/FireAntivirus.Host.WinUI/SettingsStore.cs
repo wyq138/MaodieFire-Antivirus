@@ -135,7 +135,7 @@ namespace FireAntivirus.Host.WinUI
                     return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings();
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return new AppSettings();
         }
 

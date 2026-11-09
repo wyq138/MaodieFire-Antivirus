@@ -2,6 +2,17 @@ MIT License
 
 Copyright (c) 2026 耄耋软件工作室 (MaodieFire Software Studio)
 
+────────────────────────────────────────────────────────
+【分发许可说明】
+
+本软件以 MIT 许可证发布，明确允许：
+  · 随安装包（setup 包）自由分发；
+  · 随绿色运行包（zip 压缩包）自由分发；
+  · 自由复制、再分发、内嵌于其他发行包，且无需额外授权。
+随包分发的第三方组件（Sandboxie-Plus、ClamAV、YARA 等）遵循其各自的开源
+许可证（见 README「第三方组件声明」），其再分发同样被相应许可证明确允许。
+────────────────────────────────────────────────────────
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights

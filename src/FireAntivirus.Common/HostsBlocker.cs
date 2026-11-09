@@ -31,7 +31,7 @@ namespace FireAntivirus.Common
                         return u.Host;
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             int slash = s.IndexOf('/');
             if (slash > 0) s = s.Substring(0, slash);
             int colon = s.IndexOf(':');
@@ -141,7 +141,7 @@ namespace FireAntivirus.Common
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return result;
         }
 
@@ -161,7 +161,7 @@ namespace FireAntivirus.Common
                 using var p = Process.Start(psi);
                 p?.WaitForExit(5000);
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 }

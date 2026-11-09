@@ -98,7 +98,7 @@ namespace FireAntivirus.Services
         public void Stop()
         {
             _running = false;
-            try { _timer?.Change(Timeout.Infinite, Timeout.Infinite); } catch { }
+            try { _timer?.Change(Timeout.Infinite, Timeout.Infinite); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "弹窗拦截已停止");
         }
 
@@ -201,7 +201,7 @@ namespace FireAntivirus.Services
                         {
                             using var proc = Process.GetProcessById((int)pid);
                             procName = proc.ProcessName;
-                            try { procPath = proc.MainModule?.FileName; } catch { }
+                            try { procPath = proc.MainModule?.FileName; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         }
                         catch { return true; }
 
@@ -216,7 +216,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     return true;
                 }, IntPtr.Zero);
 
@@ -238,7 +238,7 @@ namespace FireAntivirus.Services
                             RuleId = rule.Id
                         });
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 if (closed > 0)
@@ -332,7 +332,7 @@ namespace FireAntivirus.Services
                 if (list == null) return;
                 lock (_lock) { _rules.Clear(); _rules.AddRange(list); }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void SaveRules()
@@ -345,7 +345,7 @@ namespace FireAntivirus.Services
                 File.WriteAllText(RulesFile, JsonSerializer.Serialize(snapshot,
                     new JsonSerializerOptions { WriteIndented = true }));
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private static string LogsFile => Path.Combine(
@@ -361,7 +361,7 @@ namespace FireAntivirus.Services
                 if (list == null) return;
                 lock (_lock) { _logs.Clear(); _logs.AddRange(list.Take(MaxLogs)); }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void SaveLogs()
@@ -373,7 +373,7 @@ namespace FireAntivirus.Services
                 lock (_lock) snapshot = _logs.Take(MaxLogs).ToList();
                 File.WriteAllText(LogsFile, JsonSerializer.Serialize(snapshot));
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         // ---------------------------------------------------------------- Win32

@@ -1,5 +1,20 @@
+param(
+    [string]$SignPassword = $env:FA_SIGN_PASSWORD
+)
+
 $ErrorActionPreference = "Continue"
 New-Item -ItemType Directory -Path "D:\fa-build" -Force | Out-Null
+
+# 签名密码参数化: 与 fa_sign_admin.ps1 共用 dist\sign_password.txt
+$pwdFile = Join-Path $PSScriptRoot "sign_password.txt"
+if (-not $SignPassword -and (Test-Path $pwdFile)) {
+    $SignPassword = (Get-Content $pwdFile -Raw).Trim()
+}
+if (-not $SignPassword) {
+    $SignPassword = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
+    Set-Content -Path $pwdFile -Value $SignPassword -Encoding ASCII
+}
+
 $sys = Join-Path $PSScriptRoot "FireAntivirusKrn.sys"
 $certName = "FireAntivirus Driver"
 
@@ -16,7 +31,7 @@ if (-not $c) {
 }
 
 $pfx = Join-Path D:\fa-build "fav_sign.pfx"
-$pw = ConvertTo-SecureString -String "fav" -Force -AsPlainText
+$pw = ConvertTo-SecureString -String $SignPassword -Force -AsPlainText
 Export-PfxCertificate -Cert $c -FilePath $pfx -Password $pw | Out-Null
 Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\LocalMachine\Root -Password $pw | Out-Null
 Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\LocalMachine\TrustedPublisher -Password $pw | Out-Null

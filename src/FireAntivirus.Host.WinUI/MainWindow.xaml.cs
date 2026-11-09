@@ -27,21 +27,15 @@ namespace FireAntivirus.Host.WinUI
             Title = "耄耋安全";
 
             // 窗口/任务栏图标：猫脸图标（与 exe 内嵌图标一致，勿用旧版 app.ico 覆盖）
-            try { AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app_cat.ico")); } catch { }
+            try { AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "app_cat.ico")); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             // 毛玻璃：优先 DesktopAcrylic，失败则回退 Mica，再失败保持默认
             try { SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop(); }
-            catch { try { SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop(); } catch { } }
+            catch { try { SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); } }
             ShowPage(typeof(HomePage));
             // 同步首页导航项选中态（触发 SelectionChanged → ShowPage 提前返回）
             if (Nav.MenuItems.Count > 0) Nav.SelectedItem = Nav.MenuItems[0];
             Nav.IsPaneOpen = true;
-            _ = LoadHeaderCatAsync();
-        }
 
-        private async System.Threading.Tasks.Task LoadHeaderCatAsync()
-        {
-            var image = await Pages.UiKit.LoadAssetAsync("cat_home.png");
-            if (image != null) HeaderCatImage.Source = image;
         }
 
         /// <summary>
@@ -147,7 +141,7 @@ namespace FireAntivirus.Host.WinUI
         /// </summary>
         public void RunAfterFirstNavigation(Action action)
         {
-            try { action(); } catch { }
+            try { action(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private async void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -181,7 +175,7 @@ namespace FireAntivirus.Host.WinUI
                         XamlRoot = Content.XamlRoot
                     }.ShowAsync();
                 }
-                catch { }
+                catch (Exception ex2) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex2.Message); }
             }
         }
     }

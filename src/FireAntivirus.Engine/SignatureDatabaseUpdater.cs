@@ -276,7 +276,7 @@ namespace FireAntivirus.Engine
                     added += ndb.Split('\n').Count(l => l.Trim().Length > 10);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             // 2. rfxn.md5: md5 哈希 → 内存特征库（格式: hash:size:name）
             try
@@ -292,7 +292,7 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             // 3. rfxn.yara: YARA 规则 → 规则目录（引擎热加载）
             try
@@ -303,7 +303,7 @@ namespace FireAntivirus.Engine
                     File.WriteAllText(Path.Combine(yaraDir, "rfxn.yar"), yaraText);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return added;
         }
@@ -664,7 +664,7 @@ namespace FireAntivirus.Engine
                     {
                         using var p = System.Diagnostics.Process.Start(psi);
                         if (p == null) return false;
-                        try { p.PriorityClass = System.Diagnostics.ProcessPriorityClass.BelowNormal; } catch { }
+                        try { p.PriorityClass = System.Diagnostics.ProcessPriorityClass.BelowNormal; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         string output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
                         p.WaitForExit(600000);
                         return p.ExitCode == 0 && File.Exists(Path.Combine(dbDir, "daily.cvd"));
@@ -718,7 +718,7 @@ namespace FireAntivirus.Engine
                 st.Updated = latest;
                 st.Available = st.TotalBytes > 0;
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return st;
         }
 
@@ -741,7 +741,7 @@ namespace FireAntivirus.Engine
                     if (File.Exists(Path.Combine(full, "freshclam.exe"))) return full;
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return null;
         }
     }

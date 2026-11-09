@@ -31,7 +31,7 @@ namespace FireAntivirus.Engine
 
         static ThreatDataUpdateService()
         {
-            try { _http.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus/3.0 (+threatdata-update)"); } catch { }
+            try { _http.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus/3.0 (+threatdata-update)"); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public sealed class UpdateResult
@@ -72,7 +72,7 @@ namespace FireAntivirus.Engine
                     info.Updated = jsons.Max(File.GetLastWriteTime);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return info;
         }
 
@@ -125,7 +125,7 @@ namespace FireAntivirus.Engine
 
             try
             {
-                void Report(int p, string s) { try { progress?.Report((Math.Min(99, Math.Max(0, p)), s)); } catch { } }
+                void Report(int p, string s) { try { progress?.Report((Math.Min(99, Math.Max(0, p)), s)); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); } }
 
                 Report(2, "下载版本清单...");
                 string manifestJson = await _http.GetStringAsync(source + "/version.json");

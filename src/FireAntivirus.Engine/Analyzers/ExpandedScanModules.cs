@@ -99,7 +99,7 @@ namespace FireAntivirus.Engine.Analyzers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return hit;
         }
 
@@ -196,7 +196,7 @@ namespace FireAntivirus.Engine.Analyzers
                     hit.Confidence = Math.Min(0.55 + anomalies * 0.05, 0.85);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return hit;
         }
     }
@@ -275,7 +275,7 @@ namespace FireAntivirus.Engine.Analyzers
                                     }
                                 }
                             }
-                            catch { }
+                            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         }
 
                         if (!hit.IsInfected && hasVba)
@@ -292,7 +292,7 @@ namespace FireAntivirus.Engine.Analyzers
                 }
                 _ = OfficeExtensions; // 保留扩展名清单供扩展使用
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return hit;
         }
 
@@ -381,17 +381,17 @@ namespace FireAntivirus.Engine.Analyzers
                             }
                             finally
                             {
-                                try { File.Delete(dest); } catch { }
+                                try { File.Delete(dest); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                             }
                         }
                     }
                     finally
                     {
-                        try { Directory.Delete(tempDir, true); } catch { }
+                        try { Directory.Delete(tempDir, true); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return hit;
         }
     }
@@ -533,7 +533,7 @@ namespace FireAntivirus.Engine.Analyzers
                         bool binaryNoise = candidate.Count(c => c == '\0') > content.Length / 10;
                         if (!binaryNoise) { text = candidate; break; }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
                 if (text == null) return hit;
 
@@ -558,7 +558,7 @@ namespace FireAntivirus.Engine.Analyzers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return hit;
         }
     }
@@ -616,7 +616,7 @@ namespace FireAntivirus.Engine.Analyzers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return results;
         }
 
@@ -644,7 +644,7 @@ namespace FireAntivirus.Engine.Analyzers
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
     }

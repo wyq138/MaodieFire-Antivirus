@@ -138,18 +138,40 @@ namespace FireAntivirus.Encryption
             return Convert.ToBase64String(randomBytes).Substring(0, length);
         }
 
-        // 生成密码哈希
+        // 生成密码哈希: PBKDF2-SHA256 + 随机盐（格式: FAV2$iter$saltB64$hashB64）
         public string HashPassword(string password)
         {
-            byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
-            return Convert.ToBase64String(hash);
+            byte[] salt = RandomNumberGenerator.GetBytes(16);
+            const int iterations = 100000;
+            byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, 32);
+            return $"FAV2${iterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(hash)}";
         }
 
-        // 验证密码
+        // 验证密码: 新格式按存储参数校验（恒时比较）; 旧格式（静态盐 SHA1）兼容校验
         public bool VerifyPassword(string password, string hashedPassword)
         {
-            byte[] hash = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
-            return Convert.ToBase64String(hash).Equals(hashedPassword);
+            if (string.IsNullOrEmpty(hashedPassword)) return false;
+
+            if (hashedPassword.StartsWith("FAV2$", StringComparison.Ordinal))
+            {
+                try
+                {
+                    var parts = hashedPassword.Split('$');
+                    int iterations = int.Parse(parts[1]);
+                    byte[] salt = Convert.FromBase64String(parts[2]);
+                    byte[] expected = Convert.FromBase64String(parts[3]);
+                    byte[] actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, expected.Length);
+                    return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(actual, expected);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            // 旧格式兼容: PBKDF2-SHA1 + 静态盐
+            byte[] legacy = Rfc2898DeriveBytes.Pbkdf2(password, Encoding.UTF8.GetBytes("FireAntivirusSalt"), 100000, HashAlgorithmName.SHA1, 32);
+            return Convert.ToBase64String(legacy).Equals(hashedPassword);
         }
 
         // 加密文件流

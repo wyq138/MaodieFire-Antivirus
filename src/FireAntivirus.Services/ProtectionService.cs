@@ -113,6 +113,8 @@ namespace FireAntivirus.Services
             SafeAddMonitor(() => new BehaviorAnalysisService(_dataManager), "BehaviorAnalysisService");
             SafeAddMonitor(() => new CloudScannerService(_dataManager, _antivirusEngine), "CloudScannerService");
             SafeAddMonitor(() => new DeviceControlService(_dataManager), "DeviceControlService");
+            // 内存防护（VirtualQueryEx RWX 区域检测/堆喷射识别）——真实能力挂载（原实现未接线）
+            SafeAddMonitor(() => new MemoryProtection(_dataManager, _antivirusEngine), "MemoryProtection");
         }
 
         private void SafeAddMonitor(Func<IMonitor> createMonitor, string name)

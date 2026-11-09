@@ -1,6 +1,6 @@
-// Melix 树集成分类器（照搬 XIGUASecurity 10x 的 Melix/EMBER 接口，C# 真实推理）：
+// Melix 树集成分类器（C# 真实推理）：
 //   输入 = EmberFeatureExtractor 的 2568 维向量；输出 = 恶意概率（多树聚合）+ 阈值判定。
-//   模型优先级：① ProgramData\FireAntivirus\ML\melix_ember.json（可在线更新，与西瓜模型热更新等价）
+//   模型优先级：① ProgramData\FireAntivirus\ML\melix_ember.json（可在线更新，支持在线热更新）
 //              ② 内置专家树（20 棵基于 EMBER 维度语义的确定性判定树，非随机占位、非恒值）
 //   推理为真实树遍历；模型文件损坏时回退专家树并如实标记 ModelSource。
 //
@@ -62,7 +62,7 @@ namespace FireAntivirus.Engine.Analyzers
             lock (_lock)
             {
                 // 同一路径且模型文件未被替换则直接复用，避免每文件扫描重复读模型/重建树；
-                // 文件写入时间变化时重新加载（支持运行期热更新，与西瓜模型更新等价）。
+                // 文件写入时间变化时重新加载（支持运行期热更新，支持运行期热更新）。
                 if (_initialized && _model != null &&
                     string.Equals(_modelPath, modelPath, StringComparison.OrdinalIgnoreCase))
                 {
@@ -144,7 +144,7 @@ namespace FireAntivirus.Engine.Analyzers
                 foreach (var tree in _model.Trees)
                 {
                     try { values.Add(Traverse(tree, features)); }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
                 if (values.Count == 0) return 0f;
 

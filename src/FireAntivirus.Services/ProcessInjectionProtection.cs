@@ -1023,7 +1023,7 @@ namespace FireAntivirus.Services
                                     var pebImagePath = System.Text.Encoding.Unicode.GetString(pathBytes);
 
                                     string actualPath = null;
-                                    try { actualPath = process.MainModule?.FileName; } catch { }
+                                    try { actualPath = process.MainModule?.FileName; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                                     if (!string.IsNullOrEmpty(actualPath) &&
                                         !string.Equals(pebImagePath, actualPath, StringComparison.OrdinalIgnoreCase))

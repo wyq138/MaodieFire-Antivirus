@@ -139,7 +139,7 @@ namespace FireAntivirus.Common
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return families;
         }
 

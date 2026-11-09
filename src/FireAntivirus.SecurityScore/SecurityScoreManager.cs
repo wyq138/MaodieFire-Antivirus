@@ -436,7 +436,7 @@ namespace FireAntivirus.SecurityScore
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             _scoreRecordsCache = list;
             return list;
         }
@@ -454,7 +454,7 @@ namespace FireAntivirus.SecurityScore
                 File.WriteAllText(ScoreHistoryPath,
                     System.Text.Json.JsonSerializer.Serialize(arr));
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         public void ResetAllFactors()

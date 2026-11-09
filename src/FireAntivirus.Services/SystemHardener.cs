@@ -41,11 +41,13 @@ namespace FireAntivirus.Services
                 items.AddRange(CheckRegistrySecurity());
                 items.AddRange(CheckRemoteDesktopSettings());
 
-                dataManager.LogInfo($"系统安全扫描完成，发现 {items.Count} 个安全问题");
+                if (dataManager != null)
+                    dataManager.LogInfo($"系统安全扫描完成，发现 {items.Count} 个安全问题");
             }
             catch (Exception ex)
             {
-                dataManager.LogError($"系统安全扫描失败: {ex.Message}");
+                if (dataManager != null)
+                    dataManager.LogError($"系统安全扫描失败: {ex.Message}");
             }
 
             return items;
@@ -646,9 +648,7 @@ namespace FireAntivirus.Services
                             }
                         }
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
             catch (Exception ex)

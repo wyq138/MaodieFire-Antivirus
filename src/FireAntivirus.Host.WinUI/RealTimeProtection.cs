@@ -62,7 +62,7 @@ namespace FireAntivirus.Host.WinUI
             {
                 if (!FileGuardEnabled) return "实时防护已关闭";
                 int fixedDrives = 0;
-                try { fixedDrives = DriveInfo.GetDrives().Count(d => d.DriveType == DriveType.Fixed && d.IsReady); } catch { }
+                try { fixedDrives = DriveInfo.GetDrives().Count(d => d.DriveType == DriveType.Fixed && d.IsReady); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 return $"全盘实时监控 {fixedDrives} 个固定驱动器（递归）+ 移动盘 U 盘防护，并发扫描 x4";
             }
         }
@@ -93,7 +93,7 @@ namespace FireAntivirus.Host.WinUI
         {
             foreach (var w in _watchers.Values)
             {
-                try { w.EnableRaisingEvents = false; w.Dispose(); } catch { }
+                try { w.EnableRaisingEvents = false; w.Dispose(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             _watchers.Clear();
             FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "实时防护已停止");
@@ -314,7 +314,7 @@ namespace FireAntivirus.Host.WinUI
             }
             finally
             {
-                try { if (File.Exists(testPath)) File.Delete(testPath); } catch { }
+                try { if (File.Exists(testPath)) File.Delete(testPath); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 
@@ -362,7 +362,7 @@ namespace FireAntivirus.Host.WinUI
                     foreach (var f in Directory.EnumerateFiles(dir, $"{marker}*"))
                         File.Delete(f);
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 

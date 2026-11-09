@@ -129,7 +129,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                             DispatcherQueue.TryEnqueue(() =>
                                 ModulesState.Text = "自动沙箱验证: " + (ok ? "环境就绪" : "环境不可用（需安装/分发 Sandboxie 组件）"));
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     });
                 }
             }
@@ -230,7 +230,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                 }
                 else
                 {
-                    try { App.PrivacyMonitor?.StopMonitoring(); } catch { }
+                    try { App.PrivacyMonitor?.StopMonitoring(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     ModulesState.Text = "隐私访问监控: 已停止";
                 }
             }
@@ -341,7 +341,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                 SettingsStore.Current.ScanConcurrency = (int)sender.Value;
                 SettingsStore.Save();
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         // ---- 扫描排除目录 ----
@@ -790,8 +790,8 @@ namespace FireAntivirus.Host.WinUI.Pages
             {
                 using var cert = X509CertificateLoader.LoadCertificateFromFile(path);
                 string issuer = "--", subject = "--";
-                try { issuer = cert.Issuer?.ToString() ?? "--"; } catch { }
-                try { subject = cert.Subject?.ToString() ?? "--"; } catch { }
+                try { issuer = cert.Issuer?.ToString() ?? "--"; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+                try { subject = cert.Subject?.ToString() ?? "--"; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 return $"文件: {Path.GetFileName(path)}\n证书主题: {subject}\n颁发者: {issuer}\n有效期至: " +
                        cert.NotAfter.ToString("yyyy-MM-dd");
             }
@@ -860,7 +860,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                 {
                     if (File.GetLastWriteTime(f) < cutoff)
                     {
-                        try { File.Delete(f); removed++; } catch { }
+                        try { File.Delete(f); removed++; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
                 LogsState.Text = $"已清理 {removed} 个过期日志文件";

@@ -172,20 +172,24 @@ namespace FireAntivirus.Engine
             return trustedHashes;
         }
 
-        private async void CheckAvailability()
+        private void CheckAvailability()
         {
-            try
+            // Task.Run 包裹（无 async void 异常逃逸面）: 可用性探测失败仅置状态
+            _ = Task.Run(async () =>
             {
-                // 检查网络连接
-                using var request = new HttpRequestMessage(HttpMethod.Head, "https://www.google.com");
-                request.Headers.ConnectionClose = true;
-                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-                IsAvailable = response.IsSuccessStatusCode;
-            }
-            catch
-            {
-                IsAvailable = false;
-            }
+                try
+                {
+                    // 检查网络连接
+                    using var request = new HttpRequestMessage(HttpMethod.Head, "https://www.google.com");
+                    request.Headers.ConnectionClose = true;
+                    var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                    IsAvailable = response.IsSuccessStatusCode;
+                }
+                catch
+                {
+                    IsAvailable = false;
+                }
+            });
         }
 
         public async Task<CloudScanResult> ScanFileAsync(string filePath)

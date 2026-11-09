@@ -648,9 +648,7 @@ namespace FireAntivirus.Services
                 {
                     DestroyFireAntivirusKernel(kernelInstance);
                 }
-                catch
-                {
-                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 finally
                 {
                     kernelInstance = IntPtr.Zero;

@@ -256,7 +256,7 @@ namespace FireAntivirus.Services
                             module.BaseAddress.ToInt64() + module.ModuleMemorySize, module.ModuleName));
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 const uint MEM_COMMIT = 0x1000;
                 const uint PAGE_EXECUTE = 0x10;
@@ -345,7 +345,7 @@ namespace FireAntivirus.Services
                         suspiciousRegions.Add(region);
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 // 检查工作集大小的异常增长
                 if (_processMemoryCache.ContainsKey(process.Id))
@@ -670,7 +670,7 @@ namespace FireAntivirus.Services
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return patterns;
         }
         
@@ -708,7 +708,7 @@ namespace FireAntivirus.Services
                         NotificationType.Warning);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
         
         private void LogHeapSprayingError(Exception ex)

@@ -1,4 +1,4 @@
-// 防御规避检测（照搬 XIGUASecurity 10x defense_evasion.rs 的检测项，C# 实现）：
+// 防御规避检测（C# 实现）：
 //   基于进程命令行/目标路径对 MITRE ATT&CK 防御规避技术做特征匹配并给出严重度：
 //   T1490 删除卷影副本 / T1070.001 清除事件日志 / T1562.001 禁用 Defender /
 //   T1562.006 AMSI 绕过 / T1562.009 SafeBoot 操纵 / T1564.001 隐藏文件属性 / T1027 编码混淆命令。
@@ -110,7 +110,7 @@ namespace FireAntivirus.Engine.Analyzers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return result;
         }
 

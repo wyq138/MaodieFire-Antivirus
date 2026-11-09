@@ -156,7 +156,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                     LoadStats();
                 });

@@ -138,7 +138,7 @@ namespace FireAntivirus.Engine.Analyzers
                             LastSeenUtc = DateTime.UtcNow
                         };
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 _nodes[pid] = new ProcessNode

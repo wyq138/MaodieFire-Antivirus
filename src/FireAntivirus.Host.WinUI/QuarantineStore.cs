@@ -51,10 +51,10 @@ namespace FireAntivirus.Host.WinUI
                             File.Copy(f, dest, false);
                         File.Delete(f);
                     }
-                    try { Directory.Delete(legacy, true); } catch { }
+                    try { Directory.Delete(legacy, true); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private static List<QuarantineEntry> Load()
@@ -65,7 +65,7 @@ namespace FireAntivirus.Host.WinUI
                     return Newtonsoft.Json.JsonConvert.DeserializeObject<List<QuarantineEntry>>(File.ReadAllText(IndexPath))
                            ?? new List<QuarantineEntry>();
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return new List<QuarantineEntry>();
         }
 
@@ -225,7 +225,7 @@ namespace FireAntivirus.Host.WinUI
                         });
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 return result;
             }
         }

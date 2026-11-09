@@ -91,7 +91,7 @@ namespace FireAntivirus.MachineLearning
                 // 导入表特征
                 features["import_count"] = CountImports(filePath);
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return features;
         }
@@ -151,7 +151,7 @@ namespace FireAntivirus.MachineLearning
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return strings;
         }

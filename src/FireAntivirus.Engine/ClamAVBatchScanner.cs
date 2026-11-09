@@ -118,7 +118,7 @@ namespace FireAntivirus.Engine
             {
                 using var p = Process.Start(psi);
                 if (p == null) return;
-                try { p.PriorityClass = ProcessPriorityClass.BelowNormal; } catch { }
+                try { p.PriorityClass = ProcessPriorityClass.BelowNormal; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 string output;
                 using (var so = p.StandardOutput)
                 using (var se = p.StandardError)
@@ -187,7 +187,7 @@ namespace FireAntivirus.Engine
                     if (File.Exists(Path.Combine(full, "clamscan.exe"))) return Path.Combine(full, "clamscan.exe");
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return null;
         }
     }

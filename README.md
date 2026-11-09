@@ -84,7 +84,7 @@
 ## 项目架构
 
 ```
-├─ FireAntivirus.Host.WinUI      WinUI 3 主程序（17 页面，Windows App SDK 自包含）
+├─ FireAntivirus.Host.WinUI      WinUI 3 主程序（32 个功能页面，Windows App SDK 自包含）
 ├─ FireAntivirus.ServiceHost     后台防护服务（Windows 服务 / 控制台 / 独立运行三模式）
 ├─ FireAntivirus.Watchman        看门狗（被杀自拉）
 ├─ FireAntivirus.Engine          扫描引擎（多引擎协调 / YARA / PE / ML / 沙箱判定）
@@ -123,6 +123,12 @@ powershell -ExecutionPolicy Bypass -File src\build_final3.ps1
 
 产物 `FireAntivirusKrn.sys` 输出至 `src\FireAntivirus.Driver\dist\`，签名与部署工具同目录（需管理员运行）。
 
+### 运行时资产（不入库，运行时生成/自备）
+
+- `Sandbox\`（Sandboxie 组件）：出于许可证原因仓库不含二进制，构建后从本机 Sandboxie-Plus 安装目录拷贝 `Start.exe / SbieIni.exe / SbieDll.dll / SbieSvc.exe` 等核心文件至输出目录 `Sandbox\`，或直接依赖系统安装路径。
+- `tools\yara-x.exe`：YARA-X 扫描器二进制，运行时自动下载或自备放入输出目录。
+- `ML\model_*.bin / melix_ember.json`：EMBER V3 模型由 `MelixTrainer` 本地训练生成，支持运行期热更新。
+
 ### 驱动部署
 
 1. 管理员运行 `fa_sign_admin.ps1`（签名 sys）
@@ -138,7 +144,13 @@ FireAntivirus.ServiceHost.exe   后台防护（服务模式随系统启动）
 
 ## 许可证
 
-本项目采用 **MIT** 许可证，详见 [LICENSE](LICENSE)。
+本项目采用 **MIT** 许可证，详见 [LICENSE](LICENSE)。**明确允许随安装包（setup 包）与绿色运行包（zip）自由分发**，无需额外授权。
+
+### 第三方组件声明
+
+- **Sandboxie-Plus**（`Sandbox\` 目录随包分发的沙箱运行组件）：遵循 **GPLv3** 许可证，版权归其原作者所有，源码见 [Sandboxie-Plus 官方仓库](https://github.com/sandboxie-plus/Sandboxie)。MIT 主程序调用 GPL 组件不影响各自许可证的独立性。
+- **ClamAV**（病毒扫描引擎）：Apache-2.0/GPL 兼容，版权归 Cisco Talos 社区。
+- **YARA / YARA-X**：BSD-3-Clause，版权归 VirusTotal 社区。
 
 ## 开发者
 

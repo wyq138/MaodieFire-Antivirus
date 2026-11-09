@@ -62,7 +62,7 @@ namespace FireAntivirus.Host.WinUI
                     presenter.IsMinimizable = false;
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         /// <summary>显示悬浮卡（同盘重复接入时复用现有窗口）。</summary>
@@ -73,7 +73,7 @@ namespace FireAntivirus.Host.WinUI
                 return; // 已在展示中
             }
 
-            try { _current?.Close(); } catch { }
+            try { _current?.Close(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             _current = new UsbGuardToast(driveRoot, volumeLabel);
             _current.Activate();
             _current._autoCloseTimer.Start();
@@ -240,7 +240,7 @@ namespace FireAntivirus.Host.WinUI
         private void TitleRow_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
             _dragging = false;
-            try { ((UIElement)sender).ReleasePointerCapture(e.Pointer); } catch { }
+            try { ((UIElement)sender).ReleasePointerCapture(e.Pointer); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void ShowResult(int scanned, int threats, int autoQuarantined)
@@ -265,8 +265,8 @@ namespace FireAntivirus.Host.WinUI
 
         private void CloseToast()
         {
-            try { _autoCloseTimer.Stop(); } catch { }
-            try { Close(); } catch { }
+            try { _autoCloseTimer.Stop(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+            try { Close(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 }

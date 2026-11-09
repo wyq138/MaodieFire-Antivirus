@@ -38,14 +38,14 @@ namespace FireAntivirus.Host.WinUI
             {
                 Interlocked.Increment(ref _kernel);
                 Interlocked.Increment(ref _total);
-                try { StatsChanged?.Invoke(); } catch { }
+                try { StatsChanged?.Invoke(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
 
             internal static void RecordRtp()
             {
                 Interlocked.Increment(ref _rtp);
                 Interlocked.Increment(ref _total);
-                try { StatsChanged?.Invoke(); } catch { }
+                try { StatsChanged?.Invoke(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 

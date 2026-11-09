@@ -70,7 +70,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                 foreach (var cache in Directory.EnumerateDirectories(local, "Cache", SearchOption.AllDirectories))
                     list.Add((cache, true));
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return list;
         }
 
@@ -100,7 +100,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                                 long dirSize = 0;
                                 foreach (var f in SafeFiles(target))
                                 {
-                                    try { dirSize += new FileInfo(f).Length; } catch { }
+                                    try { dirSize += new FileInfo(f).Length; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                                 }
                                 if (dirSize > 0)
                                 {
@@ -112,13 +112,13 @@ namespace FireAntivirus.Host.WinUI.Pages
                             else if (File.Exists(target))
                             {
                                 long size = 0;
-                                try { size = new FileInfo(target).Length; } catch { }
+                                try { size = new FileInfo(target).Length; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                                 var captured = target; var sz = size;
                                 DispatcherQueue.TryEnqueue(() => Items.Add(new CleanRow { TargetPath = captured, Size = sz, IsDir = false }));
                                 total += sz; count++;
                             }
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
                 catch (Exception ex)
@@ -145,8 +145,8 @@ namespace FireAntivirus.Host.WinUI.Pages
             {
                 var current = queue.Dequeue();
                 string[] files = Array.Empty<string>(), dirs = Array.Empty<string>();
-                try { files = Directory.GetFiles(current); } catch { }
-                try { dirs = Directory.GetDirectories(current); } catch { }
+                try { files = Directory.GetFiles(current); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+                try { dirs = Directory.GetDirectories(current); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 foreach (var f in files) yield return f;
                 foreach (var d in dirs) queue.Enqueue(d);
             }
@@ -171,13 +171,13 @@ namespace FireAntivirus.Host.WinUI.Pages
                         {
                             foreach (var f in SafeFiles(row.TargetPath))
                             {
-                                try { File.Delete(f); } catch { }
+                                try { File.Delete(f); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                             }
                             // 重新统计实际剩余
                             long remain = 0;
                             foreach (var f in SafeFiles(row.TargetPath))
                             {
-                                try { remain += new FileInfo(f).Length; } catch { }
+                                try { remain += new FileInfo(f).Length; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                             }
                             freed += size - remain;
                             removed++;

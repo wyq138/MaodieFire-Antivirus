@@ -174,7 +174,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                     filters = _manager.GetContentFilters();
                     foreach (var u in users ?? new System.Collections.Generic.List<User>())
                     {
-                        try { times[u.Id] = _manager.GetTimeRestrictions(u.Id); } catch { }
+                        try { times[u.Id] = _manager.GetTimeRestrictions(u.Id); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
                 catch (Exception ex) { error = ex.Message; }

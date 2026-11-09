@@ -85,7 +85,7 @@ namespace FireAntivirus.ApplicationMonitor
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -122,7 +122,7 @@ namespace FireAntivirus.ApplicationMonitor
                 {
                     behavior.Modules = proc.Modules.Cast<ProcessModule>().Select(m => m.ModuleName).ToList();
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 // 获取网络连接
                 behavior.NetworkConnections = GetProcessNetworkConnections(proc.Id);
@@ -136,7 +136,7 @@ namespace FireAntivirus.ApplicationMonitor
                 // 检查环境变量
                 behavior.EnvironmentVariables = GetProcessEnvironment(proc.Id);
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return behavior;
         }
@@ -176,7 +176,7 @@ namespace FireAntivirus.ApplicationMonitor
                     return Convert.ToInt32(obj["ParentProcessId"]);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return -1;
         }
 
@@ -213,7 +213,7 @@ namespace FireAntivirus.ApplicationMonitor
                         connections.Add(line.Trim());
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return connections;
         }
 
@@ -229,7 +229,7 @@ namespace FireAntivirus.ApplicationMonitor
                     children.Add(Convert.ToInt32(obj["ProcessId"]));
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return children;
         }
 
@@ -244,7 +244,7 @@ namespace FireAntivirus.ApplicationMonitor
                     return obj["CommandLine"]?.ToString() ?? "";
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return "";
         }
 
@@ -271,7 +271,7 @@ namespace FireAntivirus.ApplicationMonitor
                     env["Owner"] = $"{obj["Domain"]?.ToString()}\\{obj["User"]?.ToString()}";
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return env;
         }
     }
@@ -306,7 +306,7 @@ namespace FireAntivirus.ApplicationMonitor
                         // 检测性能异常
                         alerts.AddRange(DetectPerformanceAnomalies(proc, metrics));
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -338,9 +338,9 @@ namespace FireAntivirus.ApplicationMonitor
                     metrics.CpuTime = proc.TotalProcessorTime;
                     metrics.UserTime = proc.UserProcessorTime;
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return metrics;
         }
@@ -481,7 +481,7 @@ namespace FireAntivirus.ApplicationMonitor
                             results.Add(result);
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -753,7 +753,7 @@ namespace FireAntivirus.ApplicationMonitor
                     info.UsagePercent = (double)(info.TotalPhysical - info.AvailablePhysical) / info.TotalPhysical * 100;
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return info;
         }
 
@@ -776,7 +776,7 @@ namespace FireAntivirus.ApplicationMonitor
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return disks;
         }
 
@@ -870,7 +870,7 @@ namespace FireAntivirus.ApplicationMonitor
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 
@@ -880,7 +880,7 @@ namespace FireAntivirus.ApplicationMonitor
             {
                 // 简化实现
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void AnalyzeStartupFolder()
@@ -903,7 +903,7 @@ namespace FireAntivirus.ApplicationMonitor
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 

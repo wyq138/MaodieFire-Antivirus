@@ -93,16 +93,12 @@ namespace FireAntivirus.Services
                                             }
                                         }
                                     }
-                                    catch
-                                    {
-                                    }
+                                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                                 }
                             }
                         }
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
             catch (Exception ex)
@@ -146,9 +142,7 @@ namespace FireAntivirus.Services
                                 softwareList.Add(software);
                             }
                         }
-                        catch
-                        {
-                        }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
             }
@@ -197,14 +191,10 @@ namespace FireAntivirus.Services
 
                                     softwareList.Add(software);
                                 }
-                                catch
-                                {
-                                }
+                                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                             }
                         }
-                        catch
-                        {
-                        }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
             }
@@ -286,9 +276,7 @@ namespace FireAntivirus.Services
                         outdatedSoftware.Add(software);
                     }
                 }
-                catch
-                {
-                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
 
             return outdatedSoftware;
@@ -323,9 +311,7 @@ namespace FireAntivirus.Services
                     return GetDirectorySize(software.InstallLocation);
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return 0;
         }
@@ -341,14 +327,10 @@ namespace FireAntivirus.Services
                     {
                         size += new FileInfo(file).Length;
                     }
-                    catch
-                    {
-                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return size;
         }
 
@@ -361,9 +343,7 @@ namespace FireAntivirus.Services
                     return antivirusEngine.ScanDirectory(software.InstallLocation).Count == 0;
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return true;
         }
@@ -382,9 +362,7 @@ namespace FireAntivirus.Services
                         unsafeSoftware.Add(software);
                     }
                 }
-                catch
-                {
-                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
 
             return unsafeSoftware;
@@ -410,9 +388,7 @@ namespace FireAntivirus.Services
                         }
                     }
                 }
-                catch
-                {
-                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
 
             return updatableSoftware;
@@ -437,9 +413,7 @@ namespace FireAntivirus.Services
                     return date;
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return null;
         }

@@ -227,7 +227,7 @@ namespace FireAntivirus.Engine.Analyzers
 
                                 if (risk >= HandleRisk.High)
                                 {
-                                    try { Finding?.Invoke(finding); } catch { }
+                                    try { Finding?.Invoke(finding); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                                 }
                             }
                             finally { CloseHandle(dup); }
@@ -300,7 +300,7 @@ namespace FireAntivirus.Engine.Analyzers
                     break;
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             finally
             {
                 if (buffer != IntPtr.Zero) Marshal.FreeHGlobal(buffer);
@@ -315,7 +315,7 @@ namespace FireAntivirus.Engine.Analyzers
             {
                 foreach (var p in Process.GetProcessesByName(name))
                 {
-                    try { map[p.Id] = p.ProcessName.ToLowerInvariant(); } catch { }
+                    try { map[p.Id] = p.ProcessName.ToLowerInvariant(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
 
@@ -326,7 +326,7 @@ namespace FireAntivirus.Engine.Analyzers
                 {
                     if (SelfNames.Contains(p.ProcessName)) map[p.Id] = "FireAntivirus";
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 finally { p.Dispose(); }
             }
 
@@ -335,7 +335,7 @@ namespace FireAntivirus.Engine.Analyzers
                 foreach (int pid in extraTargets)
                 {
                     if (pid <= 0 || map.ContainsKey(pid)) continue;
-                    try { map[pid] = Process.GetProcessById(pid).ProcessName.ToLowerInvariant(); } catch { }
+                    try { map[pid] = Process.GetProcessById(pid).ProcessName.ToLowerInvariant(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
             return map;

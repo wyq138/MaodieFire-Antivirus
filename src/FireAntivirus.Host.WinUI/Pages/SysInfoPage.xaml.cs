@@ -102,7 +102,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                     return $"{totalGB:F1} GB 总量，可用 {availGB:F1} GB";
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return "--";
         }
 
@@ -118,7 +118,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                     double free = d.AvailableFreeSpace / 1024.0 / 1024 / 1024;
                     parts.Add($"{d.Name.TrimEnd('\\')} {free:F0}/{total:F0} GB");
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             return parts.Count > 0 ? string.Join("；", parts) : "--";
         }

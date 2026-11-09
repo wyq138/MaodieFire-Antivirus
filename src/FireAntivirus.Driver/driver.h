@@ -13,6 +13,7 @@
 
 #include <ntifs.h>
 #include <ntstrsafe.h>
+#include <wdmsec.h>
 
 /* 进程访问权限常量（内核模式头文件不导出，自行定义） */
 #ifndef PROCESS_TERMINATE
@@ -36,6 +37,7 @@ NTKERNELAPI PUCHAR PsGetProcessImageFileName(_In_ PEPROCESS Process);
 #define FAV_IOCTL_SET_PROTECTED_PID     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS) /* 0x22200C 扩展: 输入=ULONG count + ULONG pids[count]（批量受保护进程） */
 #define FAV_IOCTL_ENABLE_DISK_GUARD     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x804, METHOD_BUFFERED, FILE_ANY_ACCESS) /* 0x222010 扩展: 输入8字节(LONG mbrGuard, LONG gptGuard) */
 #define FAV_IOCTL_GET_EVENTS            CTL_CODE(FILE_DEVICE_UNKNOWN, 0x805, METHOD_BUFFERED, FILE_ANY_ACCESS) /* 0x222014 扩展: 内核事件上报, 输出=[ULONG count][FAV_EVENT×count] */
+#define FAV_IOCTL_SET_TRUSTED_PID       CTL_CODE(FILE_DEVICE_UNKNOWN, 0x806, METHOD_BUFFERED, FILE_ANY_ACCESS) /* 0x222018 扩展: 输入=ULONG count + ULONG pids[count]（受信任进程, 其进程创建/注册表操作放行） */
 
 /* ---- 内核事件类型(与用户态 KernelEvent 对齐) ---- */
 #define FAV_EVT_PROCESS_BLOCKED     1   /* 进程创建被拦截 */
@@ -98,6 +100,10 @@ typedef struct _FAV_GLOBAL_STATE {
     ULONG  ProtectedPidCount;
     PVOID  ObCallbackHandle;    /* ObRegisterCallbacks 注册句柄 */
 
+    /* 受信任进程白名单（用户态防护程序自身/服务, 其子进程与注册表操作放行） */
+    HANDLE TrustedPids[FAV_MAX_PIDS];
+    ULONG  TrustedPidCount;
+
     /* 磁盘过滤设备 */
     PDEVICE_OBJECT  DiskFilterDevice;
     PDEVICE_OBJECT  DiskTargetDevice;
@@ -140,6 +146,7 @@ DRIVER_UNLOAD       FavUnload;
 DRIVER_DISPATCH     FavDispatchCreateClose;
 DRIVER_DISPATCH     FavDispatchDeviceControl;
 DRIVER_DISPATCH     FavDispatchWrite;
+DRIVER_DISPATCH     FavDispatchPassThrough;
 
 /* 进程创建回调 */
 VOID FavProcessNotifyCallback(
@@ -168,6 +175,7 @@ VOID FavDetachFromDiskStack(VOID);
 /* 事件队列 */
 VOID FavPushEvent(_In_ ULONG Type, _In_ ULONG Pid, _In_opt_ PCWSTR Source, _In_opt_ PCWSTR Detail);
 BOOLEAN FavIsProtectedPid(_In_ HANDLE ProcessId);
+BOOLEAN FavIsTrustedPid(_In_ HANDLE ProcessId);
 
 /* 事件日志(DebugView 可见) */
 VOID FavLog(_In_ PCSTR Format, ...);

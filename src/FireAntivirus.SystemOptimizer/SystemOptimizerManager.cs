@@ -209,10 +209,10 @@ namespace FireAntivirus.SystemOptimizer
                         totalSize += file.Length;
                         file.Delete();
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return totalSize;
         }
 
@@ -272,7 +272,7 @@ namespace FireAntivirus.SystemOptimizer
                 {
                     serviceController = System.ServiceProcess.ServiceController.GetServices();
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 var criticalServices = new[] 
                 { 
@@ -289,7 +289,7 @@ namespace FireAntivirus.SystemOptimizer
                             Console.WriteLine($"[SystemOptimizer] 关键服务: {service.ServiceName} - {service.Status}");
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 return true;

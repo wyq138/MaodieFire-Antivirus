@@ -124,8 +124,8 @@ namespace FireAntivirus.SecurityReport
         {
             // 真实检测本软件防护进程是否在运行
             bool serviceRunning = false, mainRunning = false;
-            try { serviceRunning = Process.GetProcessesByName("FireAntivirus.ServiceHost").Length > 0; } catch { }
-            try { mainRunning = Process.GetProcessesByName("FireAntivirus").Length > 0; } catch { }
+            try { serviceRunning = Process.GetProcessesByName("FireAntivirus.ServiceHost").Length > 0; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+            try { mainRunning = Process.GetProcessesByName("FireAntivirus").Length > 0; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             if (serviceRunning && mainRunning)
                 AddSection(report, "实时防护状态", "主程序与后台防护服务均在正常运行", "Good");
@@ -312,7 +312,7 @@ namespace FireAntivirus.SecurityReport
         {
             // 真实检测后台防护服务（承担文件监控/勒索防护）是否运行
             bool running = false;
-            try { running = Process.GetProcessesByName("FireAntivirus.ServiceHost").Length > 0; } catch { }
+            try { running = Process.GetProcessesByName("FireAntivirus.ServiceHost").Length > 0; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             AddSection(report, "勒索软件防护",
                 running ? "后台防护服务正在运行，关键文件监控处于活动状态" : "后台防护服务未运行，勒索防护能力受限，请启动防护服务",

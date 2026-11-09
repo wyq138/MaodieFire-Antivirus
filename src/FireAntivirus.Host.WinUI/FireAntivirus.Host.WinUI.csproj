@@ -49,7 +49,7 @@
     <ProjectReference Include="..\FireAntivirus.Encryption\FireAntivirus.Encryption.csproj" />
     <ProjectReference Include="..\FireAntivirus.MachineLearning\FireAntivirus.MachineLearning.csproj" />
     <ProjectReference Include="..\FireAntivirus.MalwareRemoval\FireAntivirus.MalwareRemoval.csproj" />
-    <ProjectReference Include="..\FireAntivirus.MobileSecurity\FireAntivirus.MobileSecurity.csproj" />
+
     <ProjectReference Include="..\FireAntivirus.NetworkFirewall\FireAntivirus.NetworkFirewall.csproj" />
     <ProjectReference Include="..\FireAntivirus.NetworkSecurity\FireAntivirus.NetworkSecurity.csproj" />
     <ProjectReference Include="..\FireAntivirus.NetworkTrafficAnalyzer\FireAntivirus.NetworkTrafficAnalyzer.csproj" />
@@ -59,10 +59,10 @@
     <ProjectReference Include="..\FireAntivirus.RansomwareProtection\FireAntivirus.RansomwareProtection.csproj" />
     <ProjectReference Include="..\FireAntivirus.RealTimeProtectionPlus\FireAntivirus.RealTimeProtectionPlus.csproj" />
     <ProjectReference Include="..\FireAntivirus.Sandbox\FireAntivirus.Sandbox.csproj" />
-    <ProjectReference Include="..\FireAntivirus.SecureBrowser\FireAntivirus.SecureBrowser.csproj" />
+
     <ProjectReference Include="..\FireAntivirus.SecurityReport\FireAntivirus.SecurityReport.csproj" />
     <ProjectReference Include="..\FireAntivirus.SecurityScore\FireAntivirus.SecurityScore.csproj" />
-    <ProjectReference Include="..\FireAntivirus.StartupManager\FireAntivirus.StartupManager.csproj" />
+
     <ProjectReference Include="..\FireAntivirus.SystemOptimizer\FireAntivirus.SystemOptimizer.csproj" />
     <ProjectReference Include="..\FireAntivirus.ThreatIntelligence\FireAntivirus.ThreatIntelligence.csproj" />
     <ProjectReference Include="..\FireAntivirus.VulnerabilityScanner\FireAntivirus.VulnerabilityScanner.csproj" />

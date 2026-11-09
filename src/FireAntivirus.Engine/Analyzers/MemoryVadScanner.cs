@@ -152,7 +152,7 @@ namespace FireAntivirus.Engine.Analyzers
             if (!Enabled || pids == null) return reports;
             foreach (int pid in pids.Where(p => p > 0).Distinct().Take(maxProcesses))
             {
-                try { reports.Add(ScanProcess(pid)); } catch { }
+                try { reports.Add(ScanProcess(pid)); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             return reports;
         }

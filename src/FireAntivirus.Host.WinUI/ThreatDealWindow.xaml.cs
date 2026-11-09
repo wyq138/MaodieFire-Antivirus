@@ -1,6 +1,6 @@
-// 威胁处置窗口（对标 XIGUASecurity 10x 的独立处置窗口，用户明确要求不再用系统 Toast/应用内浮层）：
+// 威胁处置窗口（独立处置窗口：真实窗口 + 处置按钮）：
 //   · 独立无边框窗口：置顶、不占任务栏、右下角、可拖动标题行、主题感知（参照其 420x240/无装饰/透明阴影/置顶属性）
-//   · 预创建复用：首次 Show 创建，隐藏不销毁；静态 pending 数据兜底（对应西瓜的 PENDING_*_DATA）
+//   · 预创建复用：首次 Show 创建，隐藏不销毁；静态 pending 数据兜底（PENDING_*_DATA 兜底）
 //   · 真实按钮：隔离（QuarantineStore 落库）/ 忽略（白名单入库）/ 打开位置
 //   · 文件被活动进程占用（隔离失败）时，追加两方案（照搬其 active_threat 机制）：
 //       重启时清除（MoveFileEx DELAY_UNTIL_REBOOT / PendingFileRenameOperations 回退）
@@ -55,7 +55,7 @@ namespace FireAntivirus.Host.WinUI
                     _instance.FillFromPending();
                     _instance.PlaceBottomRight();
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 
@@ -74,7 +74,7 @@ namespace FireAntivirus.Host.WinUI
                 }
                 AppWindow.Resize(new SizeInt32(440, 300));
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             var root = new Border
             {
@@ -204,7 +204,7 @@ namespace FireAntivirus.Host.WinUI
                 var area = DisplayArea.Primary.WorkArea;
                 AppWindow.Move(new PointInt32(area.Width - 440 - 18, area.Height - 300 - 18));
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         // ---- 真实处置动作 ----
@@ -240,7 +240,7 @@ namespace FireAntivirus.Host.WinUI
                 if (string.IsNullOrEmpty(_currentPath)) return;
                 if (File.Exists(_currentPath))
                 {
-                    Process.Start(new ProcessStartInfo("explorer.exe", "/select,\"" + _currentPath + "\"")
+                    Process.Start(new ProcessStartInfo("explorer.exe", "/select,\"" + _currentPath.Replace("\"", "") + "\"")
                     { UseShellExecute = true });
                 }
                 else
@@ -250,7 +250,7 @@ namespace FireAntivirus.Host.WinUI
                         Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void DoScheduleRebootDelete()
@@ -309,7 +309,7 @@ namespace FireAntivirus.Host.WinUI
         private void CloseToast()
         {
             try { AppWindow.Hide(); }
-            catch { try { Close(); } catch { } }
+            catch { try { Close(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); } }
         }
 
         // ---- 拖动 ----
@@ -336,7 +336,7 @@ namespace FireAntivirus.Host.WinUI
         private void TitleRow_PointerReleased(object sender, PointerRoutedEventArgs e)
         {
             _dragging = false;
-            try { ((UIElement)sender).ReleasePointerCapture(e.Pointer); } catch { }
+            try { ((UIElement)sender).ReleasePointerCapture(e.Pointer); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using System.Security.AccessControl;
 using System.Security.Cryptography;
 using Newtonsoft.Json;
 
@@ -524,10 +525,46 @@ namespace FireAntivirus.Data
                 Directory.CreateDirectory(optimizationPath);
                 Directory.CreateDirectory(privacyPath);
                 Directory.CreateDirectory(parentalControlPath);
+
+                // 敏感目录 ACL 加固: 隔离区（样本自救）与配置区（防护配置篡改）
+                HardenDirectoryAccess(quarantinePath);
+                HardenDirectoryAccess(configPath);
             }
             catch (Exception ex)
             {
                 FireAntivirus.Common.LogHelper.Error("初始化目录失败", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 敏感目录 ACL 加固（尽力模式）: 隔离/配置目录收敛继承权限,
+        /// 普通用户保留基本读写（UI asInvoker 运行需要）, 收掉目录级删除子项与改权限权限。
+        /// </summary>
+        private void HardenDirectoryAccess(string path)
+        {
+            try
+            {
+                var dirInfo = new DirectoryInfo(path);
+                var security = dirInfo.GetAccessControl();
+
+                // 禁用继承并保留现有规则拷贝, 再显式收紧
+                security.SetAccessRuleProtection(true, true);
+
+                // 收紧 Everyone/Users 的目录级删除与改权限（文件级删除保留给恢复流程）
+                var tighten = new FileSystemAccessRule(
+                    "Authenticated Users",
+                    FileSystemRights.DeleteSubdirectoriesAndFiles | FileSystemRights.ChangePermissions | FileSystemRights.TakeOwnership,
+                    AccessControlType.Deny);
+                security.AddAccessRule(tighten);
+
+                security.AddAccessRule(new FileSystemAccessRule("SYSTEM", FileSystemRights.FullControl, AccessControlType.Allow));
+                security.AddAccessRule(new FileSystemAccessRule("Administrators", FileSystemRights.FullControl, AccessControlType.Allow));
+
+                dirInfo.SetAccessControl(security);
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Error("敏感目录 ACL 加固失败: " + path, ex.Message);
             }
         }
         
@@ -1936,10 +1973,20 @@ namespace FireAntivirus.Data
             {
                 string fileName = Path.GetFileName(filePath);
                 string fileExtension = Path.GetExtension(filePath);
-                string quarantineFileName = $"{Guid.NewGuid()}_{fileName}";
+                // 隔离样本: AES 加密 + 无信息扩展名 .qtn（不保留原扩展名, 防误执行/关联打开）
+                string quarantineFileName = $"{Guid.NewGuid()}.qtn";
                 string quarantineFilePath = Path.Combine(quarantinePath, quarantineFileName);
+                string tempCopyPath = quarantineFilePath + ".tmp";
 
-                File.Copy(filePath, quarantineFilePath, true);
+                File.Copy(filePath, tempCopyPath, true);
+                try
+                {
+                    FireAntivirus.Common.CryptoHelper.EncryptFile(tempCopyPath, quarantineFilePath);
+                }
+                finally
+                {
+                    try { File.Delete(tempCopyPath); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+                }
 
                 string fileHash = CalculateFileHash(filePath);
 
@@ -1957,7 +2004,7 @@ namespace FireAntivirus.Data
                     FileExtension = fileExtension,
                     ScanEngine = scanEngine,
                     Confidence = confidence,
-                    AdditionalInfo = $"Quarantined by {scanEngine} with {confidence:P} confidence"
+                    AdditionalInfo = $"Quarantined by {scanEngine} with {confidence:P} confidence (encrypted)"
                 };
 
                 quarantineItems[item.Id] = item;
@@ -1988,9 +2035,18 @@ namespace FireAntivirus.Data
                         Directory.CreateDirectory(targetDir);
                     }
 
-                    File.Copy(item.QuarantinePath, item.OriginalPath, true);
+                    // 隔离样本为 AES 密文, 先解密到原路径（兼容旧版明文隔离记录）
+                    if (item.QuarantinePath.EndsWith(".qtn", StringComparison.OrdinalIgnoreCase))
+                    {
+                        FireAntivirus.Common.CryptoHelper.DecryptFile(item.QuarantinePath, item.OriginalPath);
+                        File.Delete(item.QuarantinePath);
+                    }
+                    else
+                    {
+                        File.Copy(item.QuarantinePath, item.OriginalPath, true);
+                        File.Delete(item.QuarantinePath);
+                    }
 
-                    File.Delete(item.QuarantinePath);
                     quarantineItems.TryRemove(quarantineItemId, out _);
                     SaveQuarantineItems();
 

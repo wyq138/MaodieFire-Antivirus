@@ -228,9 +228,7 @@ namespace FireAntivirus.Engine.Scanners
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return findings;
         }
@@ -296,9 +294,7 @@ namespace FireAntivirus.Engine.Scanners
                     });
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return findings;
         }
@@ -336,7 +332,7 @@ namespace FireAntivirus.Engine.Scanners
                                 });
                             }
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
 
@@ -425,9 +421,7 @@ namespace FireAntivirus.Engine.Scanners
                     }
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return findings;
         }

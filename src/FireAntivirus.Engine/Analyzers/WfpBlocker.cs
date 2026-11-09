@@ -175,7 +175,7 @@ namespace FireAntivirus.Engine.Analyzers
                 foreach (var entry in Active().Where(e => e.ExpiresUtc <= now).ToList())
                     Unblock(entry.Ip);
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private static bool RunNetsh(string arguments)

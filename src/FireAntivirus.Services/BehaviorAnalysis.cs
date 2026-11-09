@@ -498,7 +498,7 @@ namespace FireAntivirus.Services
                     // 此前用 {"8.8.8.8","8.8.4.4"} 当可疑 IP = 假数据且把 Google 公共 DNS 误判为恶意
                     bool knownBadIp = false;
                     try { knownBadIp = FireAntivirus.Engine.SignatureDatabaseUpdater.IsMaliciousIp(ipAddress); }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                     if (knownBadIp)
                     {

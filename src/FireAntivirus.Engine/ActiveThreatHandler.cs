@@ -1,4 +1,4 @@
-// 活动威胁处置器（照搬 XIGUASecurity 10x 的 active_threat 真实机制）：
+// 活动威胁处置器（真实处置机制）：
 //   场景：病毒源文件被活动进程占用，直接删除/隔离返回"拒绝访问"。
 //   方案一"重启时清除"：MoveFileExW(MOVEFILE_DELAY_UNTIL_REBOOT)（管理员直接生效，无 UAC），
 //                       失败回退写 HKLM\...\Session Manager\PendingFileRenameOperations（同一底层机制）。
@@ -142,10 +142,10 @@ namespace FireAntivirus.Engine
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             finally
             {
-                if (session != 0) try { RmEndSession(session); } catch { }
+                if (session != 0) try { RmEndSession(session); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             return pids;
         }
@@ -191,7 +191,7 @@ namespace FireAntivirus.Engine
                         File.Delete(abs);
                         if (!File.Exists(abs)) return true;
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     Thread.Sleep(500);
                 }
 

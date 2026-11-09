@@ -15,6 +15,10 @@ using Newtonsoft.Json;
 
 namespace FireAntivirus.NetworkFirewall
 {
+    /// <summary>
+    /// 防火墙规则管理：Windows 防火墙（netsh advfirewall）规则下发 + iphlpapi 连接审计。
+    /// 数据包级 WFP 阻断在 FireAntivirus.Engine.Analyzers.WfpBlocker（两者职责互补）。
+    /// </summary>
     public class NetworkFirewallManager
     {
         private DataManager _dataManager;

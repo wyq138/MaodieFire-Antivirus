@@ -223,7 +223,7 @@ namespace FireAntivirus.NetworkTrafficAnalyzer
             var pidNames = new Dictionary<int, string>();
             foreach (var proc in Process.GetProcesses())
             {
-                try { pidNames[proc.Id] = proc.ProcessName; } catch { }
+                try { pidNames[proc.Id] = proc.ProcessName; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
 
             foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))

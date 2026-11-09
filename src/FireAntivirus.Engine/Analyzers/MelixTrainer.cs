@@ -125,7 +125,7 @@ namespace FireAntivirus.Engine.Analyzers
                             rows.Add(new IndexRow { Label = 1, Path = file });
                             added++;
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
                 log?.Invoke(maliciousRoots.Count == 0
@@ -147,7 +147,7 @@ namespace FireAntivirus.Engine.Analyzers
                         rows.Add(new IndexRow { Label = 0, Path = file });
                         benign++;
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
                 log?.Invoke($"良性样本（System32 已签名）: {benign}");
 

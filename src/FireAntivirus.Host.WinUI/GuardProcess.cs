@@ -29,15 +29,15 @@ namespace FireAntivirus.Host.WinUI
             try
             {
                 foreach (var p in Process.GetProcessesByName("FireAntivirusWatchman"))
-                    try { p.Kill(); } catch { }
+                    try { p.Kill(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             try
             {
                 if (_guard != null && !_guard.HasExited)
                     _guard.Kill();
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         /// <summary>
@@ -61,9 +61,9 @@ namespace FireAntivirus.Host.WinUI
                 try
                 {
                     foreach (var p in Process.GetProcessesByName("FireAntivirusWatchman"))
-                        try { p.Kill(); } catch { }
+                        try { p.Kill(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 Thread.Sleep(200);
                 File.Copy(_exePath, watchman, overwrite: true);
                 return true;
@@ -122,7 +122,7 @@ namespace FireAntivirus.Host.WinUI
                 catch
                 {
                     if (_stopRequested) return;
-                    try { StartGuard(); } catch { }
+                    try { StartGuard(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
         }
@@ -138,7 +138,7 @@ namespace FireAntivirus.Host.WinUI
                 if (WatchdogGuard.IsUserExitMarked()) return;
 
                 Process main = null;
-                try { main = Process.GetProcessById(mainPid); } catch { }
+                try { main = Process.GetProcessById(mainPid); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 if (main == null || main.HasExited)
                 {

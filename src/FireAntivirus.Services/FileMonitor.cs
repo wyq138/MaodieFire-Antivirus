@@ -111,7 +111,38 @@ namespace FireAntivirus.Services
         {
             try
             {
-                SetupFileWatchers();
+                // 分层去重: 内核 minifilter 已加载时全盘文件写/删遥测由驱动上报（KernelEventMonitor），
+                // 用户态 FileSystemWatcher 仅作为驱动未加载时的兜底通道, 避免同一文件事件双报双扫。
+                bool kernelTelemetryActive = false;
+                try
+                {
+                    kernelTelemetryActive = FireAntivirus.Engine.Kernel.KernelProtectionInterface.IsDriverLoaded();
+                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+
+                if (kernelTelemetryActive)
+                {
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "FileMonitorStart",
+                        Message = "文件监控由内核 minifilter 接管",
+                        Details = "驱动已加载, 用户态 FileSystemWatcher 关闭（避免与内核遥测重复）"
+                    });
+                }
+                else
+                {
+                    SetupFileWatchers();
+                    _dataManager.AddLog(new LogEntry
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Time = DateTime.Now,
+                        Type = "FileMonitorStart",
+                        Message = "文件监控已启动（用户态兜底）",
+                        Details = "驱动未加载, FileSystemWatcher 兜底监控关键目录"
+                    });
+                }
 
                 // 启动定期清理最近扫描文件列表的线程
                 Thread cleanupThread = new Thread(CleanupRecentlyScannedFiles);

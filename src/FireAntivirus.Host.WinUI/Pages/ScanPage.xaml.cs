@@ -55,7 +55,7 @@ namespace FireAntivirus.Host.WinUI.Pages
         private static string[] QuickRoots()
         {
             var roots = new List<string>();
-            void Add(string p) { try { if (!string.IsNullOrEmpty(p) && Directory.Exists(p)) roots.Add(Path.GetFullPath(p)); } catch { } }
+            void Add(string p) { try { if (!string.IsNullOrEmpty(p) && Directory.Exists(p)) roots.Add(Path.GetFullPath(p)); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); } }
 
             Add(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
             Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"));
@@ -243,7 +243,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                                 {
                                     if (new FileInfo(file).Length > MaxScanFileBytes) return;
                                 }
-                                catch { }
+                                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                                 var r = engine.ScanFile(file);
 

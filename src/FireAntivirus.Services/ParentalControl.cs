@@ -41,6 +41,20 @@ namespace FireAntivirus.Services
         private const uint EWX_LOGOFF = 0x00000000;
         private const uint EWX_FORCE = 0x00000004;
 
+        // 用户输入空闲检测（离开/锁屏期间不计入使用时长）
+        [StructLayout(LayoutKind.Sequential)]
+        private struct LASTINPUTINFO
+        {
+            public uint cbSize;
+            public uint dwTime;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+        private double _usageFraction;      // 不足 1 分钟的累计碎片（修复 30s tick 被 (int) 截断为 0 的 bug）
+        private bool _limitActionTakenToday; // 超限动作当日只执行一次（防锁屏循环）
+
         public ParentalControl(DataManager dataManager)
         {
             _dataManager = dataManager;
@@ -129,6 +143,8 @@ namespace FireAntivirus.Services
                             userData.DailyUsageMinutes = 0;
                             userData.LastDate = DateTime.Today.ToString("yyyy-MM-dd");
                             userData.SessionStartTime = DateTime.Now;
+                            _limitActionTakenToday = false;
+                            _usageFraction = 0;
                         }
                     }
                 }
@@ -219,15 +235,37 @@ namespace FireAntivirus.Services
         {
             var now = DateTime.Now;
             var userData = GetCurrentUserUsage();
-            
+
             if (userData != null)
             {
-                var elapsed = (now - _lastCheckTime).TotalMinutes;
-                userData.DailyUsageMinutes += (int)elapsed;
-                userData.LastActivity = now;
+                // 系统输入空闲超过 5 分钟视为离开, 不计入使用时长
+                if (IsUserActive())
+                {
+                    // 累计分钟碎片, 满 1 分钟才 +1（修复 (int)0.5==0 导致时长永远不涨的 bug）
+                    _usageFraction += (now - _lastCheckTime).TotalMinutes;
+                    if (_usageFraction >= 1.0)
+                    {
+                        int add = (int)_usageFraction;
+                        _usageFraction -= add;
+                        userData.DailyUsageMinutes += add;
+                    }
+                    userData.LastActivity = now;
+                }
             }
-            
+
             _lastCheckTime = now;
+        }
+
+        private bool IsUserActive()
+        {
+            try
+            {
+                var info = new LASTINPUTINFO { cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<LASTINPUTINFO>() };
+                if (!GetLastInputInfo(ref info)) return true;
+                long idleMs = ((long)Environment.TickCount - info.dwTime) & 0xFFFFFFFFL;
+                return idleMs < 5 * 60 * 1000;
+            }
+            catch { return true; }
         }
 
         #endregion
@@ -263,9 +301,10 @@ namespace FireAntivirus.Services
                 );
             }
 
-            // 超时强制措施
-            if (usedMinutes >= limitMinutes)
+            // 超时强制措施（当日只执行一次, 防止锁屏-解锁循环）
+            if (usedMinutes >= limitMinutes && !_limitActionTakenToday)
             {
+                _limitActionTakenToday = true;
                 HandleTimeLimitExceeded();
             }
         }
@@ -742,8 +781,7 @@ namespace FireAntivirus.Services
                 return true; // 未设置密码时允许访问
             }
 
-            var hash = HashPassword(password);
-            _passwordVerified = hash == _settings.AdminPassword;
+            _passwordVerified = VerifyAdminPassword(password);
             return _passwordVerified;
         }
 
@@ -805,12 +843,40 @@ namespace FireAntivirus.Services
             return userData?.DailyUsageMinutes ?? 0;
         }
 
+        // PBKDF2-SHA256 + 随机盐（格式: FAV2$iter$saltB64$hashB64）, 不再单轮 SHA256+固定盐
         private string HashPassword(string password)
         {
+            byte[] salt = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
+            const int iterations = 100000;
+            byte[] hash = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+                password, salt, iterations, System.Security.Cryptography.HashAlgorithmName.SHA256, 32);
+            return $"FAV2${iterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(hash)}";
+        }
+
+        private bool VerifyAdminPassword(string password)
+        {
+            var stored = _settings?.AdminPassword;
+            if (string.IsNullOrEmpty(stored)) return string.IsNullOrEmpty(password);
+
+            if (stored.StartsWith("FAV2$", StringComparison.Ordinal))
+            {
+                try
+                {
+                    var parts = stored.Split('$');
+                    int iterations = int.Parse(parts[1]);
+                    byte[] salt = Convert.FromBase64String(parts[2]);
+                    byte[] expected = Convert.FromBase64String(parts[3]);
+                    byte[] actual = System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(
+                        password, salt, iterations, System.Security.Cryptography.HashAlgorithmName.SHA256, expected.Length);
+                    return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(actual, expected);
+                }
+                catch { return false; }
+            }
+
+            // 旧格式（单轮 SHA256+固定盐）兼容校验：通过后按需保留, 新设置的密码一律存新格式
             using var sha256 = System.Security.Cryptography.SHA256.Create();
             var bytes = System.Text.Encoding.UTF8.GetBytes(password + "FireAntivirus_Salt");
-            var hash = sha256.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
+            return Convert.ToBase64String(sha256.ComputeHash(bytes)) == stored;
         }
 
         #endregion

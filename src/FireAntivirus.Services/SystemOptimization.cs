@@ -627,7 +627,7 @@ namespace FireAntivirus.Services
                         if (EmptyWorkingSet(process.Handle))
                             trimmedCount++;
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     finally { process.Dispose(); }
                 }
 
@@ -1016,30 +1016,245 @@ namespace FireAntivirus.Services
 
         private async Task<List<RegistryEntry>> CleanupInvalidFileAssociationsAsync()
         {
-            var entries = new List<RegistryEntry>();
-            // 实现清理无效文件关联的逻辑
-            return entries;
+            // 真实实现: 扫常见扩展名的 HKCR 关联, "shell\open\command" 指向不存在的 exe 时删除 open 键树
+            return await Task.Run(() =>
+            {
+                var entries = new List<RegistryEntry>();
+                try
+                {
+                    var exts = new[] { ".txt", ".doc", ".docx", ".xls", ".pdf", ".jpg", ".png", ".mp3", ".mp4", ".zip", ".rar", ".exe" };
+                    foreach (var ext in exts)
+                    {
+                        using (var extKey = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(ext))
+                        {
+                            if (extKey == null) continue;
+                            var progId = extKey.GetValue("") as string;
+                            if (string.IsNullOrEmpty(progId)) continue;
+
+                            var openPath = progId + @"\shell\open\command";
+                            using (var shellKey = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(openPath))
+                            {
+                                if (shellKey == null) continue;
+                                var command = shellKey.GetValue("") as string;
+                                if (string.IsNullOrEmpty(command)) continue;
+
+                                var exePath = ExtractExeFromCommand(command);
+                                if (exePath == null || System.IO.File.Exists(exePath)) continue;
+
+                                entries.Add(new RegistryEntry
+                                {
+                                    Key = @"HKCR\" + openPath,
+                                    ValueName = "",
+                                    Value = command,
+                                    Type = RegistryEntryType.String
+                                });
+
+                                try
+                                {
+                                    Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(progId + @"\shell\open", false);
+                                    Logger.Info($"Removed invalid file association: {progId} -> {exePath}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Error($"Remove association failed for {progId}: {ex.Message}");
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Invalid file association cleanup error: {ex.Message}");
+                }
+                return entries;
+            });
         }
 
         private async Task<List<RegistryEntry>> CleanupInvalidInstallerEntriesAsync()
         {
-            var entries = new List<RegistryEntry>();
-            // 实现清理无效安装程序条目的逻辑
-            return entries;
+            // 真实实现: 扫 Uninstall 项, 卸载器指向不存在的 exe = 无效条目。
+            // 仅记录清单不删键（卸载键误删将无法恢复, 交用户确认处理）
+            return await Task.Run(() =>
+            {
+                var entries = new List<RegistryEntry>();
+                try
+                {
+                    var roots = new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser };
+                    foreach (var root in roots)
+                    {
+                        using (var uninstallKey = root.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"))
+                        {
+                            if (uninstallKey == null) continue;
+                            foreach (var sub in uninstallKey.GetSubKeyNames())
+                            {
+                                try
+                                {
+                                    using (var item = uninstallKey.OpenSubKey(sub))
+                                    {
+                                        if (item == null) continue;
+                                        var uninstaller = item.GetValue("UninstallString") as string;
+                                        if (string.IsNullOrEmpty(uninstaller)) continue;
+
+                                        var exePath = ExtractExeFromCommand(uninstaller);
+                                        if (exePath == null || System.IO.File.Exists(exePath)) continue;
+
+                                        entries.Add(new RegistryEntry
+                                        {
+                                            Key = @"Uninstall\" + sub,
+                                            ValueName = "UninstallString",
+                                            Value = uninstaller,
+                                            Type = RegistryEntryType.String
+                                        });
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Invalid installer entry scan error: {ex.Message}");
+                }
+                return entries;
+            });
         }
 
         private async Task<List<RegistryEntry>> CleanupInvalidStartMenuEntriesAsync()
         {
-            var entries = new List<RegistryEntry>();
-            // 实现清理无效开始菜单条目的逻辑
-            return entries;
+            // 真实实现: 扫开始菜单 .lnk（WScript.Shell 解析目标）, 目标不存在且非网址 → 删除 lnk 文件
+            return await Task.Run(() =>
+            {
+                var entries = new List<RegistryEntry>();
+                try
+                {
+                    var dirs = new[]
+                    {
+                        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu), "Programs"),
+                        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs")
+                    };
+
+                    dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
+                    try
+                    {
+                        foreach (var dir in dirs)
+                        {
+                            if (!System.IO.Directory.Exists(dir)) continue;
+                            foreach (var lnk in System.IO.Directory.EnumerateFiles(dir, "*.lnk", SearchOption.AllDirectories))
+                            {
+                                try
+                                {
+                                    dynamic shortcut = shell.CreateShortcut(lnk);
+                                    string target = shortcut.TargetPath;
+                                    System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shortcut);
+
+                                    if (string.IsNullOrEmpty(target)) continue;
+                                    if (target.StartsWith("http", StringComparison.OrdinalIgnoreCase)) continue; // 网址快捷方式跳过
+                                    if (System.IO.File.Exists(target) || System.IO.Directory.Exists(target)) continue;
+
+                                    entries.Add(new RegistryEntry
+                                    {
+                                        Key = lnk,
+                                        ValueName = "TargetPath",
+                                        Value = target,
+                                        Type = RegistryEntryType.String
+                                    });
+
+                                    System.IO.File.Delete(lnk);
+                                    Logger.Info($"Removed invalid start menu shortcut: {lnk} -> {target}");
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Invalid start menu cleanup error: {ex.Message}");
+                }
+                return entries;
+            });
         }
 
         private async Task<List<RegistryEntry>> CleanupUnusedRegistryKeysAsync()
         {
-            var entries = new List<RegistryEntry>();
-            // 实现清理未使用注册表键的逻辑
-            return entries;
+            // 真实实现: Run/RunOnce（含 WOW6432Node）中指向不存在 exe 的启动值 → 删除值并记录
+            return await Task.Run(() =>
+            {
+                var entries = new List<RegistryEntry>();
+                try
+                {
+                    var runPaths = new[]
+                    {
+                        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+                        @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+                        @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run"
+                    };
+                    foreach (var rootView in new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser })
+                    {
+                        foreach (var runPath in runPaths)
+                        {
+                            using (var runKey = rootView.OpenSubKey(runPath, writable: true))
+                            {
+                                if (runKey == null) continue;
+                                foreach (var valueName in runKey.GetValueNames())
+                                {
+                                    var command = runKey.GetValue(valueName) as string;
+                                    if (string.IsNullOrEmpty(command)) continue;
+
+                                    var exePath = ExtractExeFromCommand(command);
+                                    if (exePath == null || System.IO.File.Exists(exePath)) continue;
+
+                                    entries.Add(new RegistryEntry
+                                    {
+                                        Key = runPath,
+                                        ValueName = valueName,
+                                        Value = command,
+                                        Type = RegistryEntryType.String
+                                    });
+
+                                    try
+                                    {
+                                        runKey.DeleteValue(valueName, false);
+                                        Logger.Info($"Removed dead Run entry: {valueName} -> {exePath}");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Logger.Error($"Remove Run value failed: {ex.Message}");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Unused registry key cleanup error: {ex.Message}");
+                }
+                return entries;
+            });
+        }
+
+        /// <summary>从命令行串提取 exe 路径（兼容 "C:\path\app.exe" "%1" 与裸路径两种格式）。</summary>
+        private static string ExtractExeFromCommand(string command)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(command)) return null;
+                var trimmed = command.Trim();
+                if (trimmed.StartsWith("\""))
+                {
+                    int end = trimmed.IndexOf('"', 1);
+                    return end > 1 ? trimmed.Substring(1, end - 1) : null;
+                }
+                int space = trimmed.IndexOf(' ');
+                return space > 0 ? trimmed.Substring(0, space) : trimmed;
+            }
+            catch { return null; }
         }
 
         private double GetCpuUsage()

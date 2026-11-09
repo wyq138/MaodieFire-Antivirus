@@ -198,7 +198,7 @@ namespace FireAntivirus.Engine.Analyzers
 
             void AddExisting(string path)
             {
-                try { if (File.Exists(path) && list.Count < max && !list.Contains(path)) list.Add(path); } catch { }
+                try { if (File.Exists(path) && list.Count < max && !list.Contains(path)) list.Add(path); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             void AddGlob(string dir, string pattern, SearchOption option = SearchOption.TopDirectoryOnly)
             {
@@ -211,7 +211,7 @@ namespace FireAntivirus.Engine.Analyzers
                         if (!list.Contains(file)) list.Add(file);
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
 
             foreach (var brand in new[] { "Google\\Chrome", "Microsoft\\Edge", "BraveSoftware\\Brave-Browser", "Opera Software\\Opera Stable" })
@@ -295,12 +295,12 @@ namespace FireAntivirus.Engine.Analyzers
                         using var p = System.Diagnostics.Process.GetProcessById(pid);
                         name = p.ProcessName;
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     owners.Add(new OwnerInfo { Pid = pid, Name = name });
                 }
             }
-            catch { }
-            finally { try { RmEndSession(session); } catch { } }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+            finally { try { RmEndSession(session); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); } }
             return owners;
         }
 
@@ -319,7 +319,7 @@ namespace FireAntivirus.Engine.Analyzers
                 CollectIpv4(list);
                 CollectIpv6(list);
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return list;
         }
 

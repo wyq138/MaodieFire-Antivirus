@@ -383,7 +383,7 @@ namespace FireAntivirus.Engine.Kernel
                     return true;
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return false;
         }
 
@@ -518,7 +518,7 @@ namespace FireAntivirus.Engine.Kernel
                     events.Add(evt);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return events;
         }
@@ -536,6 +536,46 @@ namespace FireAntivirus.Engine.Kernel
             {
                 return new List<KernelEvent>();
             }
+        }
+
+        /// <summary>
+        /// 下发受信任进程白名单（IOCTL 0x222018）：主程序 + ServiceHost + Watchman。
+        /// 驱动放行这些进程的子进程创建与注册表操作（含 Run 键写入与清理删除）。
+        /// </summary>
+        public static bool SetTrustedPids()
+        {
+            try
+            {
+                var kpi = Shared;
+                if (!kpi.Initialize()) return false;
+
+                var uniq = new System.Collections.Generic.List<uint>
+                {
+                    (uint)System.Diagnostics.Process.GetCurrentProcess().Id
+                };
+                foreach (var name in new[] { "FireAntivirus.ServiceHost", "FireAntivirusWatchman" })
+                {
+                    try
+                    {
+                        foreach (var p in System.Diagnostics.Process.GetProcessesByName(name))
+                        {
+                            if (!uniq.Contains((uint)p.Id)) uniq.Add((uint)p.Id);
+                            p.Dispose();
+                        }
+                    }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+                }
+
+                if (uniq.Count > 16) uniq.RemoveRange(16, uniq.Count - 16); /* FAV_MAX_PIDS */
+
+                var payload = new byte[4 + uniq.Count * 4];
+                Array.Copy(BitConverter.GetBytes((uint)uniq.Count), payload, 4);
+                for (int i = 0; i < uniq.Count; i++)
+                    Array.Copy(BitConverter.GetBytes(uniq[i]), payload, 4 + i * 4);
+
+                return kpi.SendRawIoctl(0x222018, payload);
+            }
+            catch { return false; }
         }
 
         /// <summary>
@@ -567,7 +607,11 @@ namespace FireAntivirus.Engine.Kernel
                         var payload = new byte[8];
                         Array.Copy(BitConverter.GetBytes(1UL), payload, 4);
                         Array.Copy(BitConverter.GetBytes((uint)System.Diagnostics.Process.GetCurrentProcess().Id), payload, 4);
-                        return kpi.SendRawIoctl(0x22200C, payload);
+                        bool ok = kpi.SendRawIoctl(0x22200C, payload);
+
+                        // 同步下发受信任进程白名单（自身更新/清理不被防护拦截）
+                        SetTrustedPids();
+                        return ok;
                     }
 
                     case "registry":

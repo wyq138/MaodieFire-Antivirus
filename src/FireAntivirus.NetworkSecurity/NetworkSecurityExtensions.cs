@@ -126,7 +126,7 @@ namespace FireAntivirus.NetworkSecurity
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return alerts;
         }
@@ -157,7 +157,7 @@ namespace FireAntivirus.NetworkSecurity
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return alerts;
         }
@@ -191,7 +191,7 @@ namespace FireAntivirus.NetworkSecurity
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return alerts;
         }
@@ -228,7 +228,7 @@ namespace FireAntivirus.NetworkSecurity
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return arpTable;
         }
 
@@ -277,7 +277,7 @@ namespace FireAntivirus.NetworkSecurity
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return alerts;
         }
@@ -315,7 +315,7 @@ namespace FireAntivirus.NetworkSecurity
                     cache.Add(match.Groups[1].Value);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return cache;
         }
 
@@ -339,7 +339,7 @@ namespace FireAntivirus.NetworkSecurity
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return alerts;
         }
@@ -370,7 +370,7 @@ namespace FireAntivirus.NetworkSecurity
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return alerts;
         }
@@ -397,11 +397,11 @@ namespace FireAntivirus.NetworkSecurity
                                 // 网络正常工作
                             }
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return alerts;
         }
@@ -473,7 +473,7 @@ namespace FireAntivirus.NetworkSecurity
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return results;
         }
@@ -506,7 +506,7 @@ namespace FireAntivirus.NetworkSecurity
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return results;
         }
@@ -537,7 +537,7 @@ namespace FireAntivirus.NetworkSecurity
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return results;
         }
@@ -557,10 +557,10 @@ namespace FireAntivirus.NetworkSecurity
                         var modules = proc.Modules;
                         // 检测网络相关模块
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return results;
         }

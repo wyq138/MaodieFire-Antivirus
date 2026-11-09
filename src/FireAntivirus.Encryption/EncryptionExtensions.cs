@@ -187,7 +187,7 @@ namespace FireAntivirus.Encryption
                 status.IsEnabled = false;
                 status.ProtectionStatus = "Unknown";
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return status;
         }
@@ -245,7 +245,6 @@ namespace FireAntivirus.Encryption
                         byte fillByte = method switch
                         {
                             WipeMethod.Zero => 0x00,
-                            WipeMethod.Random => (byte)new Random().Next(0, 256),
                             _ => (byte)(pass % 2 == 0 ? 0x00 : 0xFF)
                         };
 
@@ -253,8 +252,16 @@ namespace FireAntivirus.Encryption
                         while (written < fileLength)
                         {
                             var toWrite = (int)Math.Min(buffer.Length, fileLength - written);
-                            for (int i = 0; i < toWrite; i++)
-                                buffer[i] = fillByte;
+                            if (method == WipeMethod.Random)
+                            {
+                                // 真随机覆写（原实现只生成 1 字节填满整个 buffer, 防恢复强度不足）
+                                System.Security.Cryptography.RandomNumberGenerator.Fill(buffer.AsSpan(0, toWrite));
+                            }
+                            else
+                            {
+                                for (int i = 0; i < toWrite; i++)
+                                    buffer[i] = fillByte;
+                            }
 
                             stream.Write(buffer, 0, toWrite);
                             written += toWrite;

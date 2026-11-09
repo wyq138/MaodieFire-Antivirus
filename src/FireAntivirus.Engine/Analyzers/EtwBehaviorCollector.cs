@@ -141,7 +141,7 @@ namespace FireAntivirus.Engine.Analyzers
                     IsRunning = false;
                     FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
                         "ETW 启动失败（需要管理员权限）: " + ex.Message);
-                    try { _session?.Dispose(); } catch { }
+                    try { _session?.Dispose(); } catch (Exception ex2) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex2.Message); }
                     _session = null;
                     return false;
                 }
@@ -152,7 +152,7 @@ namespace FireAntivirus.Engine.Analyzers
         {
             lock (_lock)
             {
-                try { _session?.Dispose(); } catch { }
+                try { _session?.Dispose(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 _session = null;
                 IsRunning = false;
             }
@@ -197,7 +197,7 @@ namespace FireAntivirus.Engine.Analyzers
 
                 Behavior?.Invoke(evt);
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 }

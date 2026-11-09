@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
+using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -195,7 +196,10 @@ namespace FireAntivirus.Services
             {
                 try
                 {
-                    pipeServer = new NamedPipeServerStream("FireAntivirusProtection", PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
+                    /* 安全模型：管道连接不限（普通权限主程序可查询），敏感命令（停防护/关模块/改白名单等）
+                       在 ProcessRequest 中逐条校验调用者为管理员（RunAsClient 模拟客户端身份）。
+                       管道级 ACL 依赖 System.IO.Pipes.AccessControl 包在 net10 下的资产兼容性不佳, 故以命令级鉴权替代。 */
+                    pipeServer = new NamedPipeServerStream("FireAntivirusProtection", PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Message, PipeOptions.Asynchronous, 4096, 4096);
 
                     pipeServer.WaitForConnection();
                     HandleClientConnection(pipeServer);
@@ -221,7 +225,7 @@ namespace FireAntivirus.Services
                         if (string.IsNullOrEmpty(requestJson)) break;
 
                         CommunicationRequest request = DeserializeRequest(requestJson);
-                        CommunicationResponse response = ProcessRequest(request);
+                        CommunicationResponse response = ProcessRequest(request, pipe);
 
                         string responseJson = SerializeResponse(response);
                         writer.WriteLine(responseJson);
@@ -273,12 +277,43 @@ namespace FireAntivirus.Services
             }
         }
 
-        private CommunicationResponse ProcessRequest(CommunicationRequest request)
+        /// <summary>仅管理员可执行的敏感命令（关闭防护/停用模块/篡改白名单/恢复隔离/改扫描配置）。</summary>
+        private static readonly HashSet<string> AdminOnlyCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "stop_protection", "disable_module", "add_whitelist", "remove_whitelist",
+            "remove_quarantine", "set_scan_settings"
+        };
+
+        /// <summary>模拟管道客户端身份校验其是否为管理员（防低权限进程篡改防护）。</summary>
+        private bool IsCallerAdministrator(NamedPipeServerStream pipe)
+        {
+            try
+            {
+                bool isAdmin = false;
+                pipe.RunAsClient(() =>
+                {
+                    using (var wi = WindowsIdentity.GetCurrent())
+                        isAdmin = new WindowsPrincipal(wi).IsInRole(WindowsBuiltInRole.Administrator);
+                });
+                return isAdmin;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private CommunicationResponse ProcessRequest(CommunicationRequest request, NamedPipeServerStream pipe)
         {
             CommunicationResponse response = new CommunicationResponse { Success = true };
 
             try
             {
+                if (AdminOnlyCommands.Contains(request.Command) && !IsCallerAdministrator(pipe))
+                {
+                    return new CommunicationResponse { Success = false, Message = "该操作需要管理员权限" };
+                }
+
                 switch (request.Command.ToLower())
                 {
                     case "start_protection":

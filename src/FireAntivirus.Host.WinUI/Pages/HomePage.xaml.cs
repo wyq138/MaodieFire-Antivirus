@@ -46,7 +46,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                     EngineVersion.Text = $"病毒引擎 v{asm.Major}.{asm.Minor}.{asm.Build}"
                         + (buildTime != DateTime.MinValue ? $"（{buildTime:yyyy-MM-dd} 构建）" : "");
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 RefreshDbVersion();
 
@@ -61,7 +61,7 @@ namespace FireAntivirus.Host.WinUI.Pages
 
                 // 防护组件真实状态（内核驱动 / ClamAV 本地库 / 云查杀通道）
                 bool driverLoaded = false;
-                try { driverLoaded = FireAntivirus.Engine.Kernel.KernelProtectionInterface.IsDriverLoaded(); } catch { }
+                try { driverLoaded = FireAntivirus.Engine.Kernel.KernelProtectionInterface.IsDriverLoaded(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 var clam = FireAntivirus.Engine.SignatureDatabaseUpdater.GetClamavDbStatus();
                 string cloudState = FireAntivirus.Engine.AntivirusEngine.IsVirusTotalEnabled
                     ? "VirusTotal + MalwareBazaar + OTX 已启用"

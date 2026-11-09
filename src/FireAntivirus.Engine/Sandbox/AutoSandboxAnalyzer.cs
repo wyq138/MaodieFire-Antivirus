@@ -1,9 +1,9 @@
-// 自动沙箱分析器（照搬 XIGUASecurity 10x 的 sandbox_analysis.rs 完整流程，C# 实现）：
+// 自动沙箱分析器（完整流程，C# 实现）：
 //   触发：未签名 + 弱证据未达共识（YARA 社区规则命中 / 单弱票）→ 不再直接报毒，送沙盒行为验证（根除误报）
 //   流程：环境就绪 → 清 Sandboxie 托盘 UI → Start.exe 沙盒静默运行 → 60 秒行为跟踪
 //         （沙盒目录新文件 / 沙盒进程与命令行 / 沙盒进程网络连接 / 未签名执行）
 //         → IOA 62 条规则评分（阈值 100）→ 恶意：终止沙盒进程 + 弹处置窗；安全：清白哈希入库后放行
-//   防再触发（三重防线，与西瓜一致）：最近分析路径 TTL 10s + 全局冷却 4s
+//   防再触发（三重防线）：最近分析路径 TTL 10s + 全局冷却 4s
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -87,7 +87,7 @@ namespace FireAntivirus.Engine.Sandbox
         private static async Task AnalyzeAsync(string filePath)
         {
             string root = SandboxProvisioner.SandboxRoot;
-            try { Directory.CreateDirectory(root); } catch { }
+            try { Directory.CreateDirectory(root); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             bool envOk = await SandboxProvisioner.EnsureConfiguredAsync();
             if (!envOk)
@@ -115,7 +115,7 @@ namespace FireAntivirus.Engine.Sandbox
             var seenPids = new HashSet<int>(SandboxProcessPids(root));
             var seenFiles = new HashSet<string>(preFiles, StringComparer.OrdinalIgnoreCase);
 
-            // 未签名执行本身计一条证据（西瓜：未签名文件才进沙箱）
+            // 未签名执行本身计一条证据（仅未签名文件进沙箱）
             if (IsUnsigned(filePath)) behaviors.Add("unsigned-execute");
 
             // 反沙箱痕迹作为行为证据（避免样本装死导致评分永远为 0）
@@ -188,7 +188,7 @@ namespace FireAntivirus.Engine.Sandbox
             else
             {
                 _recentPaths[filePath] = DateTime.Now;
-                try { WhitelistStore.RememberFile(filePath); } catch { }
+                try { WhitelistStore.RememberFile(filePath); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 VerifiedBenign?.Invoke(filePath);
                 Log($"沙箱验证安全（评分 {score}），已入清白库放行: {filePath}");
             }
@@ -244,7 +244,7 @@ namespace FireAntivirus.Engine.Sandbox
             catch { return new List<string>(); }
         }
 
-        /// <summary>沙盒内进程（可执行路径位于沙盒目录下；西瓜同样以路径归属判定）。</summary>
+        /// <summary>沙盒内进程（可执行路径位于沙盒目录下）。</summary>
         private static List<(int Pid, string Cmd, string Exe)> SandboxProcesses(string root)
         {
             var list = new List<(int, string, string)>();
@@ -256,15 +256,15 @@ namespace FireAntivirus.Engine.Sandbox
                     try
                     {
                         string exe = null;
-                        try { exe = p.MainModule?.FileName; } catch { }
+                        try { exe = p.MainModule?.FileName; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         if (string.IsNullOrEmpty(exe)) continue;
                         if (!exe.ToLowerInvariant().StartsWith(rootLower)) continue;
                         list.Add((p.Id, "", exe));
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             // 命令行补充（WMI，权限不足时跳过）
             try
@@ -282,10 +282,10 @@ namespace FireAntivirus.Engine.Sandbox
                         if (!string.IsNullOrWhiteSpace(cmd))
                             list[idx] = (pid, cmd, list[idx].Item3);
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return list;
         }
@@ -304,7 +304,7 @@ namespace FireAntivirus.Engine.Sandbox
                     p.WaitForExit(2000);
                     Log($"已终止沙盒进程 PID={pid}");
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 
@@ -338,7 +338,7 @@ namespace FireAntivirus.Engine.Sandbox
                     endpoints.Add(parts[2]); // 远端地址:端口
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return endpoints;
         }
 

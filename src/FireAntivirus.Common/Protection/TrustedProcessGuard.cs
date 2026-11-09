@@ -193,7 +193,7 @@ namespace FireAntivirus.Common
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return killed;
         }
 
@@ -329,7 +329,7 @@ namespace FireAntivirus.Common
                     // 关闭状态句柄，避免句柄泄漏
                     wtd.dwStateAction = WTD_STATEACTION_CLOSE;
                     var closeId = WinTrustActionGenericVerifyV2;
-                    try { WinVerifyTrust(IntPtr.Zero, ref closeId, ref wtd); } catch { }
+                    try { WinVerifyTrust(IntPtr.Zero, ref closeId, ref wtd); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                     if (result == ERROR_SUCCESS)
                         return (true, GetAuthenticodeSubject(filePath));
@@ -375,7 +375,7 @@ namespace FireAntivirus.Common
                     return m.FileName; // 第一个模块即主模块
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return string.Empty;
         }
     }

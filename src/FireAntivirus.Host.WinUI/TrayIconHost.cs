@@ -151,7 +151,7 @@ namespace FireAntivirus.Host.WinUI
                     if (h != IntPtr.Zero) return h;
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return LoadIconW(IntPtr.Zero, "#32516"); // 系统盾牌兜底
         }
 
@@ -191,7 +191,7 @@ namespace FireAntivirus.Host.WinUI
                     DispatchMessageW(ref msg);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private static IntPtr TrayWndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
@@ -245,9 +245,9 @@ namespace FireAntivirus.Host.WinUI
         /// <summary>应用真正退出前调用：移除托盘图标并结束消息线程。</summary>
         public static void Shutdown()
         {
-            try { if (_added) Shell_NotifyIconW(NIM_DELETE, ref _nid); } catch { }
-            try { if (_hIcon != IntPtr.Zero) DestroyIcon(_hIcon); } catch { }
-            try { PostMessageW(_msgWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero); } catch { }
+            try { if (_added) Shell_NotifyIconW(NIM_DELETE, ref _nid); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+            try { if (_hIcon != IntPtr.Zero) DestroyIcon(_hIcon); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+            try { PostMessageW(_msgWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 }

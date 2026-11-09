@@ -61,7 +61,7 @@ namespace FireAntivirus.Host.WinUI
                     System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "crash.log"),
                         $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {e.Message}\n{e.Exception}\n\n");
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 // 阻止进程因单次未处理异常直接退出
                 e.Handled = true;
@@ -144,10 +144,10 @@ namespace FireAntivirus.Host.WinUI
             // ---- 云查杀 API 配置（VT 70 引擎聚合=检出率天花板；免费 key 500 次/天，仅可疑文件按需查询）----
             ApplyCloudApis();
 
-            // ---- 自动沙箱验证（照搬西瓜杀毒：未签名弱证据文件 → 沙箱运行 + IOA 行为评分，确认恶意才报）----
+            // ---- 自动沙箱验证（未签名弱证据文件 → 沙箱运行 + IOA 行为评分，确认恶意才报）----
             FireAntivirus.Engine.Sandbox.AutoSandboxAnalyzer.Enabled = SettingsStore.Current.AutoSandboxEnabled;
 
-            // ---- AMSI / 凭据访问 / 防御规避（照搬西瓜杀毒：启动即按设置恢复）----
+            // ---- AMSI / 凭据访问 / 防御规避（启动即按设置恢复）----
             FireAntivirus.Engine.Analyzers.AmsiScanner.Enabled = SettingsStore.Current.AmsiEnabled;
             FireAntivirus.Engine.Analyzers.CredentialAccessMonitor.Enabled = SettingsStore.Current.CredentialAccessEnabled;
             FireAntivirus.Engine.Analyzers.DefenseEvasionMonitor.Enabled = SettingsStore.Current.DefenseEvasionEnabled;
@@ -186,7 +186,7 @@ namespace FireAntivirus.Host.WinUI
                         "Critical", canQuarantine: false);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
 
             // ---- 看门狗分诊 ----
@@ -251,19 +251,19 @@ namespace FireAntivirus.Host.WinUI
                         r.Severity,
                         canQuarantine: !quarantined);
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             };
 
-            // 沙箱行为确认 → 自动隔离 + 独立处置窗口（照搬西瓜杀毒：真实窗口 + 处置按钮，非通知）
+            // 沙箱行为确认 → 自动隔离 + 独立处置窗口（真实窗口 + 处置按钮，非通知）
             FireAntivirus.Engine.Sandbox.AutoSandboxAnalyzer.ThreatConfirmed += r =>
             {
                 try
                 {
                     bool quarantined = false;
-                    try { quarantined = QuarantineStore.Quarantine(r.FilePath, r.ThreatName, r.Severity, out _); } catch { }
+                    try { quarantined = QuarantineStore.Quarantine(r.FilePath, r.ThreatName, r.Severity, out _); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     ThreatDealWindow.Show(r.FilePath, r.ThreatName + "（沙箱行为确认）", r.Severity, canQuarantine: !quarantined);
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             };
             FireAntivirus.Engine.Sandbox.AutoSandboxAnalyzer.VerifiedBenign += p =>
                 FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info,
@@ -372,7 +372,7 @@ namespace FireAntivirus.Host.WinUI
                         try { RealTimeProtection.Instance.Start(); LogChain("实时防护已启动（全盘监听）"); }
                         catch (Exception ex) { LogChainWarn("实时防护启动失败", ex); }
 
-                        try { GuardProcess.StartGuard(); LogChain("守护进程已拉起"); } catch { }
+                        try { GuardProcess.StartGuard(); LogChain("守护进程已拉起"); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         Task.Run(GuardProcess.MonitorGuardLoop);
                         Task.Run(() => WatchdogGuard.EnsureScheduledTask());
 
@@ -408,10 +408,10 @@ namespace FireAntivirus.Host.WinUI
                                 catch (Exception ex) { LogChainWarn("内核事件启动失败", ex); }
                             });
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                         await Task.Delay(800);
-                        try { InjectMlProbe(); LogChain("ML 四模型探测已注入"); } catch { }
+                        try { InjectMlProbe(); LogChain("ML 四模型探测已注入"); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                         // 按设置恢复常驻功能模块（弹窗拦截 / 隐私访问监控）
                         try

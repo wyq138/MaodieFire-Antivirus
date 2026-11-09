@@ -56,15 +56,24 @@ FavCancelPendingEventIrp(
 )
 {
     KIRQL oldIrql;
+    BOOLEAN ours;
     UNREFERENCED_PARAMETER(DeviceObject);
 
+    /* 锁序统一: 先释放 cancel 自旋锁, 再拿 PendingLock（与完成路径同序, 防死锁） */
+    IoReleaseCancelSpinLock(Irp->CancelIrql);
+
     KeAcquireSpinLock(&g_Fav.PendingLock, &oldIrql);
-    if (g_Fav.PendingEventIrp == Irp) {
+    ours = (g_Fav.PendingEventIrp == Irp);
+    if (ours) {
         g_Fav.PendingEventIrp = NULL;
     }
     KeReleaseSpinLock(&g_Fav.PendingLock, oldIrql);
 
-    IoReleaseCancelSpinLock(Irp->CancelIrql);
+    /* 已被完成路径取走（IoSetCancelRoutine 清除成功）则不得再次完成, 防双重完成 */
+    if (!ours) {
+        return;
+    }
+
     Irp->IoStatus.Status = STATUS_CANCELLED;
     Irp->IoStatus.Information = 0;
     IoCompleteRequest(Irp, IO_NO_INCREMENT);
@@ -280,6 +289,22 @@ FavIsProtectedPid(
 }
 
 
+/* 受信任进程查找（用户态防护程序自身/服务, 其操作放行） */
+BOOLEAN
+FavIsTrustedPid(
+    _In_ HANDLE ProcessId
+)
+{
+    ULONG i;
+    for (i = 0; i < g_Fav.TrustedPidCount && i < FAV_MAX_PIDS; i++)
+    {
+        if (g_Fav.TrustedPids[i] == ProcessId)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+
 /* ============================================================
  * 内部工具: UnicodeString 大小写不敏感子串匹配
  * ============================================================ */
@@ -296,7 +321,8 @@ FavUnicodeContainsPath(
         return FALSE;
     }
 
-    for (USHORT i = 0; i + pattern.Length <= String->Length; i += 2) {
+    /* 用 ULONG 做下标: USHORT 在长路径(>32KB)下会回绕（i+pattern.Length 溢出） */
+    for (ULONG i = 0; i + (ULONG)pattern.Length <= (ULONG)String->Length; i += 2) {
         UNICODE_STRING slice;
         slice.Buffer = (PWSTR)((PUCHAR)String->Buffer + i);
         slice.Length = pattern.Length;
@@ -329,6 +355,11 @@ FavProcessNotifyCallback(
 
     if (!g_Fav.ProcessGuardEnabled) {
         return; /* 防护未开启: 不拦截 */
+    }
+
+    /* 受信任进程（防护程序自身/服务）创建的子进程放行（含临时/下载目录安装与更新场景） */
+    if (FavIsTrustedPid(PsGetCurrentProcessId())) {
+        return;
     }
 
     /* 规则1: 临时目录 / 下载目录下的可执行进程 */
@@ -381,6 +412,11 @@ FavRegistryCallback(
     }
 
     if (!g_Fav.RegistryGuardEnabled) {
+        return STATUS_SUCCESS;
+    }
+
+    /* 受信任进程（防护程序自身/服务）的注册表操作放行（含 Run 键写入与清理删除） */
+    if (FavIsTrustedPid(PsGetCurrentProcessId())) {
         return STATUS_SUCCESS;
     }
 
@@ -597,9 +633,12 @@ FavRegisterCallbacks(VOID)
 
     status = ObRegisterCallbacks(&obRegistration, &g_Fav.ObCallbackHandle);
     if (!NT_SUCCESS(status)) {
-        /* Ob 回调需要驱动具备受保护标志(ILK), 失败不致命: 记录并继续 */
-        FavLog("register Ob callback failed (needs signing): 0x%08X", status);
+        /* Ob 回调需要驱动具备有效签名（自签/无签环境会失败）: 记录 + 上报用户态提示 */
+        FavLog("register Ob callback failed (needs valid signing): 0x%08X", status);
         g_Fav.ObCallbackRegistered = FALSE;
+        FavPushEvent(FAV_EVT_INJECTION_ATTEMPT, 0,
+                     L"ob-callback",
+                     L"进程保护回调注册失败（需要有效驱动签名或测试签名模式），多进程防杀能力降级");
     }
     else {
         g_Fav.ObCallbackRegistered = TRUE;
@@ -641,8 +680,11 @@ FavAttachToDiskStack(VOID)
         return status;
     }
 
-    filterDevice->Flags |= DO_DIRECT_IO;
-    filterDevice->Flags |= DO_BUFFERED_IO;
+    /* 继承下层磁盘设备的缓冲方式（DIRECT/BUFFERED 互斥, 不得同时置位） */
+    filterDevice->Flags |= (diskDevice->Flags & (DO_DIRECT_IO | DO_BUFFERED_IO));
+    if (!(filterDevice->Flags & (DO_DIRECT_IO | DO_BUFFERED_IO))) {
+        filterDevice->Flags |= DO_DIRECT_IO;
+    }
     filterDevice->Flags &= ~DO_DEVICE_INITIALIZING;
 
     PFAV_DEVICE_EXTENSION ext = (PFAV_DEVICE_EXTENSION)filterDevice->DeviceExtension;
@@ -678,6 +720,28 @@ FavDetachFromDiskStack(VOID)
         ObDereferenceObject(g_Fav.DiskFileObject);
         g_Fav.DiskFileObject = NULL;
     }
+}
+
+/* ============================================================
+ * 通用下传分发（READ/FLUSH/PNP/POWER/SHUTDOWN 等直达磁盘下层）
+ * ============================================================ */
+NTSTATUS
+FavDispatchPassThrough(
+    _In_ PDEVICE_OBJECT DeviceObject,
+    _Inout_ PIRP Irp
+)
+{
+    PFAV_DEVICE_EXTENSION ext;
+
+    if (DeviceObject != g_Fav.DiskFilterDevice) {
+        Irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        return STATUS_INVALID_DEVICE_REQUEST;
+    }
+
+    ext = (PFAV_DEVICE_EXTENSION)DeviceObject->DeviceExtension;
+    IoSkipCurrentIrpStackLocation(Irp);
+    return IoCallDriver(ext->TargetDevice, Irp);
 }
 
 /* ============================================================
@@ -815,6 +879,30 @@ FavHandleIoctl(
         break;
     }
 
+    case FAV_IOCTL_SET_TRUSTED_PID:
+    {
+        /* 输入: [ULONG count][ULONG pids[count]] —— 受信任进程白名单（放行其进程创建与注册表操作） */
+        if (inputLength < sizeof(ULONG)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+
+        ULONG tCount = *(PULONG)buffer;
+        if (tCount > FAV_MAX_PIDS) tCount = FAV_MAX_PIDS;
+        if (inputLength < sizeof(ULONG) + tCount * sizeof(ULONG)) {
+            status = STATUS_BUFFER_TOO_SMALL;
+            break;
+        }
+
+        PULONG tpids = (PULONG)((PUCHAR)buffer + sizeof(ULONG));
+        g_Fav.TrustedPidCount = tCount;
+        for (ULONG i = 0; i < tCount; i++)
+            g_Fav.TrustedPids[i] = (HANDLE)(ULONG_PTR)tpids[i];
+
+        FavLog("trusted processes updated: %u", tCount);
+        break;
+    }
+
     case FAV_IOCTL_ENABLE_DISK_GUARD:
     {
         /* 输入 8 字节: [0] mbrGuard(分区表防护), [4] gptGuard(UEFI防护) */
@@ -865,26 +953,32 @@ FavHandleIoctl(
             break;
         }
 
-        /* 空队列：只允许一个挂起 IRP，其余同步返回空（用户态单通道） */
+        /* 空队列：只允许一个挂起 IRP，其余同步返回空（用户态单通道）。
+           全程持 PendingLock, 消除与 cancel/完成路径的检查-置位竞态 */
+        KeAcquireSpinLock(&g_Fav.PendingLock, &oldIrql);
         if (g_Fav.PendingEventIrp != NULL) {
+            KeReleaseSpinLock(&g_Fav.PendingLock, oldIrql);
             *(PULONG)buffer = 0;
             Irp->IoStatus.Information = sizeof(ULONG);
             status = STATUS_SUCCESS;
             break;
         }
 
-        if (IoSetCancelRoutine(Irp, FavCancelPendingEventIrp) != NULL) {
+        /* 持自旋锁时 IRQL=DISPATCH_LEVEL, 满足 IoSetCancelRoutine 的锁要求 */
+        if (IoSetCancelRoutine(Irp, FavCancelPendingEventIrp) == NULL) {
+            KeReleaseSpinLock(&g_Fav.PendingLock, oldIrql);
             status = STATUS_CANCELLED;
             break;
         }
         if (Irp->Cancel) {
-            if (IoSetCancelRoutine(Irp, NULL) != NULL) {
-                status = STATUS_CANCELLED;
-                break;
-            }
+            IoSetCancelRoutine(Irp, NULL);
+            KeReleaseSpinLock(&g_Fav.PendingLock, oldIrql);
+            status = STATUS_CANCELLED;
+            break;
         }
 
         g_Fav.PendingEventIrp = Irp;
+        KeReleaseSpinLock(&g_Fav.PendingLock, oldIrql);
         IoMarkIrpPending(Irp);
         status = STATUS_PENDING;
         break;
@@ -1025,13 +1119,20 @@ DriverEntry(
 
     /* 1. 创建控制设备 + 符号链接 */
     RtlInitUnicodeString(&deviceName, FAV_DEVICE_NAME);
-    status = IoCreateDevice(DriverObject,
-                            0,
-                            &deviceName,
-                            FILE_DEVICE_UNKNOWN,
-                            FILE_DEVICE_SECURE_OPEN,
-                            FALSE,
-                            &g_ControlDevice);
+    /* 安全描述符: 仅 SYSTEM 与 Administrators 可打开（普通用户发 IOCTL 直接拒绝） */
+    {
+        UNICODE_STRING sddl;
+        RtlInitUnicodeString(&sddl, L"D:P(A;;GA;;;SY)(A;;GA;;;BA)");
+        status = IoCreateDeviceSecure(DriverObject,
+                                      0,
+                                      &deviceName,
+                                      FILE_DEVICE_UNKNOWN,
+                                      FILE_DEVICE_SECURE_OPEN,
+                                      FALSE,
+                                      &sddl,
+                                      NULL,
+                                      &g_ControlDevice);
+    }
     if (!NT_SUCCESS(status)) {
         FavLog("create control device failed: 0x%08X", status);
         return status;
@@ -1053,6 +1154,12 @@ DriverEntry(
     DriverObject->MajorFunction[IRP_MJ_CLOSE] = FavDispatchCreateClose;
     DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = FavDispatchDeviceControl;
     DriverObject->MajorFunction[IRP_MJ_WRITE] = FavDispatchWrite;
+    /* 磁盘过滤设备必须下传其余主功能码, 否则 READ/FLUSH/PNP/POWER 全部失败 */
+    DriverObject->MajorFunction[IRP_MJ_READ] = FavDispatchPassThrough;
+    DriverObject->MajorFunction[IRP_MJ_FLUSH_BUFFERS] = FavDispatchPassThrough;
+    DriverObject->MajorFunction[IRP_MJ_SHUTDOWN] = FavDispatchPassThrough;
+    DriverObject->MajorFunction[IRP_MJ_PNP] = FavDispatchPassThrough;
+    DriverObject->MajorFunction[IRP_MJ_POWER] = FavDispatchPassThrough;
     DriverObject->DriverUnload = FavUnload;
 
     /* 3. 注册三大回调 */

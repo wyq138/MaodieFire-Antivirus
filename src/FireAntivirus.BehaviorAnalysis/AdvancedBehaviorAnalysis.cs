@@ -51,7 +51,7 @@ namespace FireAntivirus.BehaviorAnalysis
                         await Task.Delay(1000, _cancellationTokenSource.Token);
                     }
                     catch (OperationCanceledException) { break; }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             });
         }
@@ -97,10 +97,10 @@ namespace FireAntivirus.BehaviorAnalysis
                                 $"从临时目录启动的进程: {path}");
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void MonitorFileSystemActivity()
@@ -132,7 +132,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void MonitorNetworkActivity()
@@ -153,7 +153,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void MonitorRegistryActivity()
@@ -187,7 +187,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private void MonitorMemoryActivity()
@@ -211,10 +211,10 @@ namespace FireAntivirus.BehaviorAnalysis
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private int GetParentProcessId(int processId)
@@ -228,7 +228,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     return Convert.ToInt32(obj["ParentProcessId"]);
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return -1;
         }
 
@@ -313,7 +313,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return results;
         }
@@ -353,7 +353,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return results;
         }
@@ -380,7 +380,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return results;
         }
@@ -409,7 +409,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return results;
         }
@@ -655,10 +655,10 @@ namespace FireAntivirus.BehaviorAnalysis
                             StartTime = GetProcessStartTime(proc)
                         });
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return behaviors;
         }
 
@@ -692,7 +692,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return behaviors;
         }
 
@@ -716,7 +716,7 @@ namespace FireAntivirus.BehaviorAnalysis
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return behaviors;
         }

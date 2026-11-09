@@ -1,5 +1,20 @@
+param(
+    [string]$SignPassword = $env:FA_SIGN_PASSWORD
+)
+
 $ErrorActionPreference = "Continue"
 New-Item -ItemType Directory -Path "D:\fa-build" -Force | Out-Null
+
+# 签名密码参数化: 环境变量 FA_SIGN_PASSWORD > dist\sign_password.txt（首次随机生成）
+$pwdFile = Join-Path $PSScriptRoot "sign_password.txt"
+if (-not $SignPassword -and (Test-Path $pwdFile)) {
+    $SignPassword = (Get-Content $pwdFile -Raw).Trim()
+}
+if (-not $SignPassword) {
+    $SignPassword = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
+    Set-Content -Path $pwdFile -Value $SignPassword -Encoding ASCII
+}
+
 $out = "D:\fa-build\fa_sign_admin_result.txt"
 $log = @()
 $dist = $PSScriptRoot
@@ -29,7 +44,7 @@ $log += "signtool: $signtool"
 $c = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.Subject -eq "CN=$certName" } | Select-Object -First 1
 if ($c) { $log += "existing cert: " + $c.Thumbprint } else { $log += "no existing cert" }
 
-$pw = ConvertTo-SecureString -String "fav" -Force -AsPlainText
+$pw = ConvertTo-SecureString -String $SignPassword -Force -AsPlainText
 $pfx = Join-Path D:\fa-build "fav_sign.pfx"
 Remove-Item $pfx -Force -ErrorAction SilentlyContinue
 

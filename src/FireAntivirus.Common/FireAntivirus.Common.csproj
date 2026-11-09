@@ -14,6 +14,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- DPAPI 本机密钥保护（CryptoHelper 主密钥落盘保护） -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
     <!-- WinForms/WPF 引用由下方 UseWindowsForms/UseWPF 框架特性提供，勿再引用 nuget 旧包（NU1701/漏洞传递源） -->
     <PackageReference Include="System.Management" Version="7.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />

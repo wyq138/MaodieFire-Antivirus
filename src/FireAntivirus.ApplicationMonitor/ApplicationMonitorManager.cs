@@ -257,7 +257,7 @@ namespace FireAntivirus.ApplicationMonitor
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 // 3) 已知恶意工具进程名规则（真实检测规则）
                 string[] knownMalwareTools =

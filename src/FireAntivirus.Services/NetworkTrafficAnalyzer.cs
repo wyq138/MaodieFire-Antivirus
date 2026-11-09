@@ -444,9 +444,7 @@ namespace FireAntivirus.Services
                     return process.ProcessName;
                 }
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return "Unknown";
         }
 

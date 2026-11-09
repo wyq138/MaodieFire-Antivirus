@@ -280,7 +280,7 @@ namespace FireAntivirus.Backup
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return images;
         }
@@ -335,6 +335,7 @@ namespace FireAntivirus.Backup
                         request.Method = WebRequestMethods.Ftp.UploadFile;
                         request.Credentials = new NetworkCredential(cloudConfig.Username, cloudConfig.Password);
                         request.UseBinary = true;
+                        request.EnableSsl = true; // FTPS: 凭据与数据走显式 TLS
 
                         using (var fileStream = File.OpenRead(localPath))
                         using (var requestStream = request.GetRequestStream())
@@ -393,6 +394,7 @@ namespace FireAntivirus.Backup
                         request.Method = WebRequestMethods.Ftp.DownloadFile;
                         request.Credentials = new NetworkCredential(cloudConfig.Username, cloudConfig.Password);
                         request.UseBinary = true;
+                        request.EnableSsl = true; // FTPS
 
                         using (var response = (FtpWebResponse)request.GetResponse())
                         using (var responseStream = response.GetResponseStream())
@@ -443,6 +445,7 @@ namespace FireAntivirus.Backup
                         var request = (FtpWebRequest)WebRequest.Create(cloudConfig.FtpServer);
                         request.Method = WebRequestMethods.Ftp.ListDirectory;
                         request.Credentials = new NetworkCredential(cloudConfig.Username, cloudConfig.Password);
+                        request.EnableSsl = true; // FTPS
 
                         using (var response = (FtpWebResponse)request.GetResponse())
                         using (var responseStream = response.GetResponseStream())
@@ -474,22 +477,53 @@ namespace FireAntivirus.Backup
 
         private CloudStorageConfig GetCloudConfig()
         {
-            var configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), 
+            var configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                 "FireAntivirus", "cloud_config.json");
             
+
             if (File.Exists(configPath))
             {
                 try
                 {
                     var json = File.ReadAllText(configPath);
-                    return JsonSerializer.Deserialize<CloudStorageConfig>(json) ?? new CloudStorageConfig();
+                    var cfg = JsonSerializer.Deserialize<CloudStorageConfig>(json) ?? new CloudStorageConfig();
+                    // 密码在盘上为密文（SaveCloudConfig 写入时加密），读入时解密；旧明文文件原样兼容
+                    if (!string.IsNullOrEmpty(cfg.Password) && cfg.Password.StartsWith("enc:", StringComparison.Ordinal))
+                    {
+                        cfg.Password = FireAntivirus.Common.CryptoHelper.Decrypt(cfg.Password.Substring(4));
+                    }
+                    return cfg;
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             
             return new CloudStorageConfig();
         }
+
+        /// <summary>保存云端备份配置: 凭据字段 DPAPI/AES 本机加密后落盘（不再明文）。</summary>
+        public void SaveCloudConfig(CloudStorageConfig config)
+        {
+            try
+            {
+                var configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "FireAntivirus", "cloud_config.json");
+                Directory.CreateDirectory(Path.GetDirectoryName(configPath));
+
+                if (!string.IsNullOrEmpty(config.Password) && !config.Password.StartsWith("enc:", StringComparison.Ordinal))
+                {
+                    config.Password = "enc:" + FireAntivirus.Common.CryptoHelper.Encrypt(config.Password);
+                }
+
+                var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(configPath, json);
+            }
+            catch (Exception ex)
+            {
+                try { _dataManager.LogError("保存云端备份配置失败: " + ex.Message); } catch (Exception ex2) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex2.Message); }
+            }
+        }
     }
+
 
     public class CloudStorageConfig
     {
@@ -779,7 +813,7 @@ namespace FireAntivirus.Backup
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return points.OrderByDescending(p => p.CreatedAt).ToList();
         }
@@ -894,7 +928,7 @@ namespace FireAntivirus.Backup
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return report;
         }

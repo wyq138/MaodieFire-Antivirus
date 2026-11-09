@@ -81,7 +81,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                         var pidNames = new Dictionary<int, string>();
                         foreach (var proc in Process.GetProcesses())
                         {
-                            try { pidNames[proc.Id] = proc.ProcessName; } catch { }
+                            try { pidNames[proc.Id] = proc.ProcessName; } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         }
 
                         var result = new List<NetstatRow>();
@@ -198,7 +198,7 @@ namespace FireAntivirus.Host.WinUI.Pages
         {
             _ = Task.Run(() =>
             {
-                try { Traffic.AnalyzeTraffic(); } catch { }
+                try { Traffic.AnalyzeTraffic(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 LoadTrafficAlerts();
             });
         }
@@ -209,7 +209,7 @@ namespace FireAntivirus.Host.WinUI.Pages
             _ = Task.Run(() =>
             {
                 System.Collections.Generic.List<FireAntivirus.NetworkTrafficAnalyzer.NetworkAlert> alerts = null;
-                try { alerts = Traffic.GetAlerts(); } catch { }
+                try { alerts = Traffic.GetAlerts(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 DispatcherQueue.TryEnqueue(() =>
                 {

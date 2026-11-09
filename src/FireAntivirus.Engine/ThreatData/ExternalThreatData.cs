@@ -37,7 +37,7 @@ namespace FireAntivirus.Engine
                         "FireAntivirus", "ThreatData");
                     if (File.Exists(Path.Combine(runtime, "version.json"))) return runtime;
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 return Path.Combine(AppContext.BaseDirectory, "ThreatData");
             }
         }

@@ -123,9 +123,7 @@ namespace FireAntivirus.Services
                                     localNetworkIPs.Add(ip);
                                 }
                             }
-                            catch
-                            {
-                            }
+                            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         }
                     }
                 }

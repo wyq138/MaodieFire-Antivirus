@@ -1,4 +1,4 @@
-// 压缩包扫描（照搬 XIGUASecurity 10x archive_scanner.rs 的能力，C# 实现）：
+// 压缩包扫描（C# 实现）：
 //   zip（System.IO.Compression 原生）/ tar / gz 全支持；rar/7z 通过 7-Zip（程序目录或系统安装）解包；
 //   防炸弹：条目数 ≤5000、单文件 ≤64MB、累计解压 ≤512MB、密码保护如实标记。
 //   解出的内部文件写临时目录后交给引擎扫描（真实查杀，而非只列文件名）。
@@ -86,7 +86,7 @@ namespace FireAntivirus.Engine.Analyzers
             }
             finally
             {
-                try { Directory.Delete(tmpRoot, true); } catch { }
+                try { Directory.Delete(tmpRoot, true); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             return result;
         }
@@ -120,7 +120,7 @@ namespace FireAntivirus.Engine.Analyzers
                         fileResult.IsMalicious = true;
                         fileResult.ThreatName = r.ThreatName;
                     }
-                    try { File.Delete(dest); } catch { }
+                    try { File.Delete(dest); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
                 catch (InvalidDataException)
                 {
@@ -157,7 +157,7 @@ namespace FireAntivirus.Engine.Analyzers
                     total += entry.Length;
                     var r = scanFile(dest);
                     if (r != null && r.IsInfected) { fileResult.IsMalicious = true; fileResult.ThreatName = r.ThreatName; }
-                    try { File.Delete(dest); } catch { }
+                    try { File.Delete(dest); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
                 catch (Exception ex) { fileResult.Error = ex.Message; }
                 result.Files.Add(fileResult);
@@ -187,7 +187,7 @@ namespace FireAntivirus.Engine.Analyzers
 
                 if (overflow)
                 {
-                    try { File.Delete(dest); } catch { }
+                    try { File.Delete(dest); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     return;
                 }
 
@@ -195,7 +195,7 @@ namespace FireAntivirus.Engine.Analyzers
                 var r = scanFile(dest);
                 if (r != null && r.IsInfected) { fileResult.IsMalicious = true; fileResult.ThreatName = r.ThreatName; }
                 result.Files.Add(fileResult);
-                try { File.Delete(dest); } catch { }
+                try { File.Delete(dest); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             catch (Exception ex) { result.Error = ex.Message; }
         }

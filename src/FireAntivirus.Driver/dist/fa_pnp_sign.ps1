@@ -1,5 +1,20 @@
+param(
+    [string]$SignPassword = $env:FA_SIGN_PASSWORD
+)
+
 $ErrorActionPreference = "Continue"
 New-Item -ItemType Directory -Path "D:\fa-build" -Force | Out-Null
+
+# 签名密码参数化: 与 fa_sign_admin.ps1 共用 dist\sign_password.txt
+$pwdFile = Join-Path $PSScriptRoot "sign_password.txt"
+if (-not $SignPassword -and (Test-Path $pwdFile)) {
+    $SignPassword = (Get-Content $pwdFile -Raw).Trim()
+}
+if (-not $SignPassword) {
+    $SignPassword = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
+    Set-Content -Path $pwdFile -Value $SignPassword -Encoding ASCII
+}
+
 $out = "D:\fa-build\fa_pnp_sign_result.txt"
 $log = @()
 $cat = "C:\ProgramData\FireAntivirus\pnp\FireAntivirusKrn.cat"
@@ -30,7 +45,7 @@ $c = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.Subject -eq "CN=Fir
 if (-not $c) { $log += "FATAL: cert not found"; $log | Out-File $out -Encoding UTF8; exit 1 }
 $log += "cert: " + $c.Thumbprint
 
-$pw = ConvertTo-SecureString -String "fav" -Force -AsPlainText
+$pw = ConvertTo-SecureString -String $SignPassword -Force -AsPlainText
 $pfx = Join-Path D:\fa-build "fav_sign.pfx"
 Remove-Item $pfx -Force -ErrorAction SilentlyContinue
 Export-PfxCertificate -Cert $c -FilePath $pfx -Password $pw | Out-Null

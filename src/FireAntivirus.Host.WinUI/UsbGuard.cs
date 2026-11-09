@@ -74,7 +74,7 @@ namespace FireAntivirus.Host.WinUI
                 _watcher.Stop();
                 _watcher.Dispose();
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             _watcher = null;
             FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info, "U盘防护已停止");
         }
@@ -136,7 +136,7 @@ namespace FireAntivirus.Host.WinUI
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info,

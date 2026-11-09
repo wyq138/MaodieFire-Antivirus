@@ -1063,9 +1063,7 @@ namespace FireAntivirus.MachineLearning
                 features.Add("dynamic:executable");
                 features.AddRange(InferBehaviorFeatures(content));
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return features;
         }
 
@@ -1080,9 +1078,7 @@ namespace FireAntivirus.MachineLearning
                 features.Add("dynamic:executable");
                 features.AddRange(InferBehaviorFeatures(fileData));
             }
-            catch
-            {
-            }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return features;
         }
 

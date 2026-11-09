@@ -253,7 +253,7 @@ namespace FireAntivirus.Host.WinUI.Pages
             _ = Task.Run(() =>
             {
                 System.Collections.Generic.List<IPAddress> list = null;
-                try { list = NetSecurity.GetBlockedIPs(); } catch { }
+                try { list = NetSecurity.GetBlockedIPs(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                 DispatcherQueue.TryEnqueue(() =>
                 {

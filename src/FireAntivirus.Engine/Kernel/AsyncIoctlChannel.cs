@@ -79,8 +79,8 @@ namespace FireAntivirus.Engine.Kernel
             lock (_lock)
             {
                 IsRunning = false;
-                try { _cts?.Cancel(); } catch { }
-                try { _cts?.Dispose(); } catch { }
+                try { _cts?.Cancel(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
+                try { _cts?.Dispose(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 _cts = null;
             }
         }
@@ -170,7 +170,7 @@ namespace FireAntivirus.Engine.Kernel
             {
                 IsRunning = false;
                 IsOverlappedMode = false;
-                if (device != IntPtr.Zero && device != new IntPtr(-1)) { try { CancelIoEx(device, IntPtr.Zero); } catch { } }
+                if (device != IntPtr.Zero && device != new IntPtr(-1)) { try { CancelIoEx(device, IntPtr.Zero); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); } }
                 if (output != IntPtr.Zero) Marshal.FreeHGlobal(output);
                 if (ioEvent != IntPtr.Zero) CloseHandle(ioEvent);
                 if (device != IntPtr.Zero && device != new IntPtr(-1)) CloseHandle(device);

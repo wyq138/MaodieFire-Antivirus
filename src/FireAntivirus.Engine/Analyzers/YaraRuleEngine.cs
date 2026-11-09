@@ -35,7 +35,7 @@ namespace FireAntivirus.Engine.Analyzers
 
         static YaraRuleEngine()
         {
-            try { _rulesHttp.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus/3.0 (+yara-rules-update)"); } catch { }
+            try { _rulesHttp.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus/3.0 (+yara-rules-update)"); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         // 真实公开 YARA 规则源：Florian Roth signature-base（社区老牌公开规则库）。
@@ -75,7 +75,7 @@ namespace FireAntivirus.Engine.Analyzers
                     string name = url[(url.LastIndexOf('/') + 1)..];
                     try
                     {
-                        try { progress?.Report((done * 100 / total, $"下载规则 {name}（{done}/{total}）")); } catch { }
+                        try { progress?.Report((done * 100 / total, $"下载规则 {name}（{done}/{total}）")); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                         var bytes = await _rulesHttp.GetByteArrayAsync(url);
                         string text = Encoding.UTF8.GetString(bytes);
 
@@ -215,7 +215,7 @@ namespace FireAntivirus.Engine.Analyzers
                 var sb = new StringBuilder();
                 foreach (var f in ruleFiles)
                 {
-                    try { sb.AppendLine(File.ReadAllText(f)); sb.AppendLine(); } catch { }
+                    try { sb.AppendLine(File.ReadAllText(f)); sb.AppendLine(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
                 File.WriteAllText(mergedPath, sb.ToString());
                 _mergedRulesPath = mergedPath;
@@ -268,7 +268,7 @@ namespace FireAntivirus.Engine.Analyzers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             return hits;
         }
@@ -478,7 +478,7 @@ namespace FireAntivirus.Engine.Analyzers
                     {
                         rules.AddRange(ParseYarFile(file));
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 // LMD ndb 特征文件转换为内置十六进制规则（一条 = 一条规则）
@@ -711,7 +711,7 @@ namespace FireAntivirus.Engine.Analyzers
 
                 File.WriteAllText(builtin, sb.ToString());
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 }

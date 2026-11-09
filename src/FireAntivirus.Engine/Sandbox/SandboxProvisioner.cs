@@ -1,9 +1,9 @@
-// 沙箱环境供给器（照搬 XIGUASecurity 10x sandbox_analysis.rs 的环境准备流程，C# 版）：
+// 沙箱环境供给器（环境准备流程，C# 版）：
 //   组件查找优先级：①程序目录 Sandbox\Start.exe（随软件分发）→ ②程序同级 Sandboxie-Plus-*.exe 安装包（静默安装）
 //                   → ③系统安装路径（Program Files\Sandboxie-Plus 等 4 个候选）
 //   服务：SbieSvc（沙箱 RPC 服务，未运行则启动）；SbieDrv 驱动缺失则 sc create 注册
-//   配置：SbieIni set AUTOSandBox <13 项>（会话内只配置一次）——与西瓜完全一致的配置项
-//   关键实测结论（西瓜注释）：分析前必须结束 Sandboxie 托盘 UI（Sandboxie.exe/SandMan.exe/SbieCtrl.exe），
+//   配置：SbieIni set AUTOSandBox <13 项>（会话内只配置一次）
+//   关键实测结论：分析前必须结束 Sandboxie 托盘 UI（Sandboxie.exe/SandMan.exe/SbieCtrl.exe），
 //   否则托盘进程持有沙箱 IPC 锁，Start.exe 启动的目标程序弹不出窗口、分析"监控中但程序没启动"。
 using System;
 using System.Collections.Generic;
@@ -75,7 +75,7 @@ namespace FireAntivirus.Engine.Sandbox
                             { Arguments = "/S", UseShellExecute = true });
                             p?.WaitForExit(180000);
                         }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                         foreach (var c in candidates.Skip(1))
                         {
@@ -112,7 +112,7 @@ namespace FireAntivirus.Engine.Sandbox
                     // 2) SbieDrv 驱动：服务不存在则用自带 .sys 注册（sc create SbieDrv type= kernel）
                     EnsureDriverService();
 
-                    // 3) 13 项沙盒配置（与西瓜一致），并确保 MsiInstaller 恢复默认
+                    // 3) 13 项沙盒配置，并确保 MsiInstaller 恢复默认
                     ConfigureBox();
 
                     _configured = true;
@@ -168,7 +168,7 @@ namespace FireAntivirus.Engine.Sandbox
                 return;
             }
 
-            // 与 XIGUASecurity 完全一致的 13 项基础配置
+            // 13 项基础沙盒配置
             var settings = new (string Key, string Value)[]
             {
                 ("Enabled", "y"),
@@ -205,7 +205,7 @@ namespace FireAntivirus.Engine.Sandbox
 
             if (string.IsNullOrEmpty(_sbieIni) || !File.Exists(_sbieIni))
             {
-                try { EnsureConfiguredAsync().GetAwaiter().GetResult(); } catch { }
+                try { EnsureConfiguredAsync().GetAwaiter().GetResult(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             if (string.IsNullOrEmpty(_sbieIni) || !File.Exists(_sbieIni))
             {
@@ -220,7 +220,7 @@ namespace FireAntivirus.Engine.Sandbox
         }
 
         /// <summary>
-        /// 结束 Sandboxie 托盘/管理 UI。西瓜实测：托盘进程持有沙箱 IPC 锁，导致
+        /// 结束 Sandboxie 托盘/管理 UI。实测：托盘进程持有沙箱 IPC 锁，导致
         /// Start.exe 启动的目标程序弹不出窗口、分析"监控中但程序没启动"。
         /// </summary>
         public static void KillTrayUi()
@@ -232,10 +232,10 @@ namespace FireAntivirus.Engine.Sandbox
                     foreach (var p in Process.GetProcessesByName(name))
                     {
                         try { p.Kill(); p.WaitForExit(2000); Log($"已结束 Sandboxie UI 进程: {name} (PID {p.Id})"); }
-                        catch { }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                     }
                 }
-                catch { }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
         }
 

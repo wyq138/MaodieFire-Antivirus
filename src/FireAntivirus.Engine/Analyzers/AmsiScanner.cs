@@ -1,4 +1,4 @@
-// AMSI 集成（照搬 XIGUASecurity 10x amsi_protection.rs，C# 版）：
+// AMSI 集成（C# 版）：
 //   1) 动态调用系统 amsi.dll 的 AmsiInitialize/AmsiScanBuffer 扫描脚本/命令内容（真实杀毒接口）；
 //   2) 检测 AMSI bypass：检查本进程 amsi.dll 中 AmsiScanBuffer 首字节是否被内存补丁（E9 JMP/C3 RET 等）；
 //   3) 供脚本检测层（ScriptMacroAnalyzer）作为强证据源使用。
@@ -97,7 +97,7 @@ namespace FireAntivirus.Engine.Analyzers
                     byte[] buffer = System.Text.Encoding.UTF8.GetBytes(content);
                     // 内容名通过 IntPtr 传递（可空）；session 允许为 0
                     IntPtr namePtr = IntPtr.Zero;
-                    try { namePtr = Marshal.StringToHGlobalUni(contentName ?? ""); } catch { }
+                    try { namePtr = Marshal.StringToHGlobalUni(contentName ?? ""); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
                     try
                     {
@@ -150,7 +150,7 @@ namespace FireAntivirus.Engine.Analyzers
                         $"[AMSI] 检测到 AmsiScanBuffer 内存补丁（首字节 0x{b0:X2} 0x{b1:X2}）——疑似 AMSI bypass");
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
     }
 }

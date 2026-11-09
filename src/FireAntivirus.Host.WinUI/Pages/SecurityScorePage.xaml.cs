@@ -108,7 +108,7 @@ namespace FireAntivirus.Host.WinUI.Pages
                 try
                 {
                     result = _service.CalculateSecurityScore();
-                    try { trend = _service.AnalyzeTrend(); } catch { }
+                    try { trend = _service.AnalyzeTrend(); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
                 catch (Exception ex) { error = ex.Message; }
 

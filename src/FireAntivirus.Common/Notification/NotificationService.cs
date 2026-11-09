@@ -649,7 +649,7 @@ private NotificationService()
                 {
                     _notificationForm.Location = new Point(100, 100);
                 }
-                catch { }
+                catch (Exception ex2) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex2.Message); }
             }
         }
 

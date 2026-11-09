@@ -278,12 +278,15 @@ namespace FireAntivirus.Engine
 
         /// <summary>
         /// 后台启动自动更新特征库（加载已持久化特征 + 首次拉取最新特征 + 定时自动更新）。
-        /// 纯后台、不阻塞、绝不抛异常，失败不影响引擎运行。
+        /// 纯后台、不阻塞、绝不抛异常，失败不影响引擎运行。（Task.Run 包裹, 无 async void 异常逃逸面）
         /// </summary>
-        private static async void StartSignatureDatabaseUpdater()
+        private static void StartSignatureDatabaseUpdater()
         {
-            try { await SignatureDatabaseUpdater.InitializeAsync(); }
-            catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "特征库更新初始化失败", ex.Message); }
+            _ = Task.Run(async () =>
+            {
+                try { await SignatureDatabaseUpdater.InitializeAsync(); }
+                catch (Exception ex) { LogHelper.Log(LogHelper.LogLevel.Error, "特征库更新初始化失败", ex.Message); }
+            });
         }
 
         private void InitializeAnalyzers()
@@ -390,7 +393,7 @@ namespace FireAntivirus.Engine
                 //     哈希入库后永久秒过。误报只可能发生第一次。强证据（特征/ClamAV/YARA/云确认）位于
                 //     本检查之后仍可翻案——"已知好"挡启发式误报，"已知坏"特征优先级最高，两者不冲突。
                 string fileHash = null;
-                try { fileHash = GetFileHash(filePath); } catch { }
+                try { fileHash = GetFileHash(filePath); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 if (!string.IsNullOrEmpty(fileHash) && WhitelistStore.IsKnownGood(fileHash))
                 {
                     result.DetectionMethod = "Clean-Whitelisted";
@@ -453,7 +456,7 @@ namespace FireAntivirus.Engine
                         var yaraHits = Analyzers.YaraRuleEngine.ScanFile(filePath);
                         if (yaraHits.Count > 0)
                         {
-                            // YARA 分级（对标西瓜杀毒的误报控制）：
+                            // YARA 分级（误报控制：分级判定）：
                             // 内置家族规则（精确特征，如 WannaCry/LockBit 家族）→ 强证据，单票确认；
                             // 外部/社区规则（LMD rfxn.yara/signature-base，如 shankar_php_php 通用 webshell 规则）
                             // → 弱证据（置信 0.55），需 ≥3 源共识，禁止单票定罪——此类规则是主要误报源。
@@ -705,7 +708,7 @@ namespace FireAntivirus.Engine
 // 可信签名仲裁提前：签名可信的正规软件被多套启发式同时命中 = 启发式族误报，签名优先否决
                 bool trustedSignature = HasValidSignature(filePath);
 
-                // 弱证据未达共识 → 本地沙箱行为验证（对标西瓜杀毒，根除误报的核心）：
+                // 弱证据未达共识 → 本地沙箱行为验证（根除误报的核心）：
                 // 社区 YARA 规则（如 shankar_php_php）/ 单一弱票对未签名文件不再直接定罪，
                 // 送 Sandboxie 运行 60 秒 + IOA 规则评分，只有观测到恶意行为（≥100）才弹窗处置。
                 if (weakHits.Count > 0 && weakHits.Count < 3 &&
@@ -876,7 +879,7 @@ namespace FireAntivirus.Engine
                             if (pattern != null && pattern.IsInfected) hits.Add(pattern);
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
 
                 // 6. 多维度文件评估器(MD5/SHA256 + 深度PE结构 + Authenticode签名链 + 节熵 + 导入行为)
@@ -896,7 +899,7 @@ namespace FireAntivirus.Engine
                     });
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return hits;
         }
 

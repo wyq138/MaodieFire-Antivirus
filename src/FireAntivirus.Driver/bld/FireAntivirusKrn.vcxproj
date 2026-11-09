@@ -60,8 +60,8 @@
   </ItemDefinitionGroup>
 
   <ItemGroup>
-    <ClCompile Include="D:\69E6~1\ALL-FI~1\ITEMFI~1\AA3A~1\src\FIREAN~1.DRI\fireantivirus_kernel.c">
-      <AdditionalIncludeDirectories>D:\69E6~1\ALL-FI~1\ITEMFI~1\AA3A~1\src\FIREAN~1.DRI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\fireantivirus_kernel.c">
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemGroup>
 

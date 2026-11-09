@@ -33,10 +33,10 @@ namespace FireAntivirus.Common
                             break;
                         }
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return results;
         }
 
@@ -53,13 +53,13 @@ namespace FireAntivirus.Common
                         foreach (var dns in nic.GetIPProperties().DnsAddresses)
                             if (!list.Contains(dns)) list.Add(dns);
                     }
-                    catch { }
+                    catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             if (list.Count == 0)
             {
-                try { list.Add(IPAddress.Parse("223.5.5.5")); } catch { }
+                try { list.Add(IPAddress.Parse("223.5.5.5")); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             }
             return list;
         }
@@ -67,7 +67,8 @@ namespace FireAntivirus.Common
         private static List<string> QuerySingle(string domain, IPAddress server)
         {
             var results = new List<string>();
-            int id = new Random().Next(1, 65535);
+            // DNS 事务 ID 用 CSPRNG（System.Random 可预测, 存在缓存投毒面）
+            int id = (System.Security.Cryptography.RandomNumberGenerator.GetBytes(2)[0] | (System.Security.Cryptography.RandomNumberGenerator.GetBytes(2)[1] << 8)) % 65535 + 1;
             byte[] query = BuildQuery(domain, id);
 
             using var udp = new UdpClient();

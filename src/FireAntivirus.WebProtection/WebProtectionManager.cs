@@ -521,6 +521,58 @@ namespace FireAntivirus.WebProtection
             LogMessage("URL已从阻止列表移除（hosts 已恢复）: " + url);
         }
 
+        /// <summary>
+        /// 解除全部 URL 封锁（内存列表 + hosts 受管段同步恢复）。UI/服务"解除全部封锁"入口。
+        /// </summary>
+        public int RemoveAllBlockedUrls()
+        {
+            string[] snapshot;
+            lock (_lockObject)
+            {
+                snapshot = _blockedUrls.ToArray();
+                _blockedUrls.Clear();
+            }
+
+            foreach (var url in snapshot)
+            {
+                ApplyHostsBlock(url, block: false);
+            }
+
+            LogMessage($"已解除全部 URL 封锁（{snapshot.Length} 条, hosts 受管段已同步恢复）");
+            return snapshot.Length;
+        }
+
+        /// <summary>
+        /// 清空 hosts 中 FireAntivirus 受管拦截段（服务停止/用户要求清理时调用；幂等可逆，不动用户原有条目）。
+        /// </summary>
+        public void ClearAllHostsBlocks()
+        {
+            try
+            {
+                lock (_hostsLock)
+                {
+                    string path = HostsFilePath;
+                    if (!System.IO.File.Exists(path)) return;
+
+                    var lines = System.IO.File.ReadAllLines(path).ToList();
+                    int begin = lines.IndexOf(HostsBegin);
+                    int end = lines.IndexOf(HostsEnd);
+                    if (begin < 0 || end <= begin) return;
+
+                    lines.RemoveRange(begin, end - begin + 1);
+                    System.IO.File.WriteAllLines(path, lines);
+                }
+
+                FlushDnsCache();
+                LogMessage("hosts 受管拦截段已清空");
+            }
+            catch (Exception ex)
+            {
+                FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Warning,
+                    "清空 hosts 受管段失败（需管理员权限）: " + ex.Message);
+            }
+        }
+
         // ---------------- hosts 真实拦截（FireAntivirus 受管标记段，幂等、可逆，不破坏用户原有条目） ----------------
 
         private static readonly object _hostsLock = new object();
@@ -542,7 +594,7 @@ namespace FireAntivirus.WebProtection
                         return u.Host;
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             int slash = s.IndexOf('/');
             if (slash > 0) s = s.Substring(0, slash);
             int colon = s.IndexOf(':');
@@ -622,7 +674,7 @@ namespace FireAntivirus.WebProtection
                 using var p = System.Diagnostics.Process.Start(psi);
                 p?.WaitForExit(5000);
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         /// <summary>

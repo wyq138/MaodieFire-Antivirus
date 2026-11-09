@@ -100,7 +100,7 @@ namespace FireAntivirus.Services
 
         static UpdateService()
         {
-            try { _http.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus Update Client"); } catch { }
+            try { _http.DefaultRequestHeaders.Add("User-Agent", "FireAntivirus Update Client"); } catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         private static async Task<string> GetLatestVersionAsync()

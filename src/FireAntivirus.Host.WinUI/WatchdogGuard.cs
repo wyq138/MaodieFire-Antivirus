@@ -103,7 +103,7 @@ namespace FireAntivirus.Host.WinUI
                 FireAntivirus.Common.LogHelper.Log(FireAntivirus.Common.LogHelper.LogLevel.Info,
                     "看门狗: 主实例启动，退出标记已清除（计划任务重新启用）");
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
         }
 
         /// <summary>

@@ -99,7 +99,7 @@ namespace FireAntivirus.ParentalControl
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             // 文件不存在或加载失败时，添加默认用户
             _users.Add(new User
@@ -137,7 +137,7 @@ namespace FireAntivirus.ParentalControl
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             // 添加默认时间限制
             var childUser = _users.FirstOrDefault(u => u.Type == UserType.Child);
@@ -173,7 +173,7 @@ namespace FireAntivirus.ParentalControl
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
 
             // 添加默认内容过滤器
             _contentFilters.Add(new ContentFilter

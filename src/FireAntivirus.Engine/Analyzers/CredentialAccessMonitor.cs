@@ -1,4 +1,4 @@
-// 凭据访问防护（照搬 XIGUASecurity 10x credential_access.rs，C# 实现）：
+// 凭据访问防护（C# 实现）：
 //   1) 命令行特征检测（MITRE ATT&CK）：
 //      T1003.001 LSASS 内存转储 / T1003.002 SAM 导出 / T1003.003 NTDS.dit
 //      T1555.004 凭据管理器枚举 / T1552.004 DPAPI 主密钥 / T1110 暴力破解 / Mimikatz 特征
@@ -100,7 +100,7 @@ namespace FireAntivirus.Engine.Analyzers
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.WriteLine("FA-suppressed: " + ex.Message); }
             return result;
         }
 
